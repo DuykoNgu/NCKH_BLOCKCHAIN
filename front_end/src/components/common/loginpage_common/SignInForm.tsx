@@ -1,20 +1,22 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { postLogin } from "@/services/authService";
+import type { LoginData } from "@/types/auth";
 import "@/style/Login.css";
 
 const SingInForm = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<LoginData>();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
+  const onSubmit = async (data: LoginData) => {
     // Mock để chờ api
-    if (email === "test@test.com" && password === "123456") {
+    if (data.email === "test@test.com" && data.password === "123456") {
       localStorage.setItem("access_token", "mock_token");
       localStorage.setItem("isLoggedIn", "true");
       navigate("/");
@@ -22,39 +24,35 @@ const SingInForm = () => {
     }
 
     try {
-      const response = await postLogin({ email, password });
+      const response = await postLogin(data);
       localStorage.setItem("access_token", response.access_token);
       localStorage.setItem("isLoggedIn", "true");
       navigate("/");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Login failed");
+      setError("root", { message: err.response?.data?.message || "Đăng nhập thất bại" });
     }
   };
 
   return (
     <div className="form-container sign-in">
-      <form onSubmit={handleSubmit}>
-        <h1>Sign In</h1>
-        <span>or use your email password</span>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <h1>Đăng Nhập</h1>
+        <span>hoặc sử dụng email và mật khẩu của bạn</span>
         <input
           type="email"
           placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={error ? 'input-error' : ''}
-          required
+          {...register("email", { required: true })}
+          className={errors.email ? 'input-error' : ''}
         />
         <input
           type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={error ? 'input-error' : ''}
-          required
+          placeholder="Mật Khẩu"
+          {...register("password", { required: true })}
+          className={errors.password ? 'input-error' : ''}
         />
-        <a href="#">Forgot Your Password?</a>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">Sign In</button>
+        <a href="#">Quên Mật Khẩu?</a>
+        {errors.root && <p style={{ color: 'red' }}>{errors.root.message}</p>}
+        <button type="submit">Đăng Nhập</button>
       </form>
     </div>
   );

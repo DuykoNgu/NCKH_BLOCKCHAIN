@@ -1,60 +1,82 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
 import { postRegister } from "@/services/authService";
+import type { RegisterData } from "@/types/auth";
 import "@/style/Login.css";
 
 const SignUpForm = () => {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setError,
+  } = useForm<RegisterData>();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
+  const onSubmit = async (data: RegisterData) => {
     try {
-      await postRegister({ name, email, password });
+      await postRegister(data);
       // Assuming registration successful, redirect to signin
       navigate("/signin");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Registration failed");
+      setError("root", { message: err.response?.data?.message || "Đăng ký thất bại" });
     }
   };
 
   return (
     <div className="form-container sign-up">
-      <form onSubmit={handleSubmit}>
-        <h1>Create Account</h1>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <h1>Tạo Tài Khoản</h1>
         {/* <SocialIcons /> */}
-        <span>or use your email for registration</span>
+        <span>hoặc sử dụng email để đăng ký</span>
         <input
           type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={error ? 'input-error' : ''}
-          required
+          placeholder="Tên"
+          {...register("name", { required: true })}
+          className={errors.name ? 'input-error' : ''}
         />
         <input
           type="email"
           placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={error ? 'input-error' : ''}
-          required
+          {...register("email", { required: true })}
+          className={errors.email ? 'input-error' : ''}
         />
         <input
           type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={error ? 'input-error' : ''}
-          required
+          placeholder="Mật Khẩu"
+          {...register("password", { required: true })}
+          className={errors.password ? 'input-error' : ''}
         />
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit">Sign Up</button>
+        <input
+          type="date"
+          placeholder="Ngày Sinh"
+          {...register("dateOfBirth", { required: true })}
+          className={errors.dateOfBirth ? 'input-error' : ''}
+        />
+        <select
+          {...register("gender", { required: true })}
+          className={errors.gender ? 'input-error' : ''}
+        >
+          <option value="">Chọn Giới Tính</option>
+          <option value="Male">Nam</option>
+          <option value="Female">Nữ</option>
+          <option value="Other">Khác</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Trường Đại Học"
+          {...register("university", { required: true })}
+          className={errors.university ? 'input-error' : ''}
+        />
+        <input
+          type="text"
+          placeholder="Quê Quán"
+          {...register("hometown", { required: true })}
+          className={errors.hometown ? 'input-error' : ''}
+        />
+        {errors.root && <p style={{ color: 'red' }}>{errors.root.message}</p>}
+        <button type="submit">Đăng Ký</button>
       </form>
     </div>
   );
