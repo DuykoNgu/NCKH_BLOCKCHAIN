@@ -7,6 +7,10 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  dateOfBirth: string;
+  gender: string;
+  university: string;
+  hometown: string;
 }
 
 export interface AuthResponse {
