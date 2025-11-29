@@ -11,8 +11,6 @@ Cấu trúc dự án(backend)
 
 # Backend Project Structure
 
-Dưới đây là cấu trúc thư mục chính của dự án backend:
-
 ```
 back_end/
 │
@@ -80,3 +78,6 @@ back_end/
 ```
 
 ```
+
+test connect database
+python3 tests/dtb_connect.py 2>&1 | head -100
