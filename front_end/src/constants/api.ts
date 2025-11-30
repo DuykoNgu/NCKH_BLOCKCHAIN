@@ -1,4 +1,4 @@
 export const AUTH_SERVER = {
-  LOGIN: '/auth/login',
-  REGISTER: '/auth/register',
+  WALLET_LOGIN: '/auth/wallet/login',
+  WALLET_REGISTER: '/auth/wallet/register',
 } as const;

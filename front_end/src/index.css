@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+button {
+    cursor: pointer;
+}
+
+@keyframes bounceInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateY(-10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-bounce-in-up {
+    animation: bounceInUp 1s ease-out;
+}
+
+.animate-delay-1 {
+    animation-delay: 0.2s;
+}
+
+.animate-delay-2 {
+    animation-delay: 0.4s;
+}
+
+@keyframes gradientShift {
+    0% {
+        background: linear-gradient(to bottom right, #3b82f6, #8b5cf6, #6366f1);
+    }
+    33% {
+        background: linear-gradient(to bottom right, #8b5cf6, #6366f1, #3b82f6);
+    }
+    66% {
+        background: linear-gradient(to bottom right, #6366f1, #3b82f6, #8b5cf6);
+    }
+    100% {
+        background: linear-gradient(to bottom right, #3b82f6, #8b5cf6, #6366f1);
+    }
+}
+
+.animate-gradient {
+    animation: gradientShift 10s linear infinite;
+}

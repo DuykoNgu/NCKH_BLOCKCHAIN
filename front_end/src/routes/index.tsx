@@ -3,9 +3,7 @@ import { lazy } from 'react';
 
 const ROUTES = {
   HOME: '/',
-  SIGNIN: '/signin',
-  SIGNUP: '/signup',
-  LOGINPAGE: '/loginpage',
+  LOGIN: '/login',
 } as const;
 
 
@@ -17,7 +15,7 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 // Root component that checks authentication status
 const RootComponent = () => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  return isLoggedIn ? <Home /> : <Navigate to={ROUTES.SIGNIN} replace />;
+  return isLoggedIn ? <Home /> : <Navigate to={`${ROUTES.LOGIN}`} replace />;
 };
 
 export const router = createBrowserRouter([
@@ -27,17 +25,7 @@ export const router = createBrowserRouter([
     errorElement: <ErrorPage />,
   },
   {
-    path: ROUTES.SIGNIN,
-    element: <LoginPage />,
-    errorElement: <ErrorPage />, 
-  },
-  {
-    path: ROUTES.SIGNUP,
-    element: <LoginPage />,
-    errorElement: <ErrorPage />,
-  },
-  {
-    path: ROUTES.LOGINPAGE,
+    path: `${ROUTES.LOGIN}/:type?`,
     element: <LoginPage />,
     errorElement: <ErrorPage />,
   },

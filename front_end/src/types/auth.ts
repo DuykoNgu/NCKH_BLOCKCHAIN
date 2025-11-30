@@ -1,16 +1,16 @@
-export interface LoginData {
-  email: string;
-  password: string;
+export interface WalletLoginData {
+  private_key?: string;
+  address?: string;
 }
 
-export interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-  dateOfBirth: string;
-  gender: string;
-  university: string;
-  hometown: string;
+export interface WalletRegisterData {
+  client_id: string;
+  public_key: string;
+  address: string;
+}
+
+export interface WalletCreateRequest {
+  // Empty for now, backend generates everything
 }
 
 export interface AuthResponse {
