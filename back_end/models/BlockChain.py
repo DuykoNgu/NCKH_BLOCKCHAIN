@@ -4,7 +4,8 @@ from typing import List, Dict, Any
 
 from ecdsa import SigningKey
 
-from Block import Block
+from models.AuthorityManager import AuthorityManager
+from models.Block import Block
 from models.BlockHeader import BlockHeader
 
 
@@ -14,13 +15,13 @@ class BlockChain:
         #TODO: Thêm model Transaction
         self.mempool: List[dict] = []
         self.super_validator_pubkey: str = ""
-        self.authority_set: set[str] = set()
+        self.authority_manager = AuthorityManager()
         self.state_db: Dict[str, Any] = {}
 
 
     def create_genesis_block(self, pubkey_hex: str):
         self.super_validator_pubkey = pubkey_hex
-        self.authority_set.add(pubkey_hex)
+        self.authority_manager.add_validator(pubkey_hex)
 
         header = BlockHeader(
             index=0,
@@ -62,13 +63,13 @@ class BlockChain:
         if new_block.block_header.pre_hash != prev_block.block_hash:
             return False
 
-        if new_block.block_header.validator_pubkey not in self.authority_set:
+        if not self.authority_manager.is_authorized(new_block.block_header.validator_pubkey):
             return False
 
         return True
 
     def mine_block(self, private_key: SigningKey, public_key_hex: str) -> Block:
-        if public_key_hex not in self.authority_set:
+        if not self.authority_manager.is_authorized(public_key_hex):
             raise PermissionError("Validator ko năm trong uỷ quyền")
 
         prev_block = self.get_last_block()
@@ -89,7 +90,7 @@ class BlockChain:
             transactions=self.mempool.copy()
         )
 
-        block.sign_block(private_key)
+        block.sign_block(private_key, self.authority_manager)
 
         return block
 
