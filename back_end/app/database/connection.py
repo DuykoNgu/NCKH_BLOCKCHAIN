@@ -1,20 +1,16 @@
 import sqlite3
 
-DATABASE_URL = "sqlite:///./app/database/educhain.db"
-conn = sqlite3.connect("./app/database/NCKH_educhain.db")
-cursor = conn.cursor()
-print("Database connected successfully")
-conn.close()
-     
+DATABASE_URL = "sqlite:///./NCKH_educhain.db"
 
-"""TEST CONNECTION"""
-query = """CREATE TABLE IF NOT EXISTS users (
-     id INTEGER PRIMARY KEY AUTOINCREMENT )"""
-     
-cursor.execute(query)
-result = cursor.fetchall()
-print(result)
-conn.commit()
+def get_connection():
+    """Get database connection"""
+    conn = sqlite3.connect('NCKH_educhain.db')
+    return conn
+
+def close_connection(conn):
+    """Close database connection"""
+    if conn:
+        conn.close()
 
         
         

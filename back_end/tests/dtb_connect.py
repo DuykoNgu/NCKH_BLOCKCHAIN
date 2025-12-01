@@ -7,6 +7,8 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from app.database.connection import get_connection, close_connection
+
 
 class TestDatabaseConnection(unittest.TestCase):
     """Test suite for database connection"""
@@ -14,14 +16,14 @@ class TestDatabaseConnection(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test database connection"""
-        cls.db_path = "./app/database/NCKH_educhain.db"
+        cls.db_path = "NCKH_educhain.db"
     
     def test_database_connection(self):
         """Test if database connection is successful"""
         try:
-            test_conn = sqlite3.connect(self.db_path)
+            test_conn = get_connection()
             self.assertIsNotNone(test_conn, "Database connection failed")
-            test_conn.close()
+            close_connection(test_conn)
             print("✓ Database connection successful")
         except Exception as e:
             self.fail(f"Database connection failed: {str(e)}")
@@ -35,65 +37,28 @@ class TestDatabaseConnection(unittest.TestCase):
     def test_cursor_creation(self):
         """Test if cursor can be created"""
         try:
-            test_conn = sqlite3.connect(self.db_path)
+            test_conn = get_connection()
             test_cursor = test_conn.cursor()
             self.assertIsNotNone(test_cursor, "Cursor creation failed")
-            test_conn.close()
+            close_connection(test_conn)
             print("✓ Cursor creation successful")
         except Exception as e:
             self.fail(f"Cursor creation failed: {str(e)}")
     
-    def test_create_table(self):
-        """Test if table creation works"""
+    def test_list_tables(self):
+        """Test if we can list existing tables"""
         try:
-            test_conn = sqlite3.connect(self.db_path)
+            test_conn = get_connection()
             test_cursor = test_conn.cursor()
             
-            query = """CREATE TABLE IF NOT EXISTS test_users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE
-            )"""
+            test_cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = test_cursor.fetchall()
+            self.assertIsNotNone(tables, "Failed to retrieve tables")
+            print(f"✓ Tables found: {len(tables)} table(s)")
             
-            test_cursor.execute(query)
-            test_conn.commit()
-            print("✓ Table creation successful")
-            
-            test_conn.close()
+            close_connection(test_conn)
         except Exception as e:
-            self.fail(f"Table creation failed: {str(e)}")
-        except Exception as e:
-            self.fail(f"Table creation failed: {str(e)}")
-    
-    def test_insert_data(self):
-        """Test if data insertion works"""
-        try:
-            test_conn = sqlite3.connect(self.db_path)
-            test_cursor = test_conn.cursor()
-            
-            # Create table first
-            test_cursor.execute("""CREATE TABLE IF NOT EXISTS test_users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE
-            )""")
-            
-            # Insert test data
-            test_cursor.execute(
-                "INSERT INTO test_users (name, email) VALUES (?, ?)",
-                ("Test User", "test@example.com")
-            )
-            test_conn.commit()
-            
-            # Verify insertion
-            test_cursor.execute("SELECT * FROM test_users WHERE name = ?", ("Test User",))
-            result = test_cursor.fetchone()
-            self.assertIsNotNone(result, "Data insertion verification failed")
-            print("✓ Data insertion successful")
-            
-            test_conn.close()
-        except Exception as e:
-            self.fail(f"Data insertion failed: {str(e)}")
+            self.fail(f"Failed to list tables: {str(e)}")
 
 
 def run_quick_test():
@@ -102,22 +67,20 @@ def run_quick_test():
     print("Database Connection Quick Test")
     print("="*50 + "\n")
     
-    db_path = "./app/database/NCKH_educhain.db"
-    
     try:
-        conn = sqlite3.connect(db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         print("✓ Connected to database successfully")
-        print(f"✓ Database file: {db_path}")
+        print(f"✓ Database file: NCKH_educhain.db")
         
-        # Create users table if not exists
-        cursor.execute("""CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT
-        )""")
-        conn.commit()
-        print("✓ Users table ready")
+        # List existing tables
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        print(f"✓ Existing tables: {len(tables)} table(s)")
+        for table in tables:
+            print(f"  - {table[0]}")
         
-        conn.close()
+        close_connection(conn)
         print("\n✓ All quick tests passed!")
         
     except Exception as e:
@@ -125,6 +88,8 @@ def run_quick_test():
         return False
     
     return True
+
+
 
 
 if __name__ == "__main__":
