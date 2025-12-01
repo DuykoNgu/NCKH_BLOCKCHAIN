@@ -3,12 +3,12 @@ import json
 from typing import List, Dict, Any
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 
+from models.AuthorityManager import AuthorityManager
 from models.BlockHeader import BlockHeader
 
 
 ## TODO: CẦN PHÁT TRIỂN THÊM VÌ ĐÂY LÀ EM VIẾT THEO CORE DATABASE CỦA DỰ ÁN
 ##       Vì chưa viết gì về TRANSACTION NÊN KHI VIẾT tIẾP MỌI NGƯỜI CHÚ Ý PHẦN TRANSACTION TRONG TỪNG ĐOẠN THEO DTB NHÉ
-
 
 
 class Block:
@@ -67,22 +67,28 @@ class Block:
         return hashlib.sha256(content).hexdigest()
 
     # Ký block bằng ECDSA SECP256k1
-    def sign_block(self, private_key: SigningKey) -> str:
-        message = self.get_signing_data()
+    def sign_block(self, private_key, authority_manager: AuthorityManager) -> str:
+        public_hex = private_key.get_verifying_key().to_string().hex()
 
-        message_hash = hashlib.sha256(message).hexdigest()
+        if not authority_manager.is_authorized(public_hex):
+            raise PermissionError("Validator không có quyền (không trong authority list)")
+
+        self.block_header.validator_pubkey = public_hex
+
+        message_hash = hashlib.sha256(self.get_signing_data()).digest()
         signature = private_key.sign(message_hash)
         self.validator_signature = signature.hex()
+        self.block_hash = self.calculate_hash()
 
         return self.validator_signature
 
-    def verify_block(self, public_key: VerifyingKey) -> bool:
-        message = self.get_signing_data()
-        message_hash = hashlib.sha256(message).hexdigest()
-
+    def verify_signature(self) -> bool:
         try:
-            signature_bytes = bytes.fromhex(self.validator_signature)
-            return public_key.verify(message_hash, signature_bytes)
+            pub_bytes = bytes.fromhex(self.block_header.validator_pubkey)
+            vk = VerifyingKey.from_string(pub_bytes, curve=SECP256k1)
+            sig = bytes.fromhex(self.validator_signature)
+            message_hash = hashlib.sha256(self.get_signing_data()).digest()
+            return vk.verify(sig, message_hash)
         except:
             return False
 
