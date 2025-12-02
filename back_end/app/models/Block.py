@@ -1,17 +1,14 @@
-import hashlib
 import json
 from typing import List, Dict, Any
-from ecdsa import SigningKey, SECP256k1, VerifyingKey
+from ecdsa import SigningKey, VerifyingKey
 
-from models.BlockHeader import BlockHeader
-
-
-## TODO: CẦN PHÁT TRIỂN THÊM VÌ ĐÂY LÀ EM VIẾT THEO CORE DATABASE CỦA DỰ ÁN
-##       Vì chưa viết gì về TRANSACTION NÊN KHI VIẾT tIẾP MỌI NGƯỜI CHÚ Ý PHẦN TRANSACTION TRONG TỪNG ĐOẠN THEO DTB NHÉ
-
+from app.models.BlockHeader import BlockHeader
+from app.utils.Utils import CryptoUtils
 
 
 class Block:
+    """Model Block - Khối trong blockchain"""
+
     def __init__(self, index: int, block_id: str, block_header: BlockHeader, transactions: List[dict]):
         self.block_id = block_id
         self.index = index
@@ -20,32 +17,15 @@ class Block:
         self.block_hash: str = ""
         self.validator_signature: str = ""
 
-    # Tính Merkle Root từ danh sách transactions
     def calculate_merkle_root(self) -> str:
+        """Tính Merkle Root từ danh sách transactions"""
         if not self.transactions:
             return ""
+        
+        return CryptoUtils.hash_sha256(json.dumps(self.transactions, sort_keys=True))
 
-        tx_hashes = [
-            hashlib.sha256(json.dumps(tx).encode()).hexdigest()
-            for tx in self.transactions
-        ]
-
-        while len(tx_hashes) > 1:
-            temp = []
-
-            for i in range(0, len(tx_hashes), 2):
-                left = tx_hashes[i]
-                right = tx_hashes[i] if i + 1 >= len(tx_hashes) else tx_hashes[i + 1]
-                combined = left + right
-
-                temp.append(hashlib.sha256(combined.encode()).hexdigest())
-
-            tx_hashes = temp
-
-        return tx_hashes[0]
-
-    # Lấy data để ký block (không bao gồm signature)
     def get_signing_data(self) -> bytes:
+        """Lấy data để ký block (không bao gồm signature)"""
         data = {
             "block_id": self.block_id,
             "index": self.index,
@@ -58,31 +38,22 @@ class Block:
             },
             "transactions": self.transactions,
         }
-
         return json.dumps(data, sort_keys=True).encode()
 
-    # Tính block_hash bằng SHA256
     def calculate_hash(self) -> str:
-        content = self.get_signing_data()
-        return hashlib.sha256(content).hexdigest()
+        """Tính block_hash bằng SHA256"""
+        signing_data = self.get_signing_data()
+        return CryptoUtils.hash_sha256(signing_data)
 
-    # Ký block bằng ECDSA SECP256k1
-    def sign_block(self, private_key: SigningKey) -> str:
-        message = self.get_signing_data()
-
-        message_hash = hashlib.sha256(message).hexdigest()
-        signature = private_key.sign(message_hash)
-        self.validator_signature = signature.hex()
-
+    def sign_block(self, private_key_hex: str) -> str:
+        """Ký block bằng ECDSA SECP256k1"""
+        signing_data = self.get_signing_data()
+        self.validator_signature = CryptoUtils.sign_data(signing_data, private_key_hex)
+        self.block_hash = self.calculate_hash()
         return self.validator_signature
 
-    def verify_block(self, public_key: VerifyingKey) -> bool:
-        message = self.get_signing_data()
-        message_hash = hashlib.sha256(message).hexdigest()
-
-        try:
-            signature_bytes = bytes.fromhex(self.validator_signature)
-            return public_key.verify(message_hash, signature_bytes)
-        except:
-            return False
+    def verify_block(self, public_key_hex: str) -> bool:
+        """Verify block signature"""
+        signing_data = self.get_signing_data()
+        return CryptoUtils.verify_signature(signing_data, self.validator_signature, public_key_hex)
 
