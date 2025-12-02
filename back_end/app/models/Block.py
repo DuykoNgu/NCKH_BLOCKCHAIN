@@ -1,10 +1,10 @@
 import hashlib
 import json
-from typing import List, Dict, Any
+from typing import List
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 
 from models.BlockHeader import BlockHeader
-
+from models.transaction import Transaction
 
 ## TODO: CẦN PHÁT TRIỂN THÊM VÌ ĐÂY LÀ EM VIẾT THEO CORE DATABASE CỦA DỰ ÁN
 ##       Vì chưa viết gì về TRANSACTION NÊN KHI VIẾT tIẾP MỌI NGƯỜI CHÚ Ý PHẦN TRANSACTION TRONG TỪNG ĐOẠN THEO DTB NHÉ
@@ -12,7 +12,7 @@ from models.BlockHeader import BlockHeader
 
 
 class Block:
-    def __init__(self, index: int, block_id: str, block_header: BlockHeader, transactions: List[dict]):
+    def __init__(self, index: int, block_id: str, block_header: BlockHeader, transactions: List[Transaction]):
         self.block_id = block_id
         self.index = index
         self.block_header = block_header
@@ -26,7 +26,7 @@ class Block:
             return ""
 
         tx_hashes = [
-            hashlib.sha256(json.dumps(tx).encode()).hexdigest()
+            hashlib.sha256(json.dumps(tx.to_dict()).encode()).hexdigest()
             for tx in self.transactions
         ]
 
@@ -56,7 +56,7 @@ class Block:
                 "validator_pubkey": self.block_header.validator_pubkey,
                 "timestamp": self.block_header.timestamp,
             },
-            "transactions": self.transactions,
+            "transactions": [tx.to_dict() for tx in self.transactions],
         }
 
         return json.dumps(data, sort_keys=True).encode()
