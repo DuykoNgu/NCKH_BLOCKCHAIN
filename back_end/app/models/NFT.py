@@ -1,5 +1,5 @@
-from models.NFTmetadata import NFTmetadata
-from models.Client import client
+from app.models.NFTmetadata import NFTmetadata
+from app.models.Client import client
 
 from typing import Optional, Dict, Any
 import hashlib

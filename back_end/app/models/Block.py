@@ -3,8 +3,8 @@ import json
 from typing import List
 from ecdsa import SigningKey, SECP256k1, VerifyingKey
 
-from models.BlockHeader import BlockHeader
-from models.Transaction import Transaction
+from app.models.BlockHeader import BlockHeader
+from app.models.Transaction import Transaction
 
 ## TODO: CẦN PHÁT TRIỂN THÊM VÌ ĐÂY LÀ EM VIẾT THEO CORE DATABASE CỦA DỰ ÁN
 ##       Vì chưa viết gì về TRANSACTION NÊN KHI VIẾT tIẾP MỌI NGƯỜI CHÚ Ý PHẦN TRANSACTION TRONG TỪNG ĐOẠN THEO DTB NHÉ
