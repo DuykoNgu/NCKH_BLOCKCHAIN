@@ -6,13 +6,14 @@ from ecdsa import SigningKey
 
 from Block import Block
 from models.BlockHeader import BlockHeader
+from models.transaction import Transaction
 
 
 class BlockChain:
     def __init__(self):
         self.chain: List[Block] = []
         #TODO: Thêm model Transaction
-        self.mempool: List[dict] = []
+        self.mempool: List[Transaction] = []
         self.super_validator_pubkey: str = ""
         self.authority_set: set[str] = set()
         self.state_db: Dict[str, Any] = {}
@@ -43,13 +44,16 @@ class BlockChain:
     def get_last_block(self) -> Block:
         return self.chain[-1]
 
-    def add_transaction_to_mempool(self, tx: dict):
-        self.mempool.append(tx)
-        return True
+    def add_transaction_to_mempool(self, tx: Transaction):
+        if tx.is_valid():
+            self.mempool.append(tx)
+            return True
+        return False
 
-    def execute_transaction(self, tx: Dict) -> bool:
-        if tx["op"] == "set":
-            self.state_db[tx["key"]] = tx["value"]
+    def execute_transaction(self, tx: Transaction) -> bool:
+        payload = tx.payload
+        if payload.get("op") == "set":
+            self.state_db[payload["key"]] = payload["value"]
             return True
 
         return False
@@ -73,7 +77,7 @@ class BlockChain:
 
         prev_block = self.get_last_block()
 
-        merkle_root = hashlib.sha256(json.dumps(self.mempool).encode()).hexdigest()
+        merkle_root = hashlib.sha256(json.dumps([tx.to_dict() for tx in self.mempool]).encode()).hexdigest()
 
         header = BlockHeader(
             index=prev_block.index + 1,
