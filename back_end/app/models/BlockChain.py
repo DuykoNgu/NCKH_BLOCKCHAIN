@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
-from Block import Block
-from models.Transaction import Transaction
+from app.models.Block import Block
+from app.models.Transaction import Transaction
 
 
 class BlockChain:

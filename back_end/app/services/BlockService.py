@@ -64,7 +64,7 @@ class BlockService:
     def sign_block(block: Block, private_key: SigningKey) -> str:
         message = BlockService.get_signing_data(block)
 
-        message_hash = hashlib.sha256(message).hexdigest()
+        message_hash = hashlib.sha256(message).digest()
         signature = private_key.sign(message_hash)
         block.validator_signature = signature.hex()
 
@@ -73,10 +73,10 @@ class BlockService:
     @staticmethod
     def verify_block(block: Block, public_key: VerifyingKey) -> bool:
         message = BlockService.get_signing_data(block)
-        message_hash = hashlib.sha256(message).hexdigest()
+        message_hash = hashlib.sha256(message).digest()
 
         try:
             signature_bytes = bytes.fromhex(block.validator_signature)
-            return public_key.verify(message_hash, signature_bytes)
+            return public_key.verify(signature_bytes, message_hash)
         except:
             return False
