@@ -1,5 +1,5 @@
-from NCKH_BLOCKCHAIN.back_end.app.models.NFTmetadata import NFTmetadata
-from NCKH_BLOCKCHAIN.back_end.app.models.client import client
+from models.NFTmetadata import NFTmetadata
+from models.Client import client
 
 from typing import Optional, Dict, Any
 import hashlib
