@@ -1,5 +1,5 @@
 import sqlite3
-conn = sqlite3.connect('/Users/phonguni/workspace/NCKH/NCKH_BLOCKCHAIN/back_end/app/database/NCKH_educhain.db')
+conn = sqlite3.connect('NCKH_educhain.db')
 schema_sql = """
 pragma foreign_keys = ON;
 -------------------------------------------------
@@ -12,18 +12,16 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
     pdf_url TEXT,
     pdf_hash TEXT,
     institution TEXT,
-    issued_at INTEGER   
+    issued_at INTEGER
 );
 
 -------------------------------------------------
--- User  admin/client/validator
+-- Client
 -------------------------------------------------
-CREATE TABLE IF NOT EXISTS user (
-    user_id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS client (
+    client_id TEXT PRIMARY KEY,
     public_key TEXT NOT NULL,
-    address TEXT UNIQUE NOT NULL,
-    role TEXT NOT NULL,
-    password TEXT NOT NULL
+    address TEXT UNIQUE NOT NULL
 );
 
 -------------------------------------------------
@@ -32,16 +30,17 @@ CREATE TABLE IF NOT EXISTS user (
 CREATE TABLE IF NOT EXISTS nft (
     nft_id TEXT PRIMARY KEY,
     issuer_pubkey TEXT NOT NULL,
+    issuer_address TEXT NOT NULL,
 
     metadata_id INTEGER,
-    recipient_address TEXT,
+    recipient_id TEXT,
 
     issuer_signature TEXT,
     is_valid INTEGER DEFAULT 1,
     minted_at INTEGER,
 
     FOREIGN KEY (metadata_id) REFERENCES nft_metadata(metadata_id) ON DELETE CASCADE,
-    FOREIGN KEY (recipient_address) REFERENCES user(address)
+    FOREIGN KEY (recipient_id) REFERENCES client(client_id)
 );
 
 -------------------------------------------------
@@ -111,7 +110,7 @@ CREATE TABLE IF NOT EXISTS node (
 """
 
 def init_db():
-     conn = sqlite3.connect('/Users/phonguni/workspace/NCKH/NCKH_BLOCKCHAIN/back_end/app/database/NCKH_educhain.db')
+     conn = sqlite3.connect('NCKH_educhain.db')
      cursor = conn.cursor()
      
      cursor.executescript(schema_sql)
