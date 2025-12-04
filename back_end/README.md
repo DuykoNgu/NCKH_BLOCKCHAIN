@@ -81,17 +81,3 @@ back_end/
 
 test connect database
 python3 tests/dtb_connect.py 2>&1 | head -100
-
-```
-CryptoUtils
-├── Key Management
-│   ├── generate_key_pair() - Sinh cặp khóa
-│   ├── get_public_key_from_private() - Lấy public từ private
-│   └── get_address_from_pubkey() - Tạo address
-├── Signing & Verification
-│   ├── sign_data() - Ký dữ liệu
-│   └── verify_signature() - Xác minh ký
-└── Hashing
-    ├── hash_sha256() - SHA256 hash
-    └── hash_keccak256() - Keccak256 hash (Ethereum-style)
-```
