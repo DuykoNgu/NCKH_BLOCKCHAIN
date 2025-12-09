@@ -1,19 +1,43 @@
+export type UserRole = 'admin' | 'user' | 'guest';
 export interface WalletLoginData {
-  private_key?: string;
-  address?: string;
-}
-
-export interface WalletRegisterData {
-  client_id: string;
-  public_key: string;
   address: string;
+  signature: string;
 }
-
-export interface WalletCreateRequest {
-  // Empty for now, backend generates everything
-}
-
 export interface AuthResponse {
   access_token: string;
-  // Add other fields as needed
+  token_type: string;
+  user_id: string;
+  public_key: string;
+  address: string;
+  role: UserRole;
 }
+
+export interface UserCreateRequest {
+  public_key: string;
+  address: string;
+  role: UserRole;
+}
+
+export interface UserRegisterData {
+  user_id: string;        // ← Backend tự tạo
+  public_key: string;
+  address: string;
+  role: UserRole;
+}
+export interface User {
+  user_id: string;
+  public_key: string;
+  address: string;
+  role: UserRole;
+}
+export interface AuthError {
+  detail: string;
+  code?: string;
+}
+
+
+export type FormFields = {
+  password: string;
+  confirmPassword: string;
+  role: UserRole;
+};
