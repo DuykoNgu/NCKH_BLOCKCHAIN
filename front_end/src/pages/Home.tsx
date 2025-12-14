@@ -7,7 +7,7 @@ const Home: React.FC = () => {
       <p>You are logged in!</p>
       <button onClick={() => {
         localStorage.removeItem('isLoggedIn');
-        window.location.href = '/signin';
+        window.location.href = '/login';
       }}>
         Logout
       </button>

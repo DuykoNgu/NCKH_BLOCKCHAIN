@@ -1,3 +1,4 @@
+import hashlib
 import json
 from typing import List
 
@@ -13,7 +14,4 @@ class Block:
         self.transactions = transactions
         self.block_hash: str = ""
         self.validator_signature: str = ""
-
-
-
 
