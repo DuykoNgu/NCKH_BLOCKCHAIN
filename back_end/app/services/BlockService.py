@@ -1,7 +1,9 @@
 import hashlib
 import json
 from typing import List
-from ecdsa import SigningKey, VerifyingKey
+
+from app.utils.HashUtils import HashUtils
+from app.utils.CryptoUtils import CryptoUtils
 
 from app.models.Block import Block
 from app.models.Transaction import Transaction
@@ -15,7 +17,7 @@ class BlockService:
             return ""
 
         tx_hashes = [
-            hashlib.sha256(json.dumps(tx.to_dict()).encode()).hexdigest()
+            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode()).hexdigest()
             for tx in transactions
         ]
 
@@ -27,15 +29,30 @@ class BlockService:
                 right = tx_hashes[i] if i + 1 >= len(tx_hashes) else tx_hashes[i + 1]
                 combined = left + right
 
-                temp.append(hashlib.sha256(combined.encode()).hexdigest())
+                temp.append(HashUtils.hash_sha256(combined.encode()).hexdigest())
 
             tx_hashes = temp
 
         return tx_hashes[0]
     
-    # Lấy data để ký block (không bao gồm signature)
     @staticmethod
     def get_signing_data(block: Block) -> bytes:
+        """Lấy data để ký block (không bao gồm signature)"""
+        # Convert transactions to serializable format
+        tx_list = []
+        for tx in block.transactions:
+            if isinstance(tx, Transaction):
+                tx_list.append({
+                    "tx_id": tx.tx_id,
+                    "sender_pubkey": tx.sender_pubkey,
+                    "sender_address": tx.sender_address,
+                    "recipient_address": tx.recipient_address,
+                    "payload": tx.payload,
+                    "timestamp": tx.timestamp,
+                })
+            else:
+                tx_list.append(tx)
+        
         data = {
             "block_id": block.block_id,
             "index": block.index,
@@ -46,37 +63,29 @@ class BlockService:
                 "validator_pubkey": block.block_header.validator_pubkey,
                 "timestamp": block.block_header.timestamp,
             },
-            "transactions": [tx.to_dict() for tx in block.transactions],
+            "transactions": tx_list,
         }
-
         return json.dumps(data, sort_keys=True).encode()
-
 
     # Tính block_hash bằng SHA256
     @staticmethod
     def calculate_hash(block: Block) -> str:
         content = BlockService.get_signing_data(block)
-        return hashlib.sha256(content).hexdigest()
+        return HashUtils.hash_sha256(content)
 
 
     # Ký block bằng ECDSA SECP256k1
     @staticmethod
-    def sign_block(block: Block, private_key: SigningKey) -> str:
+    def sign_block(block: Block, private_key_hex: str) -> str:
+        """Ký block bằng ECDSA SECP256k1"""
         message = BlockService.get_signing_data(block)
-
-        message_hash = hashlib.sha256(message).digest()
-        signature = private_key.sign(message_hash)
-        block.validator_signature = signature.hex()
-
+        block.validator_signature = CryptoUtils.sign_data(message, private_key_hex)
+        block.block_hash = BlockService.calculate_hash(block)
         return block.validator_signature
 
+    # Xác thực chữ ký block
     @staticmethod
-    def verify_block(block: Block, public_key: VerifyingKey) -> bool:
+    def verify_block(block: Block, public_key_hex: str) -> bool:
+        """Xác thực chữ ký block"""
         message = BlockService.get_signing_data(block)
-        message_hash = hashlib.sha256(message).digest()
-
-        try:
-            signature_bytes = bytes.fromhex(block.validator_signature)
-            return public_key.verify(signature_bytes, message_hash)
-        except:
-            return False
+        return CryptoUtils.verify_signature(message, block.validator_signature, public_key_hex)

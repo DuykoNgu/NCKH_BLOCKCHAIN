@@ -1,0 +1,251 @@
+from flask import Blueprint, request, jsonify
+from typing import Optional
+from app.services.NFTService import NFTService
+from app.models.NFTmetadata import NFTmetadata
+from app.models.User import User, UserRole
+from app.repositories.UserRepository import UserRepository
+from app.repositories.NFTRepository import NFTRepository
+
+
+nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
+
+
+@nft_bp.route('/create', methods=['POST'])
+def create_nft():
+    """
+    Tạo NFT mới từ chứng chỉ
+    
+    Request body:
+    {
+        "issuer_id": "teacher_001",
+        "student_id": "STU_001",
+        "degree_type": "Bachelor of Science",
+        "pdf_url": "https://example.com/cert.pdf",
+        "institution": "Harvard University",
+        "recipient_address": "0x..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['issuer_id', 'student_id', 'degree_type', 
+                          'pdf_url', 'institution', 'recipient_address']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Get issuer
+        issuer = UserRepository.get_user_by_id(data['issuer_id'])
+        if not issuer:
+            return jsonify({"error": "Issuer user not found"}), 404
+        
+        # Get recipient user
+        recipient = UserRepository.get_user_by_address(data['recipient_address'])
+        if not recipient:
+            return jsonify({"error": "Recipient user not found"}), 404
+        
+        # Create metadata
+        import hashlib
+        pdf_hash = hashlib.sha256(data['pdf_url'].encode()).hexdigest()
+        
+        metadata = NFTmetadata(
+            student_id=data['student_id'],
+            degree_type=data['degree_type'],
+            pdf_url=data['pdf_url'],
+            pdf_hash=pdf_hash,
+            institution=data['institution']
+        )
+        
+        # Create NFT
+        nft = NFTService.create_nft(
+            issuer_pubkey=issuer.pubkey,
+            metadata=metadata,
+            recipient=recipient
+        )
+        
+        # Sign and save NFT using NFTService
+        success = NFTService.sign_and_save_nft(nft, data.get('issuer_private_key', ''))
+        
+        if success:
+            return jsonify({
+                "message": "NFT created successfully",
+                "success": True,
+                "token_id": nft.token_id,
+                "nft": {
+                    "token_id": nft.token_id,
+                    "issuer_pubkey": nft.issuer_pubkey,
+                    "recipient_address": recipient.address,
+                    "is_valid": nft.is_valid,
+                    "minted_at": nft.minted_at
+                }
+            }), 201
+        else:
+            return jsonify({"error": "Failed to create NFT"}), 500
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/<token_id>', methods=['GET'])
+def get_nft(token_id: str):
+    """Lấy thông tin NFT theo token_id"""
+    try:
+        nft = NFTService.get_nft(token_id)
+        
+        if not nft:
+            return jsonify({"error": "NFT not found"}), 404
+        
+        return jsonify({
+            "nft": NFTService.get_nft_info(nft)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/student/<student_id>', methods=['GET'])
+def get_student_nfts(student_id: str):
+    """Lấy tất cả NFT của một student"""
+    try:
+        nfts = NFTService.get_student_nfts(student_id)
+        
+        return jsonify({
+            "total": len(nfts),
+            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/user/<recipient_address>', methods=['GET'])
+def get_user_nfts(recipient_address: str):
+    """Lấy tất cả NFT của một user"""
+    try:
+        nfts = NFTService.get_user_nfts(recipient_address)
+        
+        return jsonify({
+            "total": len(nfts),
+            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/all', methods=['GET'])
+def get_all_nfts():
+    """Lấy tất cả NFT trong hệ thống"""
+    try:
+        nfts = NFTService.get_all_nfts()
+        
+        return jsonify({
+            "total": len(nfts),
+            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/<token_id>/verify', methods=['POST'])
+def verify_nft(token_id: str):
+    """Xác minh NFT signature"""
+    try:
+        nft = NFTService.get_nft(token_id)
+        
+        if not nft:
+            return jsonify({"error": "NFT not found"}), 404
+        
+        is_valid = NFTService.verify_nft(nft)
+        
+        return jsonify({
+            "token_id": token_id,
+            "is_valid": is_valid,
+            "issuer_signature": nft.issuer_signature or None,
+            "is_revoked": not nft.is_valid
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/<token_id>/revoke', methods=['POST'])
+def revoke_nft(token_id: str):
+    """Thu hồi NFT"""
+    try:
+        nft = NFTService.get_nft(token_id)
+        
+        if not nft:
+            return jsonify({"error": "NFT not found"}), 404
+        
+        success = NFTService.revoke_nft(token_id)
+        
+        if success:
+            return jsonify({
+                "message": "NFT revoked successfully",
+                "token_id": token_id
+            }), 200
+        else:
+            return jsonify({"error": "Failed to revoke NFT"}), 500
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/verify/batch', methods=['POST'])
+def verify_batch_nfts():
+    """Xác minh một batch NFTs"""
+    try:
+        data = request.get_json()
+        # Hỗ trợ cả token_ids và token_id
+        token_ids = data.get('token_ids', data.get('token_id', []))
+        
+        if not token_ids:
+            return jsonify({"error": "token_ids hoặc token_id required"}), 400
+        
+        # Kiểm tra giới hạn số lượng token để tránh quá tải
+        max_batch_size = 100
+        if len(token_ids) > max_batch_size:
+            return jsonify({
+                "error": f"Quá nhiều NFTs, tối đa {max_batch_size} trong một lần"
+            }), 400
+        
+        # Lấy NFT một lần duy nhất cho mỗi token_id (tối ưu hiệu suất)
+        nfts = []
+        for tid in token_ids:
+            nft = NFTService.get_nft(tid)
+            if nft:
+                nfts.append(nft)
+        
+        if not nfts:
+            return jsonify({
+                "error": "Không tìm thấy NFT nào từ danh sách token_ids"
+            }), 404
+        
+        results = NFTService.verify_all_nfts(nfts)
+        
+        return jsonify(results), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@nft_bp.route('/<token_id>/metadata-hash', methods=['GET'])
+def get_metadata_hash(token_id: str):
+    """Lấy hash của metadata"""
+    try:
+        nft = NFTService.get_nft(token_id)
+        
+        if not nft:
+            return jsonify({"error": "NFT not found"}), 404
+        
+        metadata_hash = NFTService.get_nft_metadata_hash(nft)
+        
+        return jsonify({
+            "token_id": token_id,
+            "metadata_hash": metadata_hash
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
