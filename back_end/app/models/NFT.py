@@ -1,10 +1,10 @@
 from app.models.NFTmetadata import NFTmetadata
 from app.models.User import User
-from app.utils.Utils import CryptoUtils
+
+from app.utils.HashUtils import HashUtils
 
 from typing import Optional, Dict, Any
 from datetime import datetime
-
 
 class NFT:
     """Model NFT - Token không fungible"""
@@ -12,7 +12,7 @@ class NFT:
     def __init__(self, issuer_pubkey: str, metadata: NFTmetadata, recipient_address: User):
         # Sinh token_id từ metadata
         seed = f"{metadata.student_id}|{metadata.issued_at}|{recipient_address.address}"
-        self.token_id = CryptoUtils.hash_sha256(seed)
+        self.token_id = HashUtils.hash_sha256(seed)
         
         self.issuer_pubkey = issuer_pubkey
         self.metadata = metadata
@@ -39,25 +39,3 @@ class NFT:
     def from_dict(data: Dict[str, Any]) -> "NFT":
         """Tạo NFT từ dict"""
         return NFT(**data)
-
-    def sign_nft(self, private_key_hex: str) -> str:
-        """Ký NFT bằng private key của issuer"""
-        nft_data = {
-            "token_id": self.token_id,
-            "metadata": self.metadata.to_dict(),
-            "recipient_address": self.recipient_address.address
-        }
-        self.issuer_signature = CryptoUtils.sign_data(nft_data, private_key_hex)
-        return self.issuer_signature
-
-    def verify_nft(self) -> bool:
-        """Verify NFT signature"""
-        if not self.issuer_signature:
-            return False
-        
-        nft_data = {
-            "token_id": self.token_id,
-            "metadata": self.metadata.to_dict(),
-            "recipient_address": self.recipient_address.address
-        }
-        return CryptoUtils.verify_signature(nft_data, self.issuer_signature, self.issuer_pubkey)
