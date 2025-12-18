@@ -6,7 +6,7 @@ from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
 from app.services.BlockService import BlockService
 from app.services.TransactionService import TransactionService
-
+from app.repositories.BlockRepository import BlockRepository
 
 class BlockChainService:
     @staticmethod
@@ -98,3 +98,68 @@ class BlockChainService:
         blockchain.mempool.clear()
         blockchain.chain.append(block)
         return True
+
+
+
+    @staticmethod
+    def receive_and_validate_block(blockchain: BlockChain, block_data: dict) -> dict:
+        """
+        VAL-06: Nhận block từ validator khác
+        1. Parse block data
+        2. Kiểm tra trùng lặp
+        3. Verify chữ ký (VAL-02)
+        4. Validate block structure
+        5. Thêm vào chain nếu hợp lệ
+        """
+
+
+        # 1. Parse block từ data
+        block_header = BlockHeader(
+            index=block_data['index'],
+            pre_hash=block_data['pre_hash'],
+            merkle_root=block_data['merkle_root'],
+            validator_pubkey=block_data['validator_pubkey'],
+            timestamp=block_data.get('timestamp')
+        )
+
+        block = Block(
+            block_id=block_data['block_id'],
+            index=block_data['index'],
+            block_header=block_header,
+            transactions=block_data.get('transactions', [])
+        )
+        block.block_hash = block_data['block_hash']
+        block.validator_signature = block_data['validator_signature']
+
+        # 2. Chống xử lý trùng block
+        if BlockRepository.block_exists(block_id=block.block_id):
+            return {"success": False, "error": "Block ID already exists", "code": "DUPLICATE_ID"}
+
+        if BlockRepository.block_exists(block_hash=block.block_hash):
+            return {"success": False, "error": "Block hash already exists", "code": "DUPLICATE_HASH"}
+
+        # 3. Verify chữ ký block (VAL-02)
+        is_signature_valid = BlockService.verify_block(block, block.block_header.validator_pubkey)
+        if not is_signature_valid:
+            return {"success": False, "error": "Invalid block signature", "code": "INVALID_SIGNATURE"}
+
+        # 4. Validate block structure
+        prev_block = blockchain.get_last_block() if blockchain.chain else None
+        if prev_block:
+            if not BlockChainService.is_valid_new_block(blockchain, block, prev_block):
+                return {"success": False, "error": "Invalid block structure", "code": "INVALID_STRUCTURE"}
+
+        # 5. Lưu vào database
+        success = BlockRepository.create_block(block)
+        if not success:
+            return {"success": False, "error": "Failed to save block", "code": "DB_ERROR"}
+
+        # 6. Thêm vào chain in-memory
+        blockchain.chain.append(block)
+
+        return {
+            "success": True,
+            "message": "Block received and validated successfully",
+            "block_id": block.block_id,
+            "block_hash": block.block_hash
+        }

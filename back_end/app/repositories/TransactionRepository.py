@@ -1,11 +1,50 @@
 """TransactionRepository - Data access layer for Transaction operations"""
 from typing import Optional, List
+import json
 from app.database.connection import get_connection
 from app.models.Transaction import Transaction
 
 
 class TransactionRepository:
     """Repository for Transaction database operations"""
+
+    # =========================================================================
+    # HELPER METHODS - Chuyển đổi dữ liệu từ database sang object
+    # =========================================================================
+    
+    @staticmethod
+    def transaction_from_row(row) -> Transaction:
+        """
+        Tạo Transaction object từ một row database.
+        
+        Args:
+            row: Tuple từ database với format:
+                (tx_id, sender_pubkey, sender_address, recipient_address, 
+                 payload, signature, timestamp, tx_hash)
+        
+        Returns:
+            Transaction object đã được khởi tạo
+        """
+        try:
+            payload = json.loads(row[4]) if row[4] else {}
+        except (json.JSONDecodeError, TypeError):
+            payload = {}
+        
+        return Transaction(
+            tx_id=row[0],
+            sender_pubkey=row[1],
+            sender_address=row[2],
+            recipient_address=row[3],
+            payload=payload,
+            signature=row[5],
+            timestamp=row[6],
+            tx_hash=row[7]
+        )
+
+    @staticmethod
+    def transactions_from_rows(rows) -> List[Transaction]:
+        """Tạo danh sách Transaction objects từ nhiều rows database."""
+        return [TransactionRepository.transaction_from_row(row) for row in rows]
 
     @staticmethod
     def create_transaction(transaction: Transaction) -> bool:
@@ -44,24 +83,7 @@ class TransactionRepository:
             row = cursor.fetchone()
             conn.close()
             
-            if row:
-                import json
-                try:
-                    payload = json.loads(row[4])
-                except:
-                    payload = {}
-                
-                return Transaction(
-                    tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
-                    payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
-                )
-            return None
+            return TransactionRepository.transaction_from_row(row) if row else None
         except Exception as e:
             print(f"Error getting transaction by id: {e}")
             return None
@@ -82,26 +104,7 @@ class TransactionRepository:
             rows = cursor.fetchall()
             conn.close()
             
-            import json
-            transactions = []
-            for row in rows:
-                try:
-                    payload = json.loads(row[4])
-                except:
-                    payload = {}
-                
-                tx = Transaction(
-                    tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
-                    payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
-                )
-                transactions.append(tx)
-            return transactions
+            return TransactionRepository.transactions_from_rows(rows)
         except Exception as e:
             print(f"Error getting transactions by sender: {e}")
             return []
@@ -122,26 +125,7 @@ class TransactionRepository:
             rows = cursor.fetchall()
             conn.close()
             
-            import json
-            transactions = []
-            for row in rows:
-                try:
-                    payload = json.loads(row[4])
-                except:
-                    payload = {}
-                
-                tx = Transaction(
-                    tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
-                    payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
-                )
-                transactions.append(tx)
-            return transactions
+            return TransactionRepository.transactions_from_rows(rows)
         except Exception as e:
             print(f"Error getting transactions by recipient: {e}")
             return []
@@ -161,26 +145,7 @@ class TransactionRepository:
             rows = cursor.fetchall()
             conn.close()
             
-            import json
-            transactions = []
-            for row in rows:
-                try:
-                    payload = json.loads(row[4])
-                except:
-                    payload = {}
-                
-                tx = Transaction(
-                    tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
-                    payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
-                )
-                transactions.append(tx)
-            return transactions
+            return TransactionRepository.transactions_from_rows(rows)
         except Exception as e:
             print(f"Error getting all transactions: {e}")
             return []
@@ -265,26 +230,7 @@ class TransactionRepository:
             rows = cursor.fetchall()
             conn.close()
             
-            import json
-            transactions = []
-            for row in rows:
-                try:
-                    payload = json.loads(row[4])
-                except:
-                    payload = {}
-                
-                tx = Transaction(
-                    tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
-                    payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
-                )
-                transactions.append(tx)
-            return transactions
+            return TransactionRepository.transactions_from_rows(rows)
         except Exception as e:
             print(f"Error getting transactions by date range: {e}")
             return []

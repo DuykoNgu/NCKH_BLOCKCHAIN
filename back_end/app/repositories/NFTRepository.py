@@ -9,6 +9,92 @@ from app.models.User import User, UserRole
 class NFTRepository:
     """Repository để quản lý NFT trong database"""
 
+    # =========================================================================
+    # HELPER METHODS - Chuyển đổi dữ liệu từ database sang object
+    # =========================================================================
+    
+    @staticmethod
+    def nft_from_row(row) -> Optional[NFT]:
+        """
+        Tạo NFT object từ một row database (kết quả JOIN query).
+        
+        Args:
+            row: Tuple từ database với format:
+                (0: nft_id, 1: issuer_pubkey, 2: metadata_id, 3: recipient_address,
+                 4: issuer_signature, 5: is_valid, 6: minted_at,
+                 7: metadata.metadata_id, 8: student_id, 9: degree_type,
+                 10: pdf_url, 11: pdf_hash, 12: institution, 13: issued_at,
+                 14: user.address, 15: user.pubkey)
+        
+        Returns:
+            NFT object hoặc None nếu row rỗng
+        """
+        if not row:
+            return None
+        
+        metadata = NFTmetadata(
+            student_id=row[8],
+            degree_type=row[9],
+            pdf_url=row[10],
+            pdf_hash=row[11],
+            institution=row[12],
+            issued_at=row[13]
+        )
+        
+        recipient = User(
+            user_id="",
+            pubkey=row[15] or "",
+            address=row[3],
+            role=UserRole.CLIENT,
+            password=""
+        )
+        
+        nft = NFT(
+            issuer_pubkey=row[1],
+            metadata=metadata,
+            recipient_address=recipient
+        )
+        nft.token_id = row[0]
+        nft.issuer_signature = row[4]
+        nft.is_valid = bool(row[5])
+        nft.minted_at = row[6]
+        
+        return nft
+
+    @staticmethod
+    def nfts_from_rows(rows) -> List[NFT]:
+        """Tạo danh sách NFT objects từ nhiều rows database."""
+        nfts = []
+        for row in rows:
+            nft = NFTRepository.nft_from_row(row)
+            if nft:
+                nfts.append(nft)
+        return nfts
+    
+    # SQL query dùng chung để lấy NFT với các bảng liên quan
+    NFT_BASE_QUERY = """
+        SELECT 
+            nft.nft_id,
+            nft.issuer_pubkey,
+            nft.metadata_id,
+            nft.recipient_address,
+            nft.issuer_signature,
+            nft.is_valid,
+            nft.minted_at,
+            nft_metadata.metadata_id,
+            nft_metadata.student_id,
+            nft_metadata.degree_type,
+            nft_metadata.pdf_url,
+            nft_metadata.pdf_hash,
+            nft_metadata.institution,
+            nft_metadata.issued_at,
+            user.address,
+            user.pubkey
+        FROM nft
+        LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
+        LEFT JOIN user ON nft.recipient_address = user.address
+    """
+
     @staticmethod
     def create_nft(nft: NFT) -> bool:
         """Tạo NFT mới trong database"""
@@ -63,54 +149,10 @@ class NFTRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT nft.nft_id, nft.issuer_pubkey, nft.issuer_signature, 
-                       nft.is_valid, nft.minted_at, nft.recipient_address,
-                       nft_metadata.student_id, nft_metadata.degree_type, 
-                       nft_metadata.pdf_url, nft_metadata.pdf_hash, 
-                       nft_metadata.institution, nft_metadata.issued_at,
-                       user.address, user.pubkey
-                FROM nft
-                LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
-                LEFT JOIN user ON nft.recipient_address = user.address
-                WHERE nft.nft_id = ?
-            """, (token_id,))
-
+            cursor.execute(NFTRepository.NFT_BASE_QUERY + " WHERE nft.nft_id = ?", (token_id,))
             row = cursor.fetchone()
             close_connection(conn)
-
-            if row:
-                # Reconstruct NFT from row
-                metadata = NFTmetadata(
-                    student_id=row[6],
-                    degree_type=row[7],
-                    pdf_url=row[8],
-                    pdf_hash=row[9],
-                    institution=row[10],
-                    issued_at=row[11]
-                )
-                
-                recipient = User(
-                    user_id="",
-                    pubkey=row[13],
-                    address=row[12],
-                    role=UserRole.CLIENT,
-                    password=""
-                )
-                
-                nft = NFT(
-                    issuer_pubkey=row[1],
-                    metadata=metadata,
-                    recipient_address=recipient
-                )
-                nft.token_id = row[0]
-                nft.issuer_signature = row[2]
-                nft.is_valid = bool(row[3])
-                nft.minted_at = row[4]
-                
-                return nft
-            return None
+            return NFTRepository.nft_from_row(row)
         except Exception as e:
             print(f"Error fetching NFT: {str(e)}")
             return None
@@ -121,77 +163,10 @@ class NFTRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT 
-                    nft.nft_id,
-                    nft.issuer_pubkey,
-                    nft.metadata_id,
-                    nft.recipient_address,
-                    nft.issuer_signature,
-                    nft.is_valid,
-                    nft.minted_at,
-                    nft_metadata.metadata_id,
-                    nft_metadata.student_id,
-                    nft_metadata.degree_type,
-                    nft_metadata.pdf_url,
-                    nft_metadata.pdf_hash,
-                    nft_metadata.institution,
-                    nft_metadata.issued_at,
-                    user.address,
-                    user.pubkey
-                FROM nft
-                LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
-                LEFT JOIN user ON nft.recipient_address = user.address
-                WHERE nft_metadata.student_id = ?
-            """, (student_id,))
-
+            cursor.execute(NFTRepository.NFT_BASE_QUERY + " WHERE nft_metadata.student_id = ?", (student_id,))
             rows = cursor.fetchall()
             close_connection(conn)
-
-            nfts = []
-            for row in rows:
-                if not row:
-                    continue
-                    
-                token_id = row[0]
-                issuer_pubkey = row[1]
-                recipient_address = row[3]
-                issuer_signature = row[4]
-                is_valid = row[5] == 1
-                minted_at = row[6]
-                
-                metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
-                )
-                
-                recipient = User(
-                    user_id="",
-                    pubkey=row[15] or "",
-                    address=recipient_address,
-                    role=UserRole.CLIENT,
-                    password=""
-                )
-                
-                nft = NFT(
-                    issuer_pubkey=issuer_pubkey,
-                    metadata=metadata,
-                    recipient_address=recipient
-                )
-                
-                nft.token_id = token_id
-                nft.issuer_signature = issuer_signature
-                nft.is_valid = is_valid
-                nft.minted_at = minted_at
-                
-                nfts.append(nft)
-            
-            return nfts
+            return NFTRepository.nfts_from_rows(rows)
         except Exception as e:
             print(f"Error fetching NFTs: {str(e)}")
             return []
@@ -202,77 +177,10 @@ class NFTRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT 
-                    nft.nft_id,
-                    nft.issuer_pubkey,
-                    nft.metadata_id,
-                    nft.recipient_address,
-                    nft.issuer_signature,
-                    nft.is_valid,
-                    nft.minted_at,
-                    nft_metadata.metadata_id,
-                    nft_metadata.student_id,
-                    nft_metadata.degree_type,
-                    nft_metadata.pdf_url,
-                    nft_metadata.pdf_hash,
-                    nft_metadata.institution,
-                    nft_metadata.issued_at,
-                    user.address,
-                    user.pubkey
-                FROM nft
-                LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
-                LEFT JOIN user ON nft.recipient_address = user.address
-                WHERE nft.recipient_address = ?
-            """, (recipient_address,))
-
+            cursor.execute(NFTRepository.NFT_BASE_QUERY + " WHERE nft.recipient_address = ?", (recipient_address,))
             rows = cursor.fetchall()
             close_connection(conn)
-
-            nfts = []
-            for row in rows:
-                if not row:
-                    continue
-                    
-                token_id = row[0]
-                issuer_pubkey = row[1]
-                recipient_address = row[3]
-                issuer_signature = row[4]
-                is_valid = row[5] == 1
-                minted_at = row[6]
-                
-                metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
-                )
-                
-                recipient = User(
-                    user_id="",
-                    pubkey=row[15] or "",
-                    address=recipient_address,
-                    role=UserRole.CLIENT,
-                    password=""
-                )
-                
-                nft = NFT(
-                    issuer_pubkey=issuer_pubkey,
-                    metadata=metadata,
-                    recipient_address=recipient
-                )
-                
-                nft.token_id = token_id
-                nft.issuer_signature = issuer_signature
-                nft.is_valid = is_valid
-                nft.minted_at = minted_at
-                
-                nfts.append(nft)
-            
-            return nfts
+            return NFTRepository.nfts_from_rows(rows)
         except Exception as e:
             print(f"Error fetching NFTs: {str(e)}")
             return []
@@ -283,76 +191,10 @@ class NFTRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-
-            cursor.execute("""
-                SELECT 
-                    nft.nft_id,
-                    nft.issuer_pubkey,
-                    nft.metadata_id,
-                    nft.recipient_address,
-                    nft.issuer_signature,
-                    nft.is_valid,
-                    nft.minted_at,
-                    nft_metadata.metadata_id,
-                    nft_metadata.student_id,
-                    nft_metadata.degree_type,
-                    nft_metadata.pdf_url,
-                    nft_metadata.pdf_hash,
-                    nft_metadata.institution,
-                    nft_metadata.issued_at,
-                    user.address,
-                    user.pubkey
-                FROM nft
-                LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
-                LEFT JOIN user ON nft.recipient_address = user.address
-            """)
-
+            cursor.execute(NFTRepository.NFT_BASE_QUERY)
             rows = cursor.fetchall()
             close_connection(conn)
-
-            nfts = []
-            for row in rows:
-                if not row:
-                    continue
-                    
-                token_id = row[0]
-                issuer_pubkey = row[1]
-                recipient_address = row[3]
-                issuer_signature = row[4]
-                is_valid = row[5] == 1
-                minted_at = row[6]
-                
-                metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
-                )
-                
-                recipient = User(
-                    user_id="",
-                    pubkey=row[15] or "",
-                    address=recipient_address,
-                    role=UserRole.CLIENT,
-                    password=""
-                )
-                
-                nft = NFT(
-                    issuer_pubkey=issuer_pubkey,
-                    metadata=metadata,
-                    recipient_address=recipient
-                )
-                
-                nft.token_id = token_id
-                nft.issuer_signature = issuer_signature
-                nft.is_valid = is_valid
-                nft.minted_at = minted_at
-                
-                nfts.append(nft)
-            
-            return nfts
+            return NFTRepository.nfts_from_rows(rows)
         except Exception as e:
             print(f"Error fetching NFTs: {str(e)}")
             return []

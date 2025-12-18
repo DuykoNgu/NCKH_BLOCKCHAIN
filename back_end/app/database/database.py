@@ -18,10 +18,12 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
 -------------------------------------------------
 -- Client
 -------------------------------------------------
-CREATE TABLE IF NOT EXISTS client (
-    client_id TEXT PRIMARY KEY,
-    public_key TEXT NOT NULL,
-    address TEXT UNIQUE NOT NULL
+CREATE TABLE IF NOT EXISTS user (
+    user_id TEXT PRIMARY KEY,
+    pubkey TEXT NOT NULL,
+    address TEXT UNIQUE NOT NULL,
+    role TEXT NOT NULL,
+    password TEXT NOT NULL
 );
 
 -------------------------------------------------

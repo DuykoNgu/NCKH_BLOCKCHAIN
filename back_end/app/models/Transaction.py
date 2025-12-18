@@ -3,20 +3,6 @@ from typing import Dict, Any, Optional
 
 
 class Transaction:
-    """
-    Class TRANSACTION cho blockchain
-    
-    Thuộc tính:
-        - tx_id: str (Hash của giao dịch)
-        - sender_pubkey: str
-        - sender_address: str
-        - recipient_address: str
-        - payload: Dict[str, Any] (Dữ liệu NFT hoặc dữ liệu khác)
-        - signature: str (Chữ ký của người gửi giao dịch)
-        - timestamp: float
-        - tx_hash: str
-    """
-
     def __init__(
         self,
         tx_id: str = "",

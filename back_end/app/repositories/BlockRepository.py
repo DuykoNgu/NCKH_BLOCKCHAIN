@@ -243,3 +243,42 @@ class BlockRepository:
         except Exception as e:
             print(f"Error counting blocks: {e}")
             return 0
+
+    # =========================================================================
+    # VAL-06: CHỐNG XỬ LÝ TRÙNG BLOCK
+    # =========================================================================
+    # Hàm này được sử dụng để kiểm tra block đã tồn tại trong database chưa
+    # trước khi xử lý block nhận từ validator khác.
+    #
+    # Mục đích:
+    #   - Tránh xử lý lại block đã có (duplicate processing)
+    #   - Chống replay attack (kẻ tấn công gửi lại block cũ)
+    #   - Đảm bảo tính nhất quán của blockchain
+    #
+    # Cách sử dụng:
+    #   - block_exists(block_id="BLOCK_1") → Kiểm tra theo block ID
+    #   - block_exists(block_hash="0x...") → Kiểm tra theo block hash
+    # =========================================================================
+    @staticmethod
+    def block_exists(block_id: str = None, block_hash: str = None) -> bool:
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            # Kiểm tra theo block_id (unique identifier)
+            if block_id:
+                cursor.execute('SELECT 1 FROM block WHERE block_id = ?', (block_id,))
+            # Kiểm tra theo block_hash (chống replay attack)
+            elif block_hash:
+                cursor.execute('SELECT 1 FROM block WHERE block_hash = ?', (block_hash,))
+            else:
+                # Không có tham số nào được truyền
+                return False
+            
+            # Nếu fetchone() trả về giá trị → block tồn tại
+            exists = cursor.fetchone() is not None
+            conn.close()
+            return exists
+        except Exception as e:
+            print(f"Error checking block existence: {e}")
+            return False

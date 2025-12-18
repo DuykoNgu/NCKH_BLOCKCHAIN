@@ -1,10 +1,109 @@
 import hashlib
 import json
+from typing import Dict, Any
 from ecdsa import SigningKey, VerifyingKey, SECP256k1
 from ..models.Transaction import Transaction
 
 
 class TransactionService:
+    # =========================================================================
+    # FACTORY METHODS - Tạo Transaction từ các nguồn khác nhau
+    # =========================================================================
+    
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> Transaction:
+        """
+        Tạo Transaction object từ dictionary data.
+        
+        Sử dụng khi:
+        - Nhận transaction từ request API
+        - Deserialize transaction từ JSON
+        
+        Args:
+            data: Dictionary chứa thông tin transaction
+                {
+                    "sender_pubkey": str,
+                    "sender_address": str,
+                    "recipient_address": str,
+                    "payload": dict (optional),
+                    "tx_id": str (optional),
+                    "signature": str (optional),
+                    "timestamp": float (optional),
+                    "tx_hash": str (optional)
+                }
+        
+        Returns:
+            Transaction object đã được khởi tạo
+        """
+        tx = Transaction(
+            sender_pubkey=data.get('sender_pubkey', ''),
+            sender_address=data.get('sender_address', ''),
+            recipient_address=data.get('recipient_address', ''),
+            payload=data.get('payload', {})
+        )
+        
+        # Set optional fields nếu có
+        if 'tx_id' in data:
+            tx.tx_id = data['tx_id']
+        if 'signature' in data:
+            tx.signature = data['signature']
+        if 'timestamp' in data:
+            tx.timestamp = data['timestamp']
+        if 'tx_hash' in data:
+            tx.tx_hash = data['tx_hash']
+        
+        return tx
+
+    @staticmethod
+    def to_dict(tx: Transaction, level: str = 'full') -> Dict[str, Any]:
+        """
+        Chuyển Transaction object thành dictionary với các level khác nhau.
+        
+        Args:
+            tx: Transaction object
+            level: Mức độ chi tiết
+                - 'summary': tx_id, sender, recipient, timestamp
+                - 'standard': + tx_hash
+                - 'full': + payload, signature, sender_pubkey
+        """
+        result = {
+            "tx_id": tx.tx_id,
+            "sender_address": tx.sender_address,
+            "recipient_address": tx.recipient_address,
+            "timestamp": tx.timestamp
+        }
+        
+        if level == 'summary':
+            return result
+        
+        result["tx_hash"] = tx.tx_hash
+        
+        if level == 'standard':
+            return result
+        
+        # Full
+        result.update({
+            "sender_pubkey": tx.sender_pubkey,
+            "payload": tx.payload,
+            "signature": tx.signature
+        })
+        return result
+    
+    @staticmethod
+    def success_response(tx: Transaction, message: str = None, level: str = 'standard') -> Dict[str, Any]:
+        """Tạo response dictionary chuẩn cho API."""
+        response = {
+            "success": True,
+            "transaction": TransactionService.to_dict(tx, level)
+        }
+        if message:
+            response["message"] = message
+        return response
+
+    # =========================================================================
+    # SIGNING DATA - Lấy dữ liệu để ký
+    # =========================================================================
+    
     # Lấy dữ liệu cần ký cho transaction
     @staticmethod
     def get_signing_data(transaction: Transaction) -> bytes:

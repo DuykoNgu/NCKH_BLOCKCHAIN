@@ -7,6 +7,30 @@ from app.models.User import User, UserRole
 class UserRepository:
     """Repository for User database operations"""
 
+    # =========================================================================
+    # HELPER METHODS - Chuyển đổi dữ liệu từ database sang object
+    # =========================================================================
+    
+    @staticmethod
+    def user_from_row(row) -> User:
+        """
+        Tạo User object từ một row database.
+        
+        Args:
+            row: Tuple từ database với format:
+                (user_id, pubkey, address, role, password)
+        
+        Returns:
+            User object đã được khởi tạo
+        """
+        return User(
+            user_id=row[0],
+            pubkey=row[1],
+            address=row[2],
+            role=UserRole(row[3]),
+            password=row[4]
+        )
+
     @staticmethod
     def create_user(user: User) -> bool:
         """Create a new user in database"""
@@ -34,15 +58,7 @@ class UserRepository:
             row = cursor.fetchone()
             conn.close()
             
-            if row:
-                return User(
-                    user_id=row[0],
-                    pubkey=row[1],
-                    address=row[2],
-                    role=UserRole(row[3]),
-                    password=row[4]
-                )
-            return None
+            return UserRepository.user_from_row(row) if row else None
         except Exception as e:
             print(f"Error getting user by id: {e}")
             return None
@@ -57,15 +73,7 @@ class UserRepository:
             row = cursor.fetchone()
             conn.close()
             
-            if row:
-                return User(
-                    user_id=row[0],
-                    pubkey=row[1],
-                    address=row[2],
-                    role=UserRole(row[3]),
-                    password=row[4]
-                )
-            return None
+            return UserRepository.user_from_row(row) if row else None
         except Exception as e:
             print(f"Error getting user by address: {e}")
             return None
@@ -80,16 +88,7 @@ class UserRepository:
             rows = cursor.fetchall()
             conn.close()
             
-            users = []
-            for row in rows:
-                users.append(User(
-                    user_id=row[0],
-                    pubkey=row[1],
-                    address=row[2],
-                    role=UserRole(row[3]),
-                    password=row[4]
-                ))
-            return users
+            return [UserRepository.user_from_row(row) for row in rows]
         except Exception as e:
             print(f"Error getting all users: {e}")
             return []
@@ -125,3 +124,30 @@ class UserRepository:
         except Exception as e:
             print(f"Error deleting user: {e}")
             return False
+
+    @staticmethod
+    def get_users_by_role(role: UserRole) -> List[User]:
+        """
+        Get all users with a specific role.
+        Dùng cho lấy tất cả validators, admins, etc.
+        
+        Args:
+            role: UserRole enum value
+            
+        Returns:
+            List of User objects with the specified role
+        """
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT user_id, pubkey, address, role, password FROM user WHERE role = ?',
+                (role.value,)
+            )
+            rows = cursor.fetchall()
+            conn.close()
+            
+            return [UserRepository.user_from_row(row) for row in rows]
+        except Exception as e:
+            print(f"Error getting users by role: {e}")
+            return []
