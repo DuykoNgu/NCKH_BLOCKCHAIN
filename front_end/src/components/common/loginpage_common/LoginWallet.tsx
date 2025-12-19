@@ -1,64 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as secp from "@noble/secp256k1";
-import { requestNonce, verifySignatureLogin } from '@/services/authService';
-import { decryptPrivateKey } from "@/ultis/cryptoVault";
+import { loginWallet } from '@/services/authService';
 
 export default function LoginWallet() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const hexToBytes = (hex: string): Uint8Array => {
-    return new Uint8Array(hex.match(/.{1,2}/g)!.map(b => parseInt(b, 16)));
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    console.log('[LoginWallet] Starting login process');
     try {
-      const address = localStorage.getItem("address");
-      const vaultData = localStorage.getItem("vault");
-
-      if (!address || !vaultData) {
-        throw new Error('No wallet found. Please create a wallet first.');
-      }
-
-      const vault = JSON.parse(vaultData);
-      
-      const privateKey = await decryptPrivateKey(vault, password);
-
-      const nonce = await requestNonce(address);
-
-      if (!nonce || typeof nonce !== 'string' || nonce.length === 0) {
-        throw new Error('Invalid nonce received from server');
-      }
-      
-      const nonceBytes = hexToBytes(nonce);
-
-      if (nonceBytes.length === 0) {
-        throw new Error('Failed to convert nonce to bytes');
-      }
-      
-      const msgHash = await crypto.subtle.digest("SHA-256", nonceBytes as any);
-
-      const msgHashArray = new Uint8Array(msgHash);
-    
-      const privateKeyArray = privateKey instanceof Uint8Array ? privateKey : new Uint8Array(privateKey);
-
-      const signature = await secp.signAsync(msgHashArray, privateKeyArray);
-      const signatureHex = Array.from(signature).map(b => b.toString(16).padStart(2, '0')).join('');
-
-      await verifySignatureLogin({
-        address,
-        signature: signatureHex,
-      });
-
-      localStorage.setItem("isLoggedIn", "true");
+      await loginWallet(password);
+      console.log('[LoginWallet] Login successful, redirecting to home');
       navigate("/");
     } catch (error) {
-      console.error('Login failed:', error);
-      alert(`Login failed: ${(error as Error).message}`);
+      console.error('[LoginWallet] Login failed:', error);
+      const errorMessage = (error as Error).message;
+      console.error('[LoginWallet] Error details:', errorMessage);
+      alert(`Login failed: ${errorMessage}`);
+      setLoading(false);
     }
   };
 

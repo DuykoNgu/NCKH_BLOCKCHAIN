@@ -73,3 +73,12 @@ function hexToUint8Array(hex: string): Uint8Array {
   }
   return bytes;
 }
+
+/**
+ * Chuyển đổi Uint8Array thành chuỗi hex
+ * @param arr - Uint8Array cần chuyển đổi
+ * @returns Chuỗi hex
+ */
+export function uint8ArrayToHex(arr: Uint8Array): string {
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}

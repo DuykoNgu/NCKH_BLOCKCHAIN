@@ -1,12 +1,12 @@
 const saveUserData = (user: any) => {
-  const { user_id, public_key, address, private_key } = user;
+  const { user_id, public_key, address, vault, role } = user;
 
   const entries = {
-    isLoggedIn: "true",
     user_id,
     public_key,
     address,
-    private_key,
+    vault: JSON.stringify(vault),
+    role,
   };
 
   Object.entries(entries).forEach(([key, value]) =>
