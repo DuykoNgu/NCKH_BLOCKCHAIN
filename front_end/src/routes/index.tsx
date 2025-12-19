@@ -9,7 +9,6 @@ const ROUTES = {
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const Home = lazy(() => import('@/pages/Home'));
-const ErrorPage = lazy(() => import('@/pages/ErrorPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
 // Root component that checks authentication status
@@ -22,12 +21,12 @@ export const router = createBrowserRouter([
   {
     path: ROUTES.HOME,
     element: <RootComponent />,
-    errorElement: <ErrorPage />,
+    errorElement: <NotFoundPage />,
   },
   {
     path: `${ROUTES.LOGIN}/:type?`,
     element: <LoginPage />,
-    errorElement: <ErrorPage />,
+    errorElement: <NotFoundPage />,
   },
   {
     path: '*',

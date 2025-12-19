@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { postWalletRegister } from '@/services/authService';
-import { encryptPrivateKey } from '@/ultis/cryptoVault';
+import { createWallet } from '@/services/authService';
 import type { UserRole } from '@/types/auth';
 import { validatePassword, validateForm } from "@/ultis/validators/formValidator";
 import type { FormFields } from "@/types/auth";
 import InputField from '@/components/common/InputField';
-import SelectField from '@/components/common/SelectField';
-import secp from "@configs/secp256k1.config";
 
 type FieldName = keyof FormFields;
-const toHex = (arr: Uint8Array) => Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 
 export default function CreateWalletForm() {
   const [form, setForm] = useState<FormFields>({password: '', confirmPassword: '', role: 'user' as UserRole});
@@ -42,17 +38,7 @@ export default function CreateWalletForm() {
     }
     setLoading(true);
     try {
-      const privateKey = secp.utils.randomSecretKey();
-      const publicKey = secp.getPublicKey(privateKey);
-      const addressHash = await crypto.subtle.digest("SHA-256", publicKey as any);
-      const address = toHex(new Uint8Array(addressHash)).slice(0, 40);
-
-      const { encrypted, iv } = await encryptPrivateKey(privateKey, form.password);
-      localStorage.setItem("vault", JSON.stringify({ encrypted: toHex(encrypted), iv: toHex(iv) }));
-      localStorage.setItem("public_key", toHex(publicKey));
-      localStorage.setItem("address", "0x" + address);
-
-      await postWalletRegister({ public_key: toHex(publicKey), address: "0x" + address, role: form.role });
+      await createWallet(form.password, form.role);
       navigate("/login/existing");
     } catch {
       alert('Failed to create wallet');
@@ -64,8 +50,6 @@ export default function CreateWalletForm() {
       <form onSubmit={handleSubmit} className="flex flex-col items-center w-full">
         <InputField type="password" label="Password" value={form.password} onChange={(value) => updateField('password', value)} error={errors.passwordError} />
         <InputField type="password" label="Confirm Password" value={form.confirmPassword} onChange={(value) => updateField('confirmPassword', value)} error={errors.confirmPasswordError} />
-
-        <SelectField value={form.role} onChange={(value) => updateField('role', value)} error={errors.roleError} options={[{value: 'admin', label: 'Admin'}, {value: 'user', label: 'User'}, {value: 'Validator', label: 'Validator'}]} />
         <button
           type="submit"
           disabled={loading}

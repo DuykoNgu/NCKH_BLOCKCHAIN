@@ -4,7 +4,7 @@ import { Suspense, useRef, useEffect, useState } from "react";
 import type { Mesh } from "three";
 import * as THREE from "three";
 
-function LogoModel() {
+function LogoModel({ disableRotation = false }: { disableRotation?: boolean }) {
   const ref = useRef<Mesh>(null);
   const { scene } = useGLTF("/base.glb");
   const [rotation, setRotation] = useState([0, 0, 0]);
@@ -63,7 +63,7 @@ function LogoModel() {
 
   useFrame(() => {
     if (ref.current) {
-      if (!isDragging.current) {
+      if (!isDragging.current && !disableRotation) {
         setRotation(prev => [
           prev[0],
           prev[1] + 0.005,
@@ -86,12 +86,12 @@ function LogoModel() {
   );
 }
 
-export default function Logo3D() {
+export default function Logo3D({ width = 500, height = 400, disableRotation = false }: { width?: number; height?: number; disableRotation?: boolean }) {
   return (
-    <div className="w-[500px] h-[400px]">
+    <div style={{ width: `${width}px`, height: `${height}px` }}>
       <Canvas style={{ display: "block", width: "100%", height: "100%" }} camera={{ position: [0, 0, 3], fov: 35 }}>
         <Suspense fallback={null}>
-          <LogoModel />
+          <LogoModel disableRotation={disableRotation} />
           <ambientLight intensity={1} />
           <directionalLight position={[5, 5, 5]} intensity={1} />
         </Suspense>
