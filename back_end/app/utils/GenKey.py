@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from app.utils.KeyUtils import KeyUtils
+from app.utils.CryptoUtils import CryptoUtils
 
 if __name__ == "__main__":
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 1
@@ -16,8 +16,8 @@ if __name__ == "__main__":
     print("="*80 + "\n")
     
     for i in range(count):
-        pub, priv = KeyUtils.generate_key_pair()
-        addr = KeyUtils.get_address_from_pubkey(pub)
+        pub, priv = CryptoUtils.generate_key_pair()
+        addr = CryptoUtils.get_address_from_pubkey(pub)
         
         print(f"KEY #{i+1}")
         print(f"  Address:     {addr}")

@@ -5,7 +5,7 @@ import os
 import hashlib
 from typing import Optional, Tuple
 from pathlib import Path
-from app.utils.CryptoUtils import CryptoUtils
+from app.utils.HashUtils import HashUtils
 
 
 class PDFUtils:
@@ -93,7 +93,7 @@ class PDFUtils:
         try:
             with open(file_path, 'rb') as f:
                 file_content = f.read()
-            return CryptoUtils.hash_sha256(file_content)
+            return HashUtils.hash_sha256(file_content)
         except IOError as e:
             raise IOError(f"Lỗi đọc file: {str(e)}")
     

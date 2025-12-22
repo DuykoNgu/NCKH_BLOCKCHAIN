@@ -4,7 +4,6 @@ from app.models.User import User, UserRole
 from app.repositories.UserRepository import UserRepository
 
 from app.utils.CryptoUtils import CryptoUtils
-from app.utils.KeyUtils import KeyUtils
 
 
 class UserService:
@@ -24,8 +23,8 @@ class UserService:
                 return False, None, "User already exists"
             
             # Generate keypair
-            public_key, private_key = KeyUtils.generate_key_pair()
-            address = KeyUtils.get_address_from_pubkey(public_key)
+            public_key, private_key = CryptoUtils.generate_key_pair()
+            address = CryptoUtils.get_address_from_pubkey(public_key)
             
             # Create user
             user = User(
@@ -61,8 +60,8 @@ class UserService:
                 return False, None, "User already exists"
             
             # Validate and derive keys
-            public_key = KeyUtils.get_public_key_from_private(private_key)
-            address = KeyUtils.get_address_from_pubkey(public_key)
+            public_key = CryptoUtils.get_public_key_from_private(private_key)
+            address = CryptoUtils.get_address_from_pubkey(public_key)
             
             # Create user
             user = User(
