@@ -1,7 +1,17 @@
-import { Wallet } from "lucide-react"
- 
+import { Wallet, LogOut } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
+
 
 export const Header = () => {
+  const navigate = useNavigate();
+
+  const handleDeleteRole = () => {
+    localStorage.removeItem("role");
+    localStorage.setItem("isLoggedIn", "false");
+    navigate("/login", { replace: true });
+  };
+
   return (
       <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -16,6 +26,10 @@ export const Header = () => {
             <span className="text-sm text-muted-foreground hidden sm:inline">
               Đã kết nối
             </span>
+            <Button variant="outline" size="sm" onClick={handleDeleteRole}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Xóa Role
+            </Button>
           </div>
         </div>
       </header>

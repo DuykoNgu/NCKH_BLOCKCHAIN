@@ -5,6 +5,8 @@ import { router } from "./routes";
 import "./index.css";
 import { Theme } from "@radix-ui/themes";
 import { ToastProvider } from "@/components/ui/toast";
+import "./pdfWorker";
+
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

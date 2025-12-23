@@ -1,6 +1,4 @@
-import type { UserRole } from '@/types/auth';
-
-export const validatePassword = (password: string): { isValid: boolean; message: string } => {
+ export const validatePassword = (password: string): { isValid: boolean; message: string } => {
   // Check minimum length (assuming at least 8 characters)
   if (password.length < 8) {
     return { isValid: false, message: 'Password must be at least 8 characters long' };
@@ -27,7 +25,6 @@ export const validatePassword = (password: string): { isValid: boolean; message:
 export interface FormValidationErrors {
   passwordError: string;
   confirmPasswordError: string;
-  roleError: string;
 }
 
 export interface FormValidationResult {
@@ -38,18 +35,16 @@ export interface FormValidationResult {
 export const validateForm = (
   password: string,
   confirmPassword: string,
-  role: UserRole
 ): FormValidationResult => {
   const errors: FormValidationErrors = {
     passwordError: '',
     confirmPasswordError: '',
-    roleError: ''
   };
 
   let isValid = true;
 
   // Check if all fields are empty first
-  const isEmptyForm = !password && !confirmPassword && !role;
+  const isEmptyForm = !password && !confirmPassword;
 
   if (isEmptyForm) {
     // Show "This field is required" for all empty fields
@@ -59,10 +54,6 @@ export const validateForm = (
     }
     if (!confirmPassword) {
       errors.confirmPasswordError = 'This field is required';
-      isValid = false;
-    }
-    if (!role) {
-      errors.roleError = 'This field is required';
       isValid = false;
     }
   } else {
@@ -83,11 +74,6 @@ export const validateForm = (
       }
     }
 
-    // Validate role - only if not empty
-    if (!role) {
-      errors.roleError = 'Please select a role';
-      isValid = false;
-    }
   }
 
   return { isValid, errors };

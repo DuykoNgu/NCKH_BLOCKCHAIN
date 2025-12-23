@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createWallet } from '@/services/authService';
-import type { UserRole } from '@/types/auth';
 import { validatePassword, validateForm } from "@/ultis/validators/formValidator";
 import type { FormFields } from "@/types/auth";
 import InputField from '@/components/common/InputField';
@@ -9,8 +8,8 @@ import InputField from '@/components/common/InputField';
 type FieldName = keyof FormFields;
 
 export default function CreateWalletForm() {
-  const [form, setForm] = useState<FormFields>({password: '', confirmPassword: '', role: 'user' as UserRole});
-  const [errors, setErrors] = useState({ passwordError: '', confirmPasswordError: '', roleError: '' });
+  const [form, setForm] = useState<FormFields>({password: '', confirmPassword: ''});
+  const [errors, setErrors] = useState({ passwordError: '', confirmPasswordError: ''});
   const [loading, setLoading] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const navigate = useNavigate();
@@ -22,14 +21,12 @@ export default function CreateWalletForm() {
       setErrors(p => ({ ...p, passwordError: isValid ? '' : message }));
     } else if (field === 'confirmPassword' && (value.length > 0 || hasSubmitted)) {
       setErrors(p => ({ ...p, confirmPasswordError: value !== form.password ? 'Passwords do not match' : '' }));
-    } else if (field === 'role' && hasSubmitted) {
-      setErrors(p => ({ ...p, roleError: value ? '' : 'Please select a role' }));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validation = validateForm(form.password, form.confirmPassword, form.role);
+    const validation = validateForm(form.password, form.confirmPassword);
     setHasSubmitted(true);
 
     if (!validation.isValid) {
@@ -38,7 +35,7 @@ export default function CreateWalletForm() {
     }
     setLoading(true);
     try {
-      await createWallet(form.password, form.role);
+      await createWallet(form.password);
       navigate("/login/existing");
     } catch {
       alert('Failed to create wallet');
