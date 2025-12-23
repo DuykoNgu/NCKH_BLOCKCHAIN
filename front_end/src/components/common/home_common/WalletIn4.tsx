@@ -4,8 +4,6 @@ import { Button} from "@/components/ui/button";
 import { Copy, ExternalLink, LogOut } from 'lucide-react';
 import Logo3D from '@/components/common/loginpage_common/Logo3D';
 import { useRadixToast } from "@/hooks/use-radix-toast";
-
-
 interface WalletCardProps {
   address: string;
   balance: string | null;

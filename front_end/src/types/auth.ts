@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'user' | 'guest';
+export type UserRole = 'admin' | 'client';
 export interface WalletLoginData {
   address: string;
   signature: string;
@@ -39,5 +39,4 @@ export interface AuthError {
 export type FormFields = {
   password: string;
   confirmPassword: string;
-  role: UserRole;
 };

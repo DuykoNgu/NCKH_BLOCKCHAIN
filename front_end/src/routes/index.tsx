@@ -1,5 +1,6 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { lazy } from 'react';
+import ProtectedRoute from '@/components/common/ProtectedRoute';
 
 const ROUTES = {
   HOME: '/',
@@ -10,23 +11,23 @@ const ROUTES = {
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const Home = lazy(() => import('@/pages/Home'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
+const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
 
-// Root component that checks authentication status
-const RootComponent = () => {
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
-  return isLoggedIn ? <Home /> : <Navigate to={`${ROUTES.LOGIN}`} replace />;
-};
 
 export const router = createBrowserRouter([
   {
     path: ROUTES.HOME,
-    element: <RootComponent />,
+    element: <ProtectedRoute allowedRoles={['admin', 'client']}><Home /></ProtectedRoute>,
     errorElement: <NotFoundPage />,
   },
   {
     path: `${ROUTES.LOGIN}/:type?`,
     element: <LoginPage />,
     errorElement: <NotFoundPage />,
+  },
+  {
+    path: '/unauthorized',
+    element: <UnauthorizedPage />,
   },
   {
     path: '*',

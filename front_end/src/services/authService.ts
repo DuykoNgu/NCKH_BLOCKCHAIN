@@ -2,7 +2,7 @@ import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/ultis/c
 import secp from "@configs/secp256k1.config";
 import saveUserData from "@/ultis/saveDataToStorage";
 
-export const createWallet = async (password: string, role: string) => {
+export const createWallet = async (password: string) => {
   const privateKey = secp.utils.randomSecretKey();
   const publicKey = secp.getPublicKey(privateKey);
   const addressHash = await crypto.subtle.digest("SHA-256", publicKey as any);
@@ -10,7 +10,8 @@ export const createWallet = async (password: string, role: string) => {
 
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
-
+  const role = "client";
+  
   const userData = {
     user_id: Math.random().toString(36).substr(2, 9),
     public_key: uint8ArrayToHex(publicKey),

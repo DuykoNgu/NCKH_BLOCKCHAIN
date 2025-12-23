@@ -1,4 +1,5 @@
 import { Header } from "../Header";
+import { PDF_Preview } from "./PDF_Preview";
 import { WalletIn4 } from "./WalletIn4";
 import { WalletRegister } from "./WalletRegister";
 
@@ -29,9 +30,12 @@ export const Dashboard = ({
             />
             <WalletRegister/>
           </div>
-          {/* <div className="lg:col-span-2">
-            <WalletRegister />
-          </div> */}
+          <div className="lg:col-span-2">
+            <PDF_Preview/>
+          </div>
+
+
+
 
 
         </div>
