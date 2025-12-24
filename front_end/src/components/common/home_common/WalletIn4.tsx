@@ -1,9 +1,10 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button} from "@/components/ui/button";
-import { Copy, ExternalLink, LogOut } from 'lucide-react';
+import { Copy, ExternalLink, LogOut, TestTube } from 'lucide-react';
 import Logo3D from '@/components/common/loginpage_common/Logo3D';
 import { useRadixToast } from "@/hooks/use-radix-toast";
+import api from "@configs/axios.config";
 interface WalletCardProps {
   address: string;
   balance: string | null;
@@ -37,6 +38,41 @@ export const WalletIn4 = ({
       showToast({
         title: 'Lỗi!',
         description: 'Không thể sao chép địa chỉ ví.',
+      });
+    }
+  };
+
+  const testCreateBlock = async () => {
+    // required_fields = ['index', 'block_id', 'pre_hash', 'merkle_root', 
+    //                       'validator_pubkey', 'private_key']
+    try {
+      // Sample data for testing the block creation API
+      const blockData = {
+        index: 1,
+        block_id: "BLOCK_3",
+        pre_hash: "0000000000000000000000000000000000000000000000000000000000000000",
+        merkle_root: "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+        validator_pubkey: "04a5c6d7e8f90123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789a",
+        private_key: "123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0",
+        transactions: []
+      };
+
+      console.log('Sending block creation request with data:', blockData);
+
+      const response = await api.post('/v1/block/create', blockData);
+
+      console.log('Block creation response:', response.data);
+
+      showToast({
+        title: 'Thành công!',
+        description: 'Block đã được tạo thành công.',
+      });
+    } catch (error: any) {
+      console.error('Block creation error:', error.response?.data || error.message);
+
+      showToast({
+        title: 'Lỗi!',
+        description: 'Không thể tạo block. Xem console để biết chi tiết.',
       });
     }
   };
@@ -91,6 +127,15 @@ export const WalletIn4 = ({
         >
           <LogOut className="w-4 h-4 mr-2" />
           Ngắt kết nối
+        </Button>
+
+        <Button
+          variant="outline"
+          className="w-full border-blue-500/50 text-blue-500"
+          onClick={testCreateBlock}
+        >
+          <TestTube className="w-4 h-4 mr-2" />
+          Test Create Block
         </Button>
       </CardContent>
     </Card>

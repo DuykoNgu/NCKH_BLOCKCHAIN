@@ -32,5 +32,5 @@
       "@configs/*": ["configs/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "configs/pdf.config.Worker.ts"]
 }

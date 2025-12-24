@@ -1,0 +1,20 @@
+services:
+  backend:
+    build: ./back_end
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./back_end/app/database:/app/app/database
+    environment:
+      - FLASK_ENV=production
+
+  frontend:
+    build: ./front_end
+    ports:
+      - "5173:5173"
+      - "3003:3003"
+    volumes:
+      - ./front_end:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
