@@ -88,6 +88,26 @@ def login():
         return jsonify({"error": f"Login error: {str(e)}"}), 500
 
 
+@user_bp.route('/validators', methods=['GET'])
+def get_validators():
+    """Get all validators"""
+    try:
+        from app.services.ValidatorService import ValidatorService
+        
+        validators = ValidatorService.get_all_validators()
+        
+        validators_list = [UserService.success_response(v).get('user', v.to_dict()) for v in validators]
+        
+        return jsonify({
+            "success": True,
+            "validators": validators_list,
+            "count": len(validators_list)
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error getting validators: {str(e)}"}), 500
+
+
 @user_bp.route('/<user_id>', methods=['GET'])
 def get_user(user_id):
     """Get user by user_id"""

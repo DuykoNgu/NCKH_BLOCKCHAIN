@@ -8,6 +8,7 @@ source ./venv/bin/activate
 pip install -r requirements.txt
 
 Cấu trúc dự án(backend)
+run BE: python ../app.py
 
 # Backend Project Structure
 

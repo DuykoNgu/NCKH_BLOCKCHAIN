@@ -175,3 +175,9 @@ class TransactionService:
             return vk.verify(signature_bytes, message_hash)
         except Exception:
             return False
+    
+    # Alias for is_valid (for compatibility)
+    @staticmethod
+    def verify(transaction: Transaction) -> bool:
+        """Verify transaction signature (alias for is_valid)"""
+        return TransactionService.is_valid(transaction)

@@ -138,6 +138,11 @@ class NFTService:
         return CryptoUtils.verify_signature(nft_data_bytes, nft.issuer_signature, nft.issuer_pubkey)
 
     @staticmethod
+    def verify_nft_signature(nft: NFT) -> bool:
+        """Xác minh chữ ký NFT (alias for verify_nft)"""
+        return NFTService.verify_nft(nft)
+
+    @staticmethod
     def verify_and_save_nft(nft: NFT, issuer, issuer_signature: str) -> Tuple[bool, Optional[str]]:
         """
         Verify signature và lưu NFT vào database.
