@@ -28,16 +28,6 @@ export const WalletRegister = () => {
       setIsSubmitting(false);
       return;
     }
-    if (!stakeAmount || parseFloat(stakeAmount) < minStake) {
-      setError(`Số lượng stake phải ít nhất ${minStake} ETH`);
-      setIsSubmitting(false);
-      return;
-    }
-    if (!commissionRate || parseFloat(commissionRate) < 0 || parseFloat(commissionRate) > 100) {
-      setError('Tỷ lệ commission phải từ 0 đến 100');
-      setIsSubmitting(false);
-      return;
-    }
 
     // Simulate registration process
     try {
@@ -62,7 +52,6 @@ export const WalletRegister = () => {
         </div>
         <div>
           <h3 className="font-semibold text-foreground">Đăng ký Validator</h3>
-          <p className="text-sm text-muted-foreground">Stake ETH để trở thành validator</p>
         </div>
       </div>
 
@@ -73,8 +62,8 @@ export const WalletRegister = () => {
           Yêu cầu
         </h4>
         <ul className="text-sm text-muted-foreground space-y-1">
-          <li>• Tối thiểu {minStake} ETH để stake</li>
-          <li>• Số dư hiện tại: <span className="text-accent">{balance || '0'} ETH</span></li>
+          <li>• Trường nằm trên khu vực Việt Nam</li>
+          <li>• Mức độ uy tin theo</li>
           <li>• Commission rate: 0-100%</li>
         </ul>
       </div>

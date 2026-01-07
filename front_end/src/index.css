@@ -1,13 +1,23 @@
+/* ==========================================================================
+   Imports
+   ========================================================================== */
+
 @import "tailwindcss";
 @import "@radix-ui/themes/styles.css";
 @import "tailwindcss/utilities";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
 
 button {
   cursor: pointer;
 }
+
+/* ==========================================================================
+   Keyframes
+   ========================================================================== */
 
 @keyframes bounceInUp {
   0% {
@@ -22,18 +32,6 @@ button {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.animate-bounce-in-up {
-  animation: bounceInUp 1s ease-out;
-}
-
-.animate-delay-1 {
-  animation-delay: 0.2s;
-}
-
-.animate-delay-2 {
-  animation-delay: 0.4s;
 }
 
 @keyframes gradientShift {
@@ -51,9 +49,50 @@ button {
   }
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ==========================================================================
+   Animation Classes
+   ========================================================================== */
+
+.animate-bounce-in-up {
+  animation: bounceInUp 1s ease-out;
+}
+
+.animate-delay-1 {
+  animation-delay: 0.2s;
+}
+
+.animate-delay-2 {
+  animation-delay: 0.4s;
+}
+
 .animate-gradient {
   animation: gradientShift 10s linear infinite;
 }
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
 
 @layer utilities {
   .animate-fade-in {
@@ -64,31 +103,14 @@ button {
     animation: float 3s ease-in-out infinite;
   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-}
-
-.glass-card {
+  .glass-card {
     @apply bg-card/50 backdrop-blur-xl border border-border/50;
+  }
 }
+
+/* ==========================================================================
+   Theme Configuration
+   ========================================================================== */
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -131,6 +153,10 @@ button {
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* ==========================================================================
+   CSS Variables
+   ========================================================================== */
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -161,7 +187,7 @@ button {
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent-foreground: var(--primary-foreground);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 }
@@ -199,6 +225,10 @@ button {
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* ==========================================================================
+   Base Layer
+   ========================================================================== */
 
 @layer base {
   * {
