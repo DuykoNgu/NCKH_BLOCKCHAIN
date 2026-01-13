@@ -45,43 +45,42 @@ export const WalletRegister = () => {
   };
 
   return (
-    <div className="glass-card rounded-2xl p-6 animate-fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl from-accent to-primary flex items-center justify-center">
-          <Shield className="w-5 h-5 text-amber-200" />
+    <div className="glass-card rounded-2xl p-4 sm:p-6 animate-fade-in">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl from-accent to-primary flex items-center justify-center">
+          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-amber-200" />
         </div>
         <div>
-          <h3 className="font-semibold text-foreground">Đăng ký Validator</h3>
+          <h3 className="font-semibold text-foreground text-sm sm:text-base">Đăng ký Validator</h3>
         </div>
       </div>
 
       {/* Requirements Info */}
-      <div className="bg-secondary/50 rounded-xl p-4 mb-6">
-        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+      <div className="bg-secondary/50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2 text-sm sm:text-base">
           <Coins className="w-4 h-4 text-accent" />
           Yêu cầu
         </h4>
-        <ul className="text-sm text-muted-foreground space-y-1">
+        <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
           <li>• Trường nằm trên khu vực Việt Nam</li>
-          <li>• Mức độ uy tin theo</li>
-          <li>• Commission rate: 0-100%</li>
+          <li>• Mức độ uy tin theo rank trên 50 điểm</li>
         </ul>
       </div>
 
-      <form onSubmit={handleRegister} className="space-y-4">
+      <form onSubmit={handleRegister} className="space-y-3 sm:space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="validatorName" className="text-foreground">Tên Validator</Label>
+          <Label htmlFor="validatorName" className="text-foreground text-sm sm:text-base">Tên Validator</Label>
           <Input
             id="validatorName"
             placeholder="Nhập tên validator của bạn"
             value={validatorName}
             onChange={(e) => setValidatorName(e.target.value)}
-            className="bg-secondary/50 border-border focus:border-accent"
+            className="bg-secondary/50 border-border focus:border-accent text-sm sm:text-base"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="stakeAmount" className="text-foreground">Số lượng ETH Stake</Label>
+          <Label htmlFor="stakeAmount" className="text-foreground text-sm sm:text-base">Số lượng ETH Stake</Label>
           <div className="relative">
             <Input
               id="stakeAmount"
@@ -91,16 +90,16 @@ export const WalletRegister = () => {
               onChange={(e) => setStakeAmount(e.target.value)}
               min={minStake}
               step="0.01"
-              className="bg-secondary/50 border-border focus:border-accent pr-14"
+              className="bg-secondary/50 border-border focus:border-accent pr-12 sm:pr-14 text-sm sm:text-base"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+            <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs sm:text-sm">
               ETH
             </span>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="commission" className="text-foreground">Tỷ lệ Commission (%)</Label>
+          <Label htmlFor="commission" className="text-foreground text-sm sm:text-base">Tỷ lệ Commission (%)</Label>
           <div className="relative">
             <Input
               id="commission"
@@ -111,16 +110,16 @@ export const WalletRegister = () => {
               min="0"
               max="100"
               step="0.1"
-              className="bg-secondary/50 border-border focus:border-accent pr-10"
+              className="bg-secondary/50 border-border focus:border-accent pr-8 sm:pr-10 text-sm sm:text-base"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+            <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs sm:text-sm">
               %
             </span>
           </div>
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg p-3">
+          <div className="flex items-center gap-2 text-destructive text-xs sm:text-sm bg-destructive/10 rounded-lg p-2 sm:p-3">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -129,7 +128,7 @@ export const WalletRegister = () => {
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="w-full from-accent to-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+          className="w-full from-accent to-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity text-sm sm:text-base"
         >
           {isSubmitting ? (
             <>
@@ -145,7 +144,7 @@ export const WalletRegister = () => {
         </Button>
       </form>
 
-      <p className="text-xs text-muted-foreground text-center mt-4">
+      <p className="text-xs sm:text-sm text-muted-foreground text-center mt-3 sm:mt-4">
         Bằng việc đăng ký, bạn đồng ý với các điều khoản và điều kiện của mạng lưới
       </p>
     </div>
