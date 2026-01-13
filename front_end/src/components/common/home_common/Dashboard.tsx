@@ -3,7 +3,7 @@ import { PDF_Preview } from "./PDF_Preview";
 import { StatGridContent } from "./StatGridContent";
 import { WalletIn4 } from "./WalletIn4";
 import { WalletRegister } from "./WalletRegister";
-
+import {TransactionList } from  "@/components/common/home_common/TransactionList"
 interface DashboardProps {
   address: string;
   balance: string | null;
@@ -34,7 +34,8 @@ export const Dashboard = ({
             />
             <WalletRegister />
           </div>
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
+            <TransactionList />
             <PDF_Preview />
           </div>
         </div>
