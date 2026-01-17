@@ -1,6 +1,6 @@
 """UserRepository - Data access layer for User operations"""
 from typing import Optional, List
-from app.database.connection import get_connection
+from app.database import get_connection
 from app.models.User import User, UserRole
 
 
