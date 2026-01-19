@@ -16,11 +16,11 @@ class TransactionRepository:
             
             cursor.execute('''
                 INSERT INTO transactions 
-                (tx_id, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, tx_hash)
+                (tx_id, sender_address, recipient_address, payload, signature, timestamp, tx_hash,block_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (transaction.tx_id, transaction.sender_pubkey, transaction.sender_address,
+            ''', (transaction.tx_id, transaction.sender_address,
                   transaction.recipient_address, str(transaction.payload), transaction.signature,
-                  transaction.timestamp, transaction.tx_hash))
+                  transaction.timestamp, transaction.tx_hash, transaction.block_id))
             
             conn.commit()
             conn.close()
@@ -37,8 +37,8 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT tx_id, sender_pubkey, sender_address, recipient_address, 
-                       payload, signature, timestamp, tx_hash 
+                SELECT tx_id, sender_address, recipient_address, 
+                       payload, signature, timestamp, tx_hash , block_id
                 FROM transactions WHERE tx_id = ?
             ''', (tx_id,))
             row = cursor.fetchone()
@@ -53,13 +53,13 @@ class TransactionRepository:
                 
                 return Transaction(
                     tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
+                    sender_address=row[1],
+                    recipient_address=row[2],
                     payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
+                    signature=row[4],
+                    timestamp=row[5],
+                    tx_hash=row[6],
+                    block_id=row[7]
                 )
             return None
         except Exception as e:
@@ -74,8 +74,8 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT tx_id, sender_pubkey, sender_address, recipient_address, 
-                       payload, signature, timestamp, tx_hash 
+                SELECT tx_id, sender_address, recipient_address, 
+                       payload, signature, timestamp, tx_hash , block_id
                 FROM transactions WHERE sender_address = ?
                 ORDER BY timestamp DESC
             ''', (sender_address,))
@@ -92,13 +92,13 @@ class TransactionRepository:
                 
                 tx = Transaction(
                     tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
+                    sender_address=row[1],
+                    recipient_address=row[2],
                     payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
+                    signature=row[4],
+                    timestamp=row[5],
+                    tx_hash=row[6],
+                    block_id=row[7]
                 )
                 transactions.append(tx)
             return transactions
@@ -114,8 +114,8 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT tx_id, sender_pubkey, sender_address, recipient_address, 
-                       payload, signature, timestamp, tx_hash 
+                SELECT tx_id,sender_address, recipient_address, 
+                       payload, signature, timestamp, tx_hash , block_id
                 FROM transactions WHERE recipient_address = ?
                 ORDER BY timestamp DESC
             ''', (recipient_address,))
@@ -132,13 +132,13 @@ class TransactionRepository:
                 
                 tx = Transaction(
                     tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
+                    sender_address=row[1],
+                    recipient_address=row[2],
                     payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
+                    signature=row[4],
+                    timestamp=row[5],
+                    tx_hash=row[6],
+                    block_id=row[7]
                 )
                 transactions.append(tx)
             return transactions
@@ -154,8 +154,8 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT tx_id, sender_pubkey, sender_address, recipient_address, 
-                       payload, signature, timestamp, tx_hash 
+                SELECT tx_id, sender_address, recipient_address, 
+                       payload, signature, timestamp, tx_hash , block_id
                 FROM transactions ORDER BY timestamp DESC
             ''')
             rows = cursor.fetchall()
@@ -171,13 +171,13 @@ class TransactionRepository:
                 
                 tx = Transaction(
                     tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
+                    sender_address=row[1],
+                    recipient_address=row[2],
                     payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
+                    signature=row[4],
+                    timestamp=row[5],
+                    tx_hash=row[6],
+                    block_id =row[7]
                 )
                 transactions.append(tx)
             return transactions
@@ -204,12 +204,12 @@ class TransactionRepository:
             
             cursor.execute('''
                 UPDATE transactions 
-                SET sender_pubkey = ?, sender_address = ?, recipient_address = ?,
-                    payload = ?, signature = ?, tx_hash = ?
+                SET sender_address = ?, recipient_address = ?,
+                    payload = ?, signature = ?, tx_hash = ?,block_id = ?
                 WHERE tx_id = ?
-            ''', (transaction.sender_pubkey, transaction.sender_address,
+            ''', (transaction.sender_address,
                   transaction.recipient_address, str(transaction.payload),
-                  transaction.signature, transaction.tx_hash, transaction.tx_id))
+                  transaction.signature, transaction.tx_hash, transaction.tx_id, transaction.block_id))
             
             conn.commit()
             conn.close()
@@ -256,8 +256,8 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT tx_id, sender_pubkey, sender_address, recipient_address, 
-                       payload, signature, timestamp, tx_hash 
+                SELECT tx_id, sender_address, recipient_address, 
+                       payload, signature, timestamp, tx_hash , block_id
                 FROM transactions 
                 WHERE timestamp >= ? AND timestamp <= ?
                 ORDER BY timestamp DESC
@@ -275,13 +275,13 @@ class TransactionRepository:
                 
                 tx = Transaction(
                     tx_id=row[0],
-                    sender_pubkey=row[1],
-                    sender_address=row[2],
-                    recipient_address=row[3],
+                    sender_address=row[1],
+                    recipient_address=row[2],
                     payload=payload,
-                    signature=row[5],
-                    timestamp=row[6],
-                    tx_hash=row[7]
+                    signature=row[4],
+                    timestamp=row[5],
+                    tx_hash=row[6],
+                    block_id=row[7]
                 )
                 transactions.append(tx)
             return transactions

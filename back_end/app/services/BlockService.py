@@ -44,11 +44,11 @@ class BlockService:
             if isinstance(tx, Transaction):
                 tx_list.append({
                     "tx_id": tx.tx_id,
-                    "sender_pubkey": tx.sender_pubkey,
                     "sender_address": tx.sender_address,
                     "recipient_address": tx.recipient_address,
                     "payload": tx.payload,
                     "timestamp": tx.timestamp,
+                    "block_id": tx.block_id
                 })
             else:
                 tx_list.append(tx)

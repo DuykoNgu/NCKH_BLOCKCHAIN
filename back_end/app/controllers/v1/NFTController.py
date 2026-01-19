@@ -21,7 +21,7 @@ def create_nft():
         "student_id": "STU_001",
         "degree_type": "Bachelor of Science",
         "pdf_url": "https://example.com/cert.pdf",
-        "institution": "Harvard University",
+        "institution_address": "Harvard University",
         "recipient_address": "0x..."
     }
     """
@@ -30,17 +30,17 @@ def create_nft():
         
         # Validate required fields
         required_fields = ['issuer_id', 'student_id', 'degree_type', 
-                          'pdf_url', 'institution', 'recipient_address']
+                          'pdf_url', 'institution_address', 'recipient_address']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
         
         # Get issuer
-        issuer = UserRepository.get_user_by_id(data['issuer_id'])
+        issuer = UserRepository.get_client_by_id(data['issuer_id'])
         if not issuer:
             return jsonify({"error": "Issuer user not found"}), 404
         
         # Get recipient user
-        recipient = UserRepository.get_user_by_address(data['recipient_address'])
+        recipient = UserRepository.get_account_by_address(data['recipient_address'])
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
         
@@ -53,7 +53,7 @@ def create_nft():
             degree_type=data['degree_type'],
             pdf_url=data['pdf_url'],
             pdf_hash=pdf_hash,
-            institution=data['institution']
+            institution_address=data['institution_address']
         )
         
         # Create NFT

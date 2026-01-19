@@ -13,7 +13,6 @@ class TransactionService:
         Chỉ bao gồm: sender_pubkey, sender_address, recipient_address, payload, timestamp.
         """
         data = {
-            "sender_pubkey": transaction.sender_pubkey,
             "sender_address": transaction.sender_address,
             "recipient_address": transaction.recipient_address,
             "payload": transaction.payload,

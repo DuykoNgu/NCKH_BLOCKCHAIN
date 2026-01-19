@@ -20,14 +20,13 @@ class NFTRepository:
             metadata_dict = nft.metadata.to_dict()
             cursor.execute("""
                 INSERT INTO nft_metadata 
-                (student_id, degree_type, pdf_url, pdf_hash, institution, issued_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                ( degree_type, pdf_url, pdf_hash, institution_address, issued_at)
+                VALUES ( ?, ?, ?, ?, ?)
             """, (
-                metadata_dict['student_id'],
                 metadata_dict['degree_type'],
                 metadata_dict['pdf_url'],
                 metadata_dict['pdf_hash'],
-                metadata_dict['institution'],
+                metadata_dict['institution_address'],
                 metadata_dict['issued_at']
             ))
             
@@ -67,9 +66,9 @@ class NFTRepository:
             cursor.execute("""
                 SELECT nft.nft_id, nft.issuer_pubkey, nft.issuer_signature, 
                        nft.is_valid, nft.minted_at, nft.recipient_address,
-                       nft_metadata.student_id, nft_metadata.degree_type, 
+                       nft_metadata.degree_type, 
                        nft_metadata.pdf_url, nft_metadata.pdf_hash, 
-                       nft_metadata.institution, nft_metadata.issued_at,
+                       nft_metadata.institution_address, nft_metadata.issued_at,
                        user.address, user.pubkey
                 FROM nft
                 LEFT JOIN nft_metadata ON nft.metadata_id = nft_metadata.metadata_id
@@ -83,12 +82,11 @@ class NFTRepository:
             if row:
                 # Reconstruct NFT from row
                 metadata = NFTmetadata(
-                    student_id=row[6],
-                    degree_type=row[7],
-                    pdf_url=row[8],
-                    pdf_hash=row[9],
-                    institution=row[10],
-                    issued_at=row[11]
+                    degree_type=row[6],
+                    pdf_url=row[7],
+                    pdf_hash=row[8],
+                    institution_address=row[9],
+                    issued_at=row[10]
                 )
                 
                 recipient = User(
@@ -132,11 +130,10 @@ class NFTRepository:
                     nft.is_valid,
                     nft.minted_at,
                     nft_metadata.metadata_id,
-                    nft_metadata.student_id,
                     nft_metadata.degree_type,
                     nft_metadata.pdf_url,
                     nft_metadata.pdf_hash,
-                    nft_metadata.institution,
+                    nft_metadata.institution_address,
                     nft_metadata.issued_at,
                     user.address,
                     user.pubkey
@@ -162,17 +159,16 @@ class NFTRepository:
                 minted_at = row[6]
                 
                 metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
+                    degree_type=row[8],
+                    pdf_url=row[9],
+                    pdf_hash=row[10],
+                    institution_address=row[11],
+                    issued_at=row[12]
                 )
                 
                 recipient = User(
                     user_id="",
-                    pubkey=row[15] or "",
+                    pubkey=row[14] or "",
                     address=recipient_address,
                     role=UserRole.CLIENT,
                     password=""
@@ -213,11 +209,10 @@ class NFTRepository:
                     nft.is_valid,
                     nft.minted_at,
                     nft_metadata.metadata_id,
-                    nft_metadata.student_id,
                     nft_metadata.degree_type,
                     nft_metadata.pdf_url,
                     nft_metadata.pdf_hash,
-                    nft_metadata.institution,
+                    nft_metadata.institution_address,
                     nft_metadata.issued_at,
                     user.address,
                     user.pubkey
@@ -243,17 +238,16 @@ class NFTRepository:
                 minted_at = row[6]
                 
                 metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
+                    degree_type=row[8],
+                    pdf_url=row[9],
+                    pdf_hash=row[10],
+                    institution_address=row[11],
+                    issued_at=row[12]
                 )
                 
                 recipient = User(
                     user_id="",
-                    pubkey=row[15] or "",
+                    pubkey=row[14] or "",
                     address=recipient_address,
                     role=UserRole.CLIENT,
                     password=""
@@ -294,11 +288,10 @@ class NFTRepository:
                     nft.is_valid,
                     nft.minted_at,
                     nft_metadata.metadata_id,
-                    nft_metadata.student_id,
                     nft_metadata.degree_type,
                     nft_metadata.pdf_url,
                     nft_metadata.pdf_hash,
-                    nft_metadata.institution,
+                    nft_metadata.institution_address,
                     nft_metadata.issued_at,
                     user.address,
                     user.pubkey
@@ -323,17 +316,16 @@ class NFTRepository:
                 minted_at = row[6]
                 
                 metadata = NFTmetadata(
-                    student_id=row[8],
-                    degree_type=row[9],
-                    pdf_url=row[10],
-                    pdf_hash=row[11],
-                    institution=row[12],
-                    issued_at=row[13]
+                    degree_type=row[8],
+                    pdf_url=row[9],
+                    pdf_hash=row[10],
+                    institution_address=row[11],
+                    issued_at=row[12]
                 )
                 
                 recipient = User(
                     user_id="",
-                    pubkey=row[15] or "",
+                    pubkey=row[14] or "",
                     address=recipient_address,
                     role=UserRole.CLIENT,
                     password=""
@@ -418,7 +410,7 @@ class NFTRepository:
     def _parse_nft_row(row: tuple) -> NFT:
         """Helper để parse NFT từ database row"""
         # NFT columns: nft_id, issuer_pubkey, metadata_id, recipient_address, issuer_signature, is_valid, minted_at
-        # Metadata columns: metadata_id, student_id, degree_type, pdf_url, pdf_hash, institution, issued_at
+        # Metadata columns: metadata_id, student_id, degree_type, pdf_url, pdf_hash, institution_address, issued_at
         # User columns: address, public_key
         
         token_id = row[0]
@@ -430,18 +422,17 @@ class NFTRepository:
         
         # Parse metadata
         metadata = NFTmetadata(
-            student_id=row[8],
-            degree_type=row[9],
-            pdf_url=row[10],
-            pdf_hash=row[11],
-            institution=row[12],
-            issued_at=row[13]
+            degree_type=row[8],
+            pdf_url=row[9],
+            pdf_hash=row[10],
+            institution_address=row[11],
+            issued_at=row[12]
         )
         
         # Create recipient user (minimal)
         recipient = User(
             user_id=row[8],  # student_id
-            pubkey=row[16] or "",  # public_key
+            pubkey=row[15] or "",  # public_key
             address=recipient_address_str,
             role=UserRole.CLIENT,
             password=""

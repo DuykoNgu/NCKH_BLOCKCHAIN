@@ -7,23 +7,26 @@ pragma foreign_keys = ON;
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS nft_metadata (
     metadata_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    student_id TEXT,
     degree_type TEXT,
     pdf_url TEXT,
     pdf_hash TEXT,
-    institution TEXT,
-    issued_at INTEGER
+    institution_address TEXT,
+    issued_at REAL,
+    FOREIGN KEY (institution_address) REFERENCES account(address)
 );
 
 -------------------------------------------------
 -- Client
 -------------------------------------------------
-CREATE TABLE IF NOT EXISTS client (
-    client_id TEXT PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS account (
+    address TEXT PRIMARY KEY,
     public_key TEXT NOT NULL,
-    address TEXT UNIQUE NOT NULL
-);
+    role TEXT NOT NULL,    --'moet', 'validator', 'client'
+    org_name TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
+);
 -------------------------------------------------
 -- NFT
 -------------------------------------------------
@@ -40,7 +43,7 @@ CREATE TABLE IF NOT EXISTS nft (
     minted_at INTEGER,
 
     FOREIGN KEY (metadata_id) REFERENCES nft_metadata(metadata_id) ON DELETE CASCADE,
-    FOREIGN KEY (recipient_id) REFERENCES client(client_id)
+    FOREIGN KEY (recipient_id) REFERENCES client(client_id) on DELETE CASCADE
 );
 
 -------------------------------------------------
@@ -48,15 +51,16 @@ CREATE TABLE IF NOT EXISTS nft (
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
     tx_id TEXT PRIMARY KEY,
-    sender_pubkey TEXT,
     sender_address TEXT,
     recipient_address TEXT,
 
     signature TEXT,
     timestamp REAL,
     tx_hash TEXT,
-
-    payload TEXT
+    payload TEXT,
+    block_id TEXT,
+    FOREIGN KEY ( sender_address) REFERENCES account(address),
+    FOREIGN KEY (block_id) REFERNCES block(block_id),
 );
 
 -------------------------------------------------
@@ -85,28 +89,6 @@ CREATE TABLE IF NOT EXISTS block (
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
 
--------------------------------------------------
--- Block - Transaction (many-to-many)
--------------------------------------------------
-CREATE TABLE IF NOT EXISTS block_transactions (
-    block_id TEXT,
-    tx_id TEXT,
-
-    PRIMARY KEY (block_id, tx_id),
-
-    FOREIGN KEY (block_id) REFERENCES block(block_id) ON DELETE CASCADE,
-    FOREIGN KEY (tx_id) REFERENCES transactions(tx_id) ON DELETE CASCADE
-);
-
--------------------------------------------------
--- Node
--------------------------------------------------
-CREATE TABLE IF NOT EXISTS node (
-    node_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    node_role TEXT,
-    validator_private_key TEXT,
-    pub_key TEXT
-);
 """
 
 def init_db():

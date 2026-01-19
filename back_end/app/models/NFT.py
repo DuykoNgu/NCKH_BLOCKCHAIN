@@ -1,15 +1,15 @@
 from app.models.NFTmetadata import NFTmetadata
-from app.models.User import User
+
 
 from app.utils.HashUtils import HashUtils
 
 from typing import Optional, Dict, Any
 from datetime import datetime
-
+from app.models.Account import Account
 class NFT:
     """Model NFT - Token không fungible"""
 
-    def __init__(self, issuer_pubkey: str, metadata: NFTmetadata, recipient_address: User):
+    def __init__(self, issuer_pubkey: str, metadata: NFTmetadata, recipient_address: Account):
         # Sinh token_id từ metadata
         seed = f"{metadata.student_id}|{metadata.issued_at}|{recipient_address.address}"
         self.token_id = HashUtils.hash_sha256(seed)
