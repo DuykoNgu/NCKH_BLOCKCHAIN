@@ -1,4 +1,4 @@
-import { Dashboard } from "@/components/common/home_common/Dashboard";
+import { Dashboard } from "@/components/common/layout/Dashboard";
 import React from "react";
 import { logoutUser } from "@/services/authService";
 

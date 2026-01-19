@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createWallet } from '@/services/authService';
 import { validatePassword, validateForm } from "@/ultis/validators/formValidator";
 import type { FormFields } from "@/types/auth";
-import InputField from '@/components/common/InputField';
+import InputField from '@/components/common/layout/InputField';
 
 type FieldName = keyof FormFields;
 
