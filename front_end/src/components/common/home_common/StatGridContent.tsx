@@ -1,5 +1,5 @@
 import { Wallet, TrendingUp, DollarSign, Activity } from 'lucide-react';
-import { StatCard } from '@/components/common/StatCard';
+import { StatCard } from '@/components/common/layout/StatCard';
 
 export const StatGridContent = () => {
   return (
