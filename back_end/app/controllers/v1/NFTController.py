@@ -1,6 +1,17 @@
 from flask import Blueprint, request, jsonify
 from app.services.NFTService import NFTService
+from app.services.SmartContractService import SmartContractService
+from app.services.BlockChainService import BlockChainService
+from app.models.SmartContract import SmartContract
 
+# TODO: Import blockchain instance từ main app
+# Tạm thời dùng global variable, nên được inject từ app context
+_blockchain = None
+
+def set_blockchain(blockchain):
+    """Set blockchain instance từ main app"""
+    global _blockchain
+    _blockchain = blockchain
 
 nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
 
@@ -8,10 +19,10 @@ nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
 @nft_bp.route('/create', methods=['POST'])
 def create_nft():
     """
-    Tạo NFT mới từ chứng chỉ
+    Tạo NFT mới từ chứng chỉ với SmartContract access control.
     
     Client phải ký metadata_hash ở client-side và gửi signature lên.
-    Server sẽ verify signature bằng issuer's public key.
+    Server sẽ verify signature và mint vào SmartContract.
     
     Request body:
     {
@@ -27,27 +38,50 @@ def create_nft():
     try:
         data = request.get_json()
         
-        # Validate required fields - signature thay vì private_key
+        # Validate required fields
         required_fields = ['issuer_id', 'issuer_signature', 'student_id', 'degree_type', 
                           'pdf_url', 'institution', 'recipient_address']
         if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields. Required: issuer_id, issuer_signature, student_id, degree_type, pdf_url, institution, recipient_address"}), 400
+            return jsonify({"error": "Missing required fields"}), 400
         
-        # Sử dụng NFTService.create_nft_from_dict() thay vì tạo thủ công
+        # Tạo NFT object
         nft, issuer, error = NFTService.create_nft_from_dict(data)
-        
         if error:
             return jsonify({"error": error}), 404
         
-        # Verify và save NFT using signature (không cần private_key)
-        success, error_msg = NFTService.verify_and_save_nft(nft, issuer, data['issuer_signature'])
+        # Set signature
+        nft.issuer_signature = data['issuer_signature']
         
-        if success:
+        # Verify signature
+        if not NFTService.verify_nft(nft):
+            return jsonify({"error": "Invalid signature"}), 400
+        
+        # Lấy SmartContract từ blockchain
+        if _blockchain:
+            contract = BlockChainService.get_nft_contract(_blockchain)
+        else:
+            # Fallback: tạo contract tạm thời (dev mode)
+            contract = SmartContract(owner_pubkey=issuer.pubkey)
+        
+        # Mint vào SmartContract (có access control)
+        result = SmartContractService.mint_nft(
+            contract, 
+            nft, 
+            minter_pubkey=issuer.pubkey,
+            save_to_db=True
+        )
+        
+        if result["success"]:
+            # Lưu contract state vào blockchain
+            if _blockchain:
+                BlockChainService.save_nft_contract(_blockchain, contract)
+            
             response = NFTService.success_response(nft, "NFT created successfully", level='standard')
             response["token_id"] = nft.token_id
+            response["total_supply"] = result.get("total_supply")
             return jsonify(response), 201
         else:
-            return jsonify({"error": error_msg or "Failed to create NFT"}), 400
+            return jsonify(result), 400
             
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -115,21 +149,32 @@ def get_all_nfts():
 
 @nft_bp.route('/<token_id>/verify', methods=['POST'])
 def verify_nft(token_id: str):
-    """Xác minh NFT signature"""
+    """Xác minh NFT với SmartContract (verify signature + state)"""
     try:
-        nft = NFTService.get_nft(token_id)
-        
-        if not nft:
-            return jsonify({"error": "NFT not found"}), 404
-        
-        is_valid = NFTService.verify_nft(nft)
-        
-        return jsonify({
-            "token_id": token_id,
-            "is_valid": is_valid,
-            "issuer_signature": nft.issuer_signature or None,
-            "is_revoked": not nft.is_valid
-        }), 200
+        # Lấy contract
+        if _blockchain:
+            contract = BlockChainService.get_nft_contract(_blockchain)
+            # Verify qua SmartContract (kiểm tra cả signature và state)
+            result = SmartContractService.verify_nft(
+                contract, 
+                token_id,
+                verify_signature=True
+            )
+            return jsonify(result), 200
+        else:
+            # Fallback: verify trực tiếp từ DB (legacy mode)
+            nft = NFTService.get_nft(token_id)
+            if not nft:
+                return jsonify({"error": "NFT not found"}), 404
+            
+            is_valid = NFTService.verify_nft(nft)
+            return jsonify({
+                "success": True,
+                "token_id": token_id,
+                "valid": is_valid and nft.is_valid,
+                "issuer_signature": nft.issuer_signature or None,
+                "revoked": not nft.is_valid
+            }), 200
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -138,30 +183,59 @@ def verify_nft(token_id: str):
 @nft_bp.route('/<token_id>/revoke', methods=['POST'])
 def revoke_nft(token_id: str):
     """
-    Thu hồi NFT - chỉ issuer mới được revoke
+    Thu hồi NFT với SmartContract access control.
+    Chỉ contract owner (trường ĐH) mới có quyền revoke.
     
     Request body:
     {
-        "issuer_id": "teacher_001",
-        "issuer_signature": "0x... (signature of revoke message)",
-        "reason": "Reason for revocation"  // optional
+        "revoker_id": "university_admin",
+        "reason": "Phát hiện chứng chỉ giả"  // optional
     }
     """
     try:
-        data = request.get_json() or {}
+        data = request.get_json()
+        revoker_id = data.get('revoker_id')
+        reason = data.get('reason', 'Revoked by issuer')
         
-        # Validate required fields
-        if not data.get('issuer_id') or not data.get('issuer_signature'):
-            return jsonify({"error": "Missing required fields: issuer_id, issuer_signature"}), 400
+        if not revoker_id:
+            return jsonify({"error": "Missing revoker_id"}), 400
         
-        nft = NFTService.get_nft(token_id)
-        if not nft:
-            return jsonify({"error": "NFT not found"}), 404
+        # Lấy revoker user
+        from app.services.UserService import UserService
+        revoker = UserService.get_user_by_id(revoker_id)
+        if not revoker:
+            return jsonify({"error": "Revoker not found"}), 404
         
-        # Kiểm tra người revoke có phải issuer không
-        issuer = NFTService.get_user_by_id(data['issuer_id'])
-        if not issuer:
-            return jsonify({"error": "Issuer not found"}), 404
+        # Lấy contract và revoke
+        if _blockchain:
+            contract = BlockChainService.get_nft_contract(_blockchain)
+            result = SmartContractService.revoke_nft(
+                contract,
+                token_id,
+                revoker_pubkey=revoker.pubkey,
+                reason=reason,
+                update_db=True
+            )
+            
+            if result["success"]:
+                # Lưu contract state
+                BlockChainService.save_nft_contract(_blockchain, contract)
+            
+            return jsonify(result), 200 if result["success"] else 400
+        else:
+            # Fallback: revoke trực tiếp (legacy mode)
+            success = NFTService.revoke_nft(token_id, reason)
+            if success:
+                return jsonify({
+                    "success": True,
+                    "token_id": token_id,
+                    "reason": reason
+                }), 200
+            else:
+                return jsonify({"success": False, "error": "Failed to revoke"}), 400
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
         
         if issuer.pubkey != nft.issuer_pubkey:
             return jsonify({"error": "Only the original issuer can revoke this NFT"}), 403

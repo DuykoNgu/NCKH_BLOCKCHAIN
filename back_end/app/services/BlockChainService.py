@@ -4,6 +4,7 @@ from app.models.BlockChain import BlockChain
 from app.models.Block import Block
 from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
+from app.models.SmartContract import SmartContract
 from app.services.BlockService import BlockService
 from app.services.TransactionService import TransactionService
 from app.repositories.BlockRepository import BlockRepository
@@ -13,6 +14,10 @@ class BlockChainService:
     def create_genesis_block(blockchain: BlockChain, pubkey_hex: str) -> Block:
         blockchain.super_validator_pubkey = pubkey_hex
         blockchain.authority_set.add(pubkey_hex)
+
+        # Khởi tạo SmartContract cho NFT trong state_db
+        nft_contract = SmartContract(owner_pubkey=pubkey_hex)
+        blockchain.state_db["nft_contract"] = nft_contract.to_dict()
 
         header = BlockHeader(
             index=0,
@@ -41,9 +46,18 @@ class BlockChainService:
     @staticmethod
     def execute_transaction(blockchain: BlockChain, tx: Transaction) -> bool:
         payload = tx.payload
+        
+        # Legacy state operations
         if payload.get("op") == "set":
             blockchain.state_db[payload["key"]] = payload["value"]
             return True
+        
+        # NFT SmartContract operations
+        if payload.get("op") in ["mint_nft", "revoke_nft", "transfer_nft"]:
+            # Contract state đã được cập nhật trong payload
+            if "contract_state" in payload:
+                blockchain.state_db["nft_contract"] = payload["contract_state"]
+                return True
 
         return False
 
@@ -98,6 +112,22 @@ class BlockChainService:
         blockchain.mempool.clear()
         blockchain.chain.append(block)
         return True
+    
+    @staticmethod
+    def get_nft_contract(blockchain: BlockChain) -> SmartContract:
+        """Lấy NFT SmartContract từ blockchain state"""
+        contract_data = blockchain.state_db.get("nft_contract")
+        if contract_data:
+            return SmartContract.from_dict(contract_data)
+        # Tạo mới nếu chưa có
+        contract = SmartContract(owner_pubkey=blockchain.super_validator_pubkey)
+        blockchain.state_db["nft_contract"] = contract.to_dict()
+        return contract
+    
+    @staticmethod
+    def save_nft_contract(blockchain: BlockChain, contract: SmartContract):
+        """Lưu NFT SmartContract state vào blockchain"""
+        blockchain.state_db["nft_contract"] = contract.to_dict()
 
 
 

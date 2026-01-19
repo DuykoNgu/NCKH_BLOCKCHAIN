@@ -13,8 +13,12 @@ class NFTService:
     """Service để quản lý business logic của NFT"""
 
     # =========================================================================
-    # FACTORY METHODS - Tạo NFT và Metadata từ các nguồn khác nhau
+    # CORE NFT OPERATIONS - Tạo, ký, verify NFT object
     # =========================================================================
+    # 
+    # NOTE: Để quản lý state (mint, revoke, transfer), dùng SmartContractService
+    # NFTService chỉ xử lý NFT object (tạo, ký, verify signature)
+    #
     
     @staticmethod
     def create_metadata_from_dict(data: Dict[str, Any]) -> NFTmetadata:
@@ -183,7 +187,12 @@ class NFTService:
 
     @staticmethod
     def get_nft(token_id: str) -> Optional[NFT]:
-        """Lấy NFT theo ID"""
+        """
+        Lấy NFT theo ID từ database.
+        
+        DEPRECATED: Dùng SmartContractService.get_nft() để query từ contract state.
+        Method này chỉ query trực tiếp database, không kiểm tra contract state.
+        """
         return NFTRepository.get_nft_by_id(token_id)
 
     @staticmethod
@@ -203,7 +212,12 @@ class NFTService:
 
     @staticmethod
     def revoke_nft(token_id: str, reason: str = "Revoked by issuer") -> bool:
-        """Thu hồi NFT với lý do"""
+        """
+        Thu hồi NFT với lý do.
+        
+        DEPRECATED: Dùng SmartContractService.revoke_nft() để có access control 
+        và đồng bộ với contract state.
+        """
         return NFTRepository.revoke_nft(token_id, reason)
     
     @staticmethod
