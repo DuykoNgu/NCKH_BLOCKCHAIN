@@ -19,11 +19,11 @@ class UserService:
 
     @staticmethod
     def get_all_account() -> List[Account]:
-        """Get all users"""
+        """Get all accounts"""
         try:
-            return UserRepository.get_all_clients()
+            return UserRepository.get_all_accounts()
         except Exception as e:
-            print(f"Error getting all users: {e}")
+            print(f"Error getting all account: {e}")
             return []
 
 
@@ -33,7 +33,7 @@ class UserService:
         try:
             user = UserRepository.get_account_by_address(address)
             if not user:
-                return False, "User not found"
+                return False, "Account not found"
             
             success = UserRepository.delete_account(address)
             if success:

@@ -19,16 +19,14 @@ class Transaction:
 
     def __init__(
         self,
-        tx_id: str = "",
+        tx_hash: str = "",
         sender_address: str = "",
         recipient_address: str = "",
         payload: Optional[Dict[str, Any]] = None,
         signature: str = "",
         timestamp: Optional[float] = None,
-        tx_hash: str = "",
         block_id: str =""
     ) -> None:
-        self.tx_id = tx_id
         self.sender_address = sender_address
         self.recipient_address = recipient_address
         self.payload = payload if payload is not None else {}
@@ -42,7 +40,6 @@ class Transaction:
     def to_dict(self) -> Dict[str, Any]:
         """Chuyển transaction sang dictionary."""
         return {
-            "tx_id": self.tx_id,
             "sender_address": self.sender_address,
             "recipient_address": self.recipient_address,
             "payload": self.payload,
@@ -56,7 +53,6 @@ class Transaction:
     def from_dict(data: Dict[str, Any]) -> "Transaction":
         """Tạo đối tượng TRANSACTION từ dictionary."""
         return Transaction(
-            tx_id=data.get("tx_id", ""),
             sender_address=data.get("sender_address", ""),
             recipient_address=data.get("recipient_address", ""),
             payload=data.get("payload", {}),

@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from typing import Optional
 from app.services.NFTService import NFTService
 from app.models.NFTmetadata import NFTmetadata
-from app.models.User import User, UserRole
 from app.repositories.UserRepository import UserRepository
 from app.repositories.NFTRepository import NFTRepository
 

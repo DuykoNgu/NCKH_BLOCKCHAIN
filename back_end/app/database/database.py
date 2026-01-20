@@ -2,8 +2,21 @@ import sqlite3
 conn = sqlite3.connect('NCKH_educhain.db')
 schema_sql = """
 pragma foreign_keys = ON;
+
 -------------------------------------------------
--- NFT Metadata
+-- 1. Account (Phải tạo trước để các bảng khác tham chiếu)
+-------------------------------------------------
+CREATE TABLE IF NOT EXISTS account (
+    address TEXT PRIMARY KEY,
+    public_key TEXT NOT NULL,
+    role TEXT NOT NULL,    -- 'moet', 'validator', 'client'
+    org_name TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-------------------------------------------------
+-- 2. NFT Metadata
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS nft_metadata (
     metadata_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,55 +29,23 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
 );
 
 -------------------------------------------------
--- Client
--------------------------------------------------
-CREATE TABLE IF NOT EXISTS account (
-    address TEXT PRIMARY KEY,
-    public_key TEXT NOT NULL,
-    role TEXT NOT NULL,    --'moet', 'validator', 'client'
-    org_name TEXT,
-    is_active INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-
-);
--------------------------------------------------
--- NFT
+-- 3. NFT
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS nft (
     nft_id TEXT PRIMARY KEY,
-    issuer_pubkey TEXT NOT NULL,
-    issuer_address TEXT NOT NULL,
-
+    issuer_address TEXT NOT NULL, 
     metadata_id INTEGER,
-    recipient_id TEXT,
-
+    owner_address TEXT,
     issuer_signature TEXT,
     is_valid INTEGER DEFAULT 1,
     minted_at INTEGER,
-
+    status TEXT DEFAULT 'active',
     FOREIGN KEY (metadata_id) REFERENCES nft_metadata(metadata_id) ON DELETE CASCADE,
-    FOREIGN KEY (recipient_id) REFERENCES client(client_id) on DELETE CASCADE
+    FOREIGN KEY (owner_address) REFERENCES account(address) ON DELETE CASCADE
 );
 
 -------------------------------------------------
--- Transaction
--------------------------------------------------
-CREATE TABLE IF NOT EXISTS transactions (
-    tx_id TEXT PRIMARY KEY,
-    sender_address TEXT,
-    recipient_address TEXT,
-
-    signature TEXT,
-    timestamp REAL,
-    tx_hash TEXT,
-    payload TEXT,
-    block_id TEXT,
-    FOREIGN KEY ( sender_address) REFERENCES account(address),
-    FOREIGN KEY (block_id) REFERNCES block(block_id),
-);
-
--------------------------------------------------
--- Block Header
+-- 4. Block Header & Block (Tạo trước Transaction)
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS block_header (
     header_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,20 +56,29 @@ CREATE TABLE IF NOT EXISTS block_header (
     timestamp REAL
 );
 
--------------------------------------------------
--- Block
--------------------------------------------------
 CREATE TABLE IF NOT EXISTS block (
     block_id TEXT PRIMARY KEY,
     index_num INTEGER,
     header_id INTEGER,
-
     block_hash TEXT,
     validator_signature TEXT,
-
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
 
+-------------------------------------------------
+-- 5. Transaction
+-------------------------------------------------
+CREATE TABLE IF NOT EXISTS transactions (
+    tx_hash TEXT PRIMARY KEY,
+    sender_address TEXT,
+    recipient_address TEXT,
+    signature TEXT,
+    timestamp REAL,
+    payload TEXT,
+    block_id TEXT,
+    FOREIGN KEY (sender_address) REFERENCES account(address),
+    FOREIGN KEY (block_id) REFERENCES block(block_id) 
+);
 """
 
 def init_db():
