@@ -3,6 +3,7 @@ import redis
 import datetime
 import jwt
 from app.repositories.UserRepository import UserRepository
+from app.services.UserService import UserService
 import uuid
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
@@ -14,6 +15,29 @@ def get_nonce():
     nonce = uuid.uuid4().hex
     r.set(f"nonce:{address}",nonce, ex=300) 
     return jsonify({"nonce": nonce})
+
+@user_bp.route('/auth/register', methods=['POST']) 
+def register():
+    data = request.json
+    if not data:
+        return {"error": "Missing data"}, 400
+
+    address = data.get('address')
+    public_key = data.get('public_key')
+    role = data.get('role')
+
+    success, account, message = UserService.register_account(address, public_key, role)
+
+    if success:
+        return {
+            "message": message,
+            "data": {
+                "address": account.address,
+                "role": account.role.value
+            }
+        }, 201
+    else:
+        return {"error": message}, 400
 
 @user_bp.route('/auth/verify', methods=['POST'])
 def verify():
