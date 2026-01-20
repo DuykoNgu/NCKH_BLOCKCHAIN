@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from datetime import datetime
-
+import json
 class NFTmetadata:
      def __init__(self,
                   degree_type: str, pdf_url: str, pdf_hash: str, institution_address: str, issued_at: int):
@@ -18,6 +18,16 @@ class NFTmetadata:
                "institution_address": self.institution_address,
                "issued_at": self.issued_at
           }
+     
+     def get_signing_data(self) -> str:
+          data = {
+               "degree_type": self.degree_type,
+               "pdf_url": self.pdf_url,
+               "pdf_hash": self.pdf_hash,
+               "institution_address": self.institution_address,
+               "issued_at": self.issued_at
+          }
+          return json.dumps(data, sort_keys= True, separator=(',', ':'))
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return NFTmetadata(**data)

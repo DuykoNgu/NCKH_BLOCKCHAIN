@@ -11,7 +11,6 @@ BASE_NFT_SELECT = """
         nft.issuer_signature,  -- 2
         nft.is_valid,         -- 3
         nft.minted_at,        -- 4
-        nft.status,           -- 5
         m.degree_type,        -- 6
         m.pdf_url,           -- 7
         m.pdf_hash,          -- 8
@@ -56,17 +55,17 @@ class NFTRepository:
             nft_dict = nft.to_dict()
             cursor.execute("""
                 INSERT INTO nft 
-                (nft_id, metadata_id, owner_address, 
-                 issuer_signature, is_valid, minted_at,status)
+                (nft_id,issuer_address, metadata_id, owner_address, 
+                 issuer_signature, is_valid, minted_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 nft.token_id,
+                nft.issuer_address,
                 metadata_id,
                 nft.owner_address.address,
                 nft.issuer_signature or '',
                 1 if nft.is_valid else 0,
                 nft.minted_at,
-                nft.status
             ))
 
             conn.commit()
@@ -179,20 +178,20 @@ class NFTRepository:
         
         # Metadata (6-10)
         metadata = NFTmetadata(
-            degree_type=row[6],
-            pdf_url=row[7],
-            pdf_hash=row[8],
-            institution_address=row[9],
-            issued_at=row[10]
+            degree_type=row[5],
+            pdf_url=row[6],
+            pdf_hash=row[7],
+            institution_address=row[8],
+            issued_at=row[9]
         )
         
         # Owner Account (11-14)
         owner = Account(
-            address=row[11],
-            public_key=row[12],
+            address=row[10],
+            public_key=row[11],
             role=Role.CLIENT, 
-            org_name=row[13],
-            is_active=bool(row[14])
+            org_name=row[12],
+            is_active=bool(row[13])
         )
         
      
@@ -204,7 +203,6 @@ class NFTRepository:
         nft.token_id = row[0]
         nft.issuer_signature = row[2]
         nft.is_valid = bool(row[3])
-        nft.minted_at = row[4]
-        nft.status = row[5] 
+        nft.minted_at = row[4] 
         
         return nft

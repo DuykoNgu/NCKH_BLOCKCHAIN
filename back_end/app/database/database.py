@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS nft (
     issuer_signature TEXT,
     is_valid INTEGER DEFAULT 1,
     minted_at INTEGER,
-    status TEXT DEFAULT 'active',
     FOREIGN KEY (metadata_id) REFERENCES nft_metadata(metadata_id) ON DELETE CASCADE,
     FOREIGN KEY (owner_address) REFERENCES account(address) ON DELETE CASCADE
 );

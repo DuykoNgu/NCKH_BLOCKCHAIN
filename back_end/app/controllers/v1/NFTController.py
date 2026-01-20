@@ -4,7 +4,7 @@ from app.services.NFTService import NFTService
 from app.models.NFTmetadata import NFTmetadata
 from app.repositories.UserRepository import UserRepository
 from app.repositories.NFTRepository import NFTRepository
-
+from app.utils.CryptoUtils import CryptoUtils
 
 nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
 
@@ -28,13 +28,13 @@ def create_nft():
         data = request.get_json()
         
         # Validate required fields
-        required_fields = ['issuer_id', 'student_id', 'degree_type', 
-                          'pdf_url', 'institution_address', 'recipient_address']
+        required_fields = [ 'degree_type', 'pdf_url', 
+                    'pdf_hash', 'institution_address', 'recipient_address', 'signature']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
         
         # Get issuer
-        issuer = UserRepository.get_client_by_id(data['issuer_id'])
+        issuer = UserRepository.get_account_by_address(data['institution_address'])
         if not issuer:
             return jsonify({"error": "Issuer user not found"}), 404
         
@@ -43,27 +43,33 @@ def create_nft():
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
         
-        # Create metadata
-        import hashlib
-        pdf_hash = hashlib.sha256(data['pdf_url'].encode()).hexdigest()
-        
         metadata = NFTmetadata(
-            student_id=data['student_id'],
             degree_type=data['degree_type'],
             pdf_url=data['pdf_url'],
-            pdf_hash=pdf_hash,
-            institution_address=data['institution_address']
+            pdf_hash=data['pdf_hash'],
+            institution_address=data['institution_address'],
+            
         )
         
+        message_to_verify = metadata.get_signing_data()
+
+        is_authentic = CryptoUtils.verify_signature(
+            data= message_to_verify,
+            signature_hex=data['signature'],
+            public_key_hex=issuer.public_key
+        )
+
+        if not is_authentic:
+            return jsonify({"error": "Invalid digital signature. "}), 401
         # Create NFT
         nft = NFTService.create_nft(
-            issuer_pubkey=issuer.pubkey,
+            issuer_address=issuer.address,
             metadata=metadata,
             recipient=recipient
         )
         
         # Sign and save NFT using NFTService
-        success = NFTService.sign_and_save_nft(nft, data.get('issuer_private_key', ''))
+        success = NFTRepository.create_nft(nft)
         
         if success:
             return jsonify({
@@ -96,21 +102,6 @@ def get_nft(token_id: str):
         
         return jsonify({
             "nft": NFTService.get_nft_info(nft)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@nft_bp.route('/student/<student_id>', methods=['GET'])
-def get_student_nfts(student_id: str):
-    """Lấy tất cả NFT của một student"""
-    try:
-        nfts = NFTService.get_student_nfts(student_id)
-        
-        return jsonify({
-            "total": len(nfts),
-            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
         }), 200
         
     except Exception as e:
@@ -151,7 +142,7 @@ def get_all_nfts():
 def verify_nft(token_id: str):
     """Xác minh NFT signature"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
@@ -173,7 +164,7 @@ def verify_nft(token_id: str):
 def revoke_nft(token_id: str):
     """Thu hồi NFT"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
@@ -234,7 +225,7 @@ def verify_batch_nfts():
 def get_metadata_hash(token_id: str):
     """Lấy hash của metadata"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404

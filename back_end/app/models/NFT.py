@@ -11,7 +11,7 @@ class NFT:
 
     def __init__(self, issuer_address: str,metadata: NFTmetadata, owner_address: Account):
         # Sinh token_id từ metadata
-        seed = f"{metadata.student_id}|{metadata.issued_at}|{owner_address.address}"
+        seed = f"{self.metadata.get_signing_data()}|{owner_address.address}"
         self.token_id = HashUtils.hash_sha256(seed)
         self.issuer_address = issuer_address
         self.metadata = metadata
@@ -19,7 +19,7 @@ class NFT:
         self.issuer_signature: Optional[str] = None
         self.minted_at = datetime.utcnow().isoformat()
         self.is_valid = True
-        self.status = None
+
 
     def to_dict(self) -> Dict[str, Any]:
         """Chuyển NFT thành dict"""
@@ -31,7 +31,7 @@ class NFT:
             "issuer_signature": self.issuer_signature,
             "is_valid": self.is_valid,
             "minted_at": self.minted_at,
-            "status": self.status
+
         }
 
     @staticmethod

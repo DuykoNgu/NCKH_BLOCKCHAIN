@@ -10,11 +10,11 @@ class NFTService:
     """Service để quản lý business logic của NFT"""
 
     @staticmethod
-    def create_nft(issuer_pubkey: str, metadata: NFTmetadata, 
+    def create_nft(issuer_address: str, metadata: NFTmetadata, 
                    recipient: Account) -> NFT:
         """Tạo NFT mới"""
         nft = NFT(
-            issuer_pubkey=issuer_pubkey,
+            issuer_address=issuer_address,
             metadata=metadata,
             recipient_address=recipient
         )
@@ -46,17 +46,6 @@ class NFTService:
         nft_data_bytes = json.dumps(nft_data, sort_keys=True).encode()
         return CryptoUtils.verify_signature(nft_data_bytes, nft.issuer_signature, nft.issuer_pubkey)
 
-    @staticmethod
-    def sign_and_save_nft(nft: NFT, issuer_private_key: str) -> bool:
-        """Ký NFT và lưu vào database"""
-        try:
-            NFTService.sign_nft(nft, issuer_private_key)
-            return NFTRepository.create_nft(nft)
-        except Exception as e:
-            print(f"Error signing and saving NFT: {str(e)}")
-            return False
-        """Lấy NFT theo ID"""
-        return NFTRepository.get_nft_by_id(token_id)
 
     @staticmethod
     def get_user_nfts(recipient_address: str) -> List[NFT]:
@@ -67,7 +56,10 @@ class NFTService:
     def get_all_nfts() -> List[NFT]:
         """Lấy tất cả NFT trong hệ thống"""
         return NFTRepository.get_all_nfts()
-
+    
+    @staticmethod
+    def get_nft_by_id(token_id : str) -> NFT:
+        return NFTRepository.get_nft_by_id(token_id)
     @staticmethod
     def revoke_nft(token_id: str) -> bool:
         """Thu hồi NFT"""
