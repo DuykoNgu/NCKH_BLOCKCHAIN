@@ -107,6 +107,20 @@ CREATE TABLE IF NOT EXISTS node (
     validator_private_key TEXT,
     pub_key TEXT
 );
+
+-------------------------------------------------
+-- 6. Peers (P2P Network)
+-------------------------------------------------
+CREATE TABLE IF NOT EXISTS peers (
+    peer_id TEXT PRIMARY KEY,
+    ip_address TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    public_key TEXT,
+    node_type TEXT,  -- 'validator', 'observer'
+    is_active INTEGER DEFAULT 1,
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 def init_db():
