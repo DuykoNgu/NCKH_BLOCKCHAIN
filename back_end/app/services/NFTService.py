@@ -2,20 +2,19 @@ from typing import List, Optional
 import json
 from app.models.NFT import NFT
 from app.models.NFTmetadata import NFTmetadata
-from app.models.User import User
 from app.repositories.NFTRepository import NFTRepository
 from app.utils.CryptoUtils import CryptoUtils
-
+from app.models.Account import Account
 
 class NFTService:
     """Service để quản lý business logic của NFT"""
 
     @staticmethod
-    def create_nft(issuer_pubkey: str, metadata: NFTmetadata, 
-                   recipient: User) -> NFT:
+    def create_nft(issuer_address: str, metadata: NFTmetadata, 
+                   recipient: Account) -> NFT:
         """Tạo NFT mới"""
         nft = NFT(
-            issuer_pubkey=issuer_pubkey,
+            issuer_address=issuer_address,
             metadata=metadata,
             recipient_address=recipient
         )
@@ -47,33 +46,20 @@ class NFTService:
         nft_data_bytes = json.dumps(nft_data, sort_keys=True).encode()
         return CryptoUtils.verify_signature(nft_data_bytes, nft.issuer_signature, nft.issuer_pubkey)
 
-    @staticmethod
-    def sign_and_save_nft(nft: NFT, issuer_private_key: str) -> bool:
-        """Ký NFT và lưu vào database"""
-        try:
-            NFTService.sign_nft(nft, issuer_private_key)
-            return NFTRepository.create_nft(nft)
-        except Exception as e:
-            print(f"Error signing and saving NFT: {str(e)}")
-            return False
-        """Lấy NFT theo ID"""
-        return NFTRepository.get_nft_by_id(token_id)
-
-    @staticmethod
-    def get_student_nfts(student_id: str) -> List[NFT]:
-        """Lấy tất cả NFT của một student"""
-        return NFTRepository.get_nft_by_student(student_id)
 
     @staticmethod
     def get_user_nfts(recipient_address: str) -> List[NFT]:
         """Lấy tất cả NFT của một user"""
-        return NFTRepository.get_nft_by_recipient(recipient_address)
+        return NFTRepository.get_nft_by_address(recipient_address)
 
     @staticmethod
     def get_all_nfts() -> List[NFT]:
         """Lấy tất cả NFT trong hệ thống"""
         return NFTRepository.get_all_nfts()
-
+    
+    @staticmethod
+    def get_nft_by_id(token_id : str) -> NFT:
+        return NFTRepository.get_nft_by_id(token_id)
     @staticmethod
     def revoke_nft(token_id: str) -> bool:
         """Thu hồi NFT"""
@@ -96,7 +82,6 @@ class NFTService:
             results["details"].append({
                 "token_id": nft.token_id,
                 "is_valid": is_valid,
-                "issuer": nft.issuer_pubkey[:16] + "...",
                 "recipient": nft.recipient_address.address
             })
         
@@ -115,9 +100,9 @@ class NFTService:
             "issuer_pubkey": nft.issuer_pubkey,
             "metadata": nft.metadata.to_dict(),
             "recipient": {
-                "user_id": nft.recipient_address.user_id,
                 "address": nft.recipient_address.address,
-                "role": nft.recipient_address.role.value
+                "role": nft.recipient_address.role.value,
+                "org_name": nft.recipient_address.org_name.value
             },
             "issuer_signature": nft.issuer_signature or None,
             "is_valid": nft.is_valid,
