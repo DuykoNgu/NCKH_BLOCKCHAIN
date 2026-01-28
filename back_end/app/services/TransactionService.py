@@ -1,7 +1,7 @@
 import hashlib
 import json
 from ecdsa import SigningKey, VerifyingKey, SECP256k1
-from ..models.Transaction import Transaction
+from app.models.Transaction import Transaction
 
 
 class TransactionService:

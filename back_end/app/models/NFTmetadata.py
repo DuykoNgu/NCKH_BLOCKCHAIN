@@ -27,7 +27,7 @@ class NFTmetadata:
                "institution_address": self.institution_address,
                "issued_at": self.issued_at
           }
-          return json.dumps(data, sort_keys= True, separator=(',', ':'))
+          return json.dumps(data, sort_keys= True,separators=(',', ':'))
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return NFTmetadata(**data)
