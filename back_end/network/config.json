@@ -58,6 +58,7 @@
     "consensus": {
         "slot_duration": 5,
         "block_time": 5,
-        "validator_rotation": true
+        "validator_rotation": true,
+        "max_transactions_per_block": 100
     }
 }

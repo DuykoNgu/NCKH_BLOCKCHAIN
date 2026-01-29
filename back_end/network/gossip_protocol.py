@@ -320,6 +320,33 @@ class GossipProtocol:
         # Mark as known
         self.known_transactions.add(tx_hash)
         
+        # ✅ VALIDATE AND ADD TO MEMPOOL
+        from app.models.Transaction import Transaction
+        from app.services.TransactionService import TransactionService
+        from app.services.BlockChainService import BlockChainService
+        from app.blockchain_instance import get_blockchain_instance
+        
+        try:
+            # Parse transaction
+            tx = Transaction.from_dict(tx_data)
+            
+            # Validate transaction signature
+            if not TransactionService.is_valid(tx):
+                print(f"✗ Invalid transaction signature: {tx_hash[:8]}...")
+                return False
+            
+            # Add to blockchain mempool
+            blockchain = get_blockchain_instance()
+            if BlockChainService.add_transaction_to_mempool(blockchain, tx):
+                print(f"✓ Transaction {tx_hash[:8]}... added to mempool")
+            else:
+                print(f"✗ Failed to add transaction {tx_hash[:8]}... to mempool")
+                return False
+        
+        except Exception as e:
+            print(f"✗ Error processing transaction: {e}")
+            return False
+        
         # Continue gossip to other peers (exclude sender)
         exclude = [sender_peer_id] if sender_peer_id else []
         self.propagate_transaction(tx_data, exclude_peers=exclude)
@@ -345,9 +372,60 @@ class GossipProtocol:
         # Mark as known
         self.known_blocks.add(block_hash)
         
+        # ✅ VERIFY AND COMMIT BLOCK
+        from app.models.Block import Block
+        from app.services.BlockService import BlockService
+        from app.services.BlockChainService import BlockChainService
+        from app.repositories.BlockRepository import BlockRepository
+        from app.repositories.TransactionRepository import TransactionRepository
+        from app.blockchain_instance import get_blockchain_instance
+        
+        try:
+            # Parse block
+            block = Block.from_dict(block_data)
+            blockchain = get_blockchain_instance()
+            
+            # 1. Verify validator signature
+            if not BlockService.verify_block(block, block.block_header.validator_pubkey):
+                print(f"✗ Block {block_hash[:8]}... has invalid signature")
+                return False
+            
+            # 2. Verify validator authorization
+            if block.block_header.validator_pubkey not in blockchain.authority_set:
+                print(f"✗ Validator {block.block_header.validator_pubkey[:16]}... not authorized")
+                return False
+            
+            # 3. Verify merkle root
+            calculated_merkle = BlockService.calculate_merkle_root(block.transactions)
+            if calculated_merkle != block.block_header.merkle_root:
+                print(f"✗ Merkle root mismatch for block {block_hash[:8]}...")
+                return False
+            
+            # 4. Verify block chain continuity
+            if len(blockchain.chain) > 0:
+                if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
+                    print(f"✗ Block {block_hash[:8]}... validation failed")
+                    return False
+            
+            # 5. Commit to blockchain
+            BlockChainService.add_block(blockchain, block)
+            
+            # 6. Save to database
+            BlockRepository.create_block(block)
+            for tx in block.transactions:
+                tx.block_id = block.block_id
+                TransactionRepository.create_transaction(tx)
+            
+            print(f"✓ Block {block_hash[:8]}... verified and committed (index={block.index})")
+        
+        except Exception as e:
+            print(f"✗ Failed to process block: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+        
         # Continue gossip to other peers (exclude sender)
         exclude = [sender_peer_id] if sender_peer_id else []
-        # Don't use INV for re-gossip, send full block
         active_peers = self.peer_manager.get_active_peers()
         selected_peers = [p for p in active_peers if p.peer_id not in exclude]
         

@@ -151,3 +151,25 @@ class TransactionRepository:
         except Exception as e:
             print(f"Error getting transactions by date range: {e}")
             return []
+    
+    @staticmethod
+    def _parse_transaction_row(row) -> Optional[Transaction]:
+        """Helper method to parse database row into Transaction object"""
+        if not row:
+            return None
+        
+        import json
+        
+        try:
+            return Transaction(
+                tx_hash=row[0],
+                sender_address=row[1],
+                recipient_address=row[2],
+                payload=json.loads(row[3]) if row[3] else {},
+                signature=row[4],
+                timestamp=row[5],
+                block_id=row[6]
+            )
+        except Exception as e:
+            print(f"Error parsing transaction row: {e}")
+            return None
