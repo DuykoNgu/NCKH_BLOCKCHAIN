@@ -1,6 +1,6 @@
 import sqlite3
 from typing import List, Optional, Dict, Any
-from app.database import get_connection, close_connection
+from app.database.connection import get_connection, close_connection
 from app.models.NFT import NFT
 from app.models.NFTmetadata import NFTmetadata
 from app.models.Account import Account, Role

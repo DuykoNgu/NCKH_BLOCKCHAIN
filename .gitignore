@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.cpython-*.pyc
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# SQLite database files
+*.db
+
+# Test files
+tests/test_*.py
+**/test_*.py
+
+# Logs
+*.log
+
+# Node modules
+node_modules/
+
+# Frontend build
+front_end/dist/
+front_end/.vite/

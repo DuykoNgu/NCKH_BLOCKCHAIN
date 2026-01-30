@@ -1,11 +1,13 @@
-"""UserRepository - Data access layer for account operations"""
+"""AccountRepository - Data access layer for account operations"""
 from typing import Optional, List
-from xmlrpc import account
-from app.database import get_connection
-from back_end.app.models.Account import Account
+from app.database.connection import get_connection
+from app.models.Account import Account
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
-class UserRepository:
+class AccountRepository:
     """Repository for account database operations"""
 
     @staticmethod
@@ -22,7 +24,7 @@ class UserRepository:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error creating account: {e}")
+            logger.error(f"Error creating account: {e}")
             return False
         
     @staticmethod
@@ -46,7 +48,7 @@ class UserRepository:
                 )
             return None
         except Exception as e:
-            print(f"Error getting account by address: {e}")
+            logger.error(f"Error getting account by address: {e}")
             return None
 
     @staticmethod
@@ -71,25 +73,26 @@ class UserRepository:
                 ))
             return clients
         except Exception as e:
-            print(f"Error getting all clients: {e}")
+            logger.error(f"Error getting all clients: {e}")
             return []
 
     @staticmethod
     def update_account(account: Account) -> bool:
-        """Update account"""
+        """Update account by address"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE account 
-                SET public_key = ?, address = ?, role = ?, org_name = ?, is_active = ?, created_at = ?
-                WHERE client_id = ?
-            ''', (account.public_key, account.address, account.role, account.org_name, account.is_active, account.created_at, account.client_id))
+                SET public_key = ?, role = ?, org_name = ?, is_active = ?
+                WHERE address = ?
+            ''', (account.public_key, account.role.value if hasattr(account.role, 'value') else account.role, 
+                  account.org_name, account.is_active, account.address))
             conn.commit()
             conn.close()
-            return True
+            return cursor.rowcount > 0
         except Exception as e:
-            print(f"Error updating account: {e}")
+            logger.error(f"Error updating account: {e}")
             return False
 
     @staticmethod
@@ -103,5 +106,5 @@ class UserRepository:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error deleting account: {e}")
+            logger.error(f"Error deleting account: {e}")
             return False
