@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from typing import Optional
 from app.services.NFTService import NFTService
 from app.models.NFTmetadata import NFTmetadata
-from app.repositories.UserRepository import UserRepository
+from app.repositories.AccountRepository import AccountRepository
 from app.repositories.NFTRepository import NFTRepository
 from app.utils.CryptoUtils import CryptoUtils
 
@@ -34,12 +34,12 @@ def create_nft():
             return jsonify({"error": "Missing required fields"}), 400
         
         # Get issuer
-        issuer = UserRepository.get_account_by_address(data['institution_address'])
+        issuer = AccountRepository.get_account_by_address(data['institution_address'])
         if not issuer:
             return jsonify({"error": "Issuer user not found"}), 404
         
         # Get recipient user
-        recipient = UserRepository.get_account_by_address(data['recipient_address'])
+        recipient = AccountRepository.get_account_by_address(data['recipient_address'])
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
         
@@ -95,7 +95,7 @@ def create_nft():
 def get_nft(token_id: str):
     """Lấy thông tin NFT theo token_id"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
@@ -204,7 +204,7 @@ def verify_batch_nfts():
         # Lấy NFT một lần duy nhất cho mỗi token_id (tối ưu hiệu suất)
         nfts = []
         for tid in token_ids:
-            nft = NFTService.get_nft(tid)
+            nft = NFTService.get_nft_by_id(tid)
             if nft:
                 nfts.append(nft)
         

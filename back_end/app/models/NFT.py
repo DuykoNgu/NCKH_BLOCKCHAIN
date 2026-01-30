@@ -4,20 +4,22 @@ from app.models.NFTmetadata import NFTmetadata
 from app.utils.HashUtils import HashUtils
 
 from typing import Optional, Dict, Any
-from datetime import datetime
+import datetime
 from app.models.Account import Account
 class NFT:
     """Model NFT - Token không fungible"""
 
-    def __init__(self, issuer_address: str,metadata: NFTmetadata, owner_address: Account):
-        # Sinh token_id từ metadata
+    def __init__(self, issuer_address: str, metadata: NFTmetadata, owner_address: Account):
+        # Gán metadata TRƯỚC khi sử dụng
+        self.metadata = metadata
+        self.issuer_address = issuer_address
+        self.owner_address = owner_address
+        
+        # Sinh token_id từ metadata (sau khi đã gán)
         seed = f"{self.metadata.get_signing_data()}|{owner_address.address}"
         self.token_id = HashUtils.hash_sha256(seed)
-        self.issuer_address = issuer_address
-        self.metadata = metadata
-        self.owner_address = owner_address
         self.issuer_signature: Optional[str] = None
-        self.minted_at = datetime.utcnow().isoformat()
+        self.minted_at = datetime.datetime.utcnow().isoformat()
         self.is_valid = True
 
 
