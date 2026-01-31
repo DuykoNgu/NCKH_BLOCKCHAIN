@@ -61,6 +61,47 @@ def create_nft():
 
         if not is_authentic:
             return jsonify({"error": "Invalid digital signature. "}), 401
+        
+        # ✅ CREATE TRANSACTION FOR BLOCKCHAIN
+        from app.models.Transaction import Transaction
+        from app.services.TransactionService import TransactionService
+        from app.services.BlockChainService import BlockChainService
+        from app.services.NetworkService import get_network_service
+        from app.blockchain_instance import get_blockchain_instance
+        
+        # Create transaction payload
+        tx = Transaction(
+            sender_pubkey=issuer.public_key,
+            sender_address=issuer.address,
+            recipient_address=recipient.address,
+            payload={
+                "op": "mint_nft",
+                "degree_type": data['degree_type'],
+                "pdf_hash": data['pdf_hash'],
+                "institution_address": data['institution_address']
+            }
+        )
+        
+        # Sign transaction (need issuer's private key - should be passed or retrieved securely)
+        # For now, we'll calculate tx_hash without signing
+        # In production, you should sign the transaction with issuer's private key
+        tx.tx_hash = TransactionService.calculate_hash(tx)
+        tx.tx_id = tx.tx_hash  # Use hash as ID for now
+        
+        # Add to mempool
+        blockchain = get_blockchain_instance()
+        if not BlockChainService.add_transaction_to_mempool(blockchain, tx):
+            return jsonify({"error": "Failed to add transaction to mempool"}), 500
+        
+        # Broadcast transaction to P2P network
+        try:
+            network_service = get_network_service()
+            propagated = network_service.broadcast_transaction(tx.to_dict())
+            print(f"✓ Transaction propagated to {propagated} peers")
+        except Exception as e:
+            print(f"⚠ Warning: Failed to propagate transaction: {e}")
+            # Continue even if propagation fails
+        
         # Create NFT
         nft = NFTService.create_nft(
             issuer_address=issuer.address,
@@ -76,6 +117,7 @@ def create_nft():
                 "message": "NFT created successfully",
                 "success": True,
                 "token_id": nft.token_id,
+                "tx_hash": tx.tx_hash,
                 "nft": {
                     "token_id": nft.token_id,
                     "issuer_pubkey": nft.issuer_pubkey,

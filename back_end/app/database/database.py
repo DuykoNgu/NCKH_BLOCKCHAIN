@@ -93,6 +93,34 @@ CREATE TABLE IF NOT EXISTS block (
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
 
+-------------------------------------------------
+-- 5. Transaction
+-------------------------------------------------
+CREATE TABLE IF NOT EXISTS transactions (
+    tx_hash TEXT PRIMARY KEY,
+    sender_address TEXT,
+    recipient_address TEXT,
+    signature TEXT,
+    timestamp REAL,
+    payload TEXT,
+    block_id TEXT,
+    FOREIGN KEY (sender_address) REFERENCES account(address),
+    FOREIGN KEY (block_id) REFERENCES block(block_id) 
+);
+
+-------------------------------------------------
+-- 6. Peers (P2P Network)
+-------------------------------------------------
+CREATE TABLE IF NOT EXISTS peers (
+    peer_id TEXT PRIMARY KEY,
+    ip_address TEXT NOT NULL,
+    port INTEGER NOT NULL,
+    public_key TEXT,
+    node_type TEXT,  -- 'validator', 'observer'
+    is_active INTEGER DEFAULT 1,
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 def init_db():

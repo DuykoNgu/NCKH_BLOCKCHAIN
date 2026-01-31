@@ -30,13 +30,13 @@ class Transaction:
         block_id: str = ""
     ) -> None:
         self.tx_id = tx_id
+        self.tx_hash = tx_hash
         self.sender_pubkey = sender_pubkey
         self.sender_address = sender_address
         self.recipient_address = recipient_address
         self.payload = payload if payload is not None else {}
         self.signature = signature
         self.timestamp = timestamp if timestamp is not None else time.time()
-        self.tx_hash = tx_hash
         self.block_id = block_id
 
 
@@ -45,13 +45,13 @@ class Transaction:
         """Chuyển transaction sang dictionary."""
         return {
             "tx_id": self.tx_id,
+            "tx_hash": self.tx_hash,
             "sender_pubkey": self.sender_pubkey,
             "sender_address": self.sender_address,
             "recipient_address": self.recipient_address,
             "payload": self.payload,
             "signature": self.signature,
             "timestamp": self.timestamp,
-            "tx_hash": self.tx_hash,
             "block_id": self.block_id
         }
 

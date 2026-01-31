@@ -1,14 +1,16 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime
 import json
+import time
+
 class NFTmetadata:
      def __init__(self,
-                  degree_type: str, pdf_url: str, pdf_hash: str, institution_address: str, issued_at: int):
+                  degree_type: str, pdf_url: str, pdf_hash: str, institution_address: str, issued_at: Optional[float] = None):
           self.degree_type = degree_type
           self.pdf_url = pdf_url  
           self.pdf_hash = pdf_hash
           self.institution_address = institution_address
-          self.issued_at = issued_at or datetime.utcnow().isoformat()
+          self.issued_at = issued_at if issued_at is not None else time.time()
           
      def to_dict(self) -> Dict[str, Any]:
           return {
