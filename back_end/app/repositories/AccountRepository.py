@@ -16,10 +16,14 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
+            
+            # Convert role enum to string value
+            role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
+            
             cursor.execute('''
                 INSERT INTO account (public_key, address,role,org_name,is_active, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (account.public_key, account.address, account.role, account.org_name, account.is_active, account.created_at))
+            ''', (account.public_key, account.address, role_value, account.org_name, account.is_active, account.created_at))
             conn.commit()
             conn.close()
             return True

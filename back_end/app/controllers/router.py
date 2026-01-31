@@ -1,8 +1,7 @@
 from flask import Flask
-from app.controllers import router
 import redis
 from app.controllers.v1.BlockController import block_bp
-from app.controllers.v1.UserConrtoller import user_bp
+from app.controllers.v1.AccountController import user_bp
 from app.controllers.v1.NetworkController import network_bp
 
 def create_app():

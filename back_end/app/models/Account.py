@@ -1,8 +1,9 @@
 from typing import Dict, Any
 from enum import Enum
+
 class Role(Enum):
-     MOET = "moet",
-     VALIDATOR = "validator",
+     MOET = "moet"
+     VALIDATOR = "validator"
      CLIENT = "client"
 class Account:
      def __init__(self, public_key: str, address: str, role: Role, org_name: str = None, is_active: int = 1, created_at: str = None):
