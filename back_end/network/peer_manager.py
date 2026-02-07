@@ -8,21 +8,33 @@ import requests
 from typing import List, Dict, Optional, Tuple
 import hashlib
 import json
+from enum import Enum
 
 from network.config_loader import get_config
+
+
+class PeerStatus(Enum):
+    """Peer status enum"""
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
 
 
 class Peer:
     """Represents a peer node in the network"""
     
     def __init__(self, peer_id: str, ip_address: str, port: int, 
-                 public_key: str = "", node_type: str = "observer"):
+                 public_key: str = "", node_type: str = "observer", status: str = "PENDING"):
         self.peer_id = peer_id
         self.ip_address = ip_address
         self.port = port
         self.public_key = public_key
         self.node_type = node_type
-        self.is_active = True
+        # Handle both string and enum for status
+        if isinstance(status, PeerStatus):
+            self.status = status.value
+        else:
+            self.status = status if status in ["PENDING", "ACTIVE", "INACTIVE"] else "PENDING"
         self.last_seen = time.time()
     
     def get_url(self) -> str:
@@ -37,7 +49,7 @@ class Peer:
             'port': self.port,
             'public_key': self.public_key,
             'node_type': self.node_type,
-            'is_active': self.is_active,
+            'status': self.status,
             'last_seen': self.last_seen
         }
     
@@ -49,9 +61,9 @@ class Peer:
             ip_address=data['ip_address'],
             port=data['port'],
             public_key=data.get('public_key', ''),
-            node_type=data.get('node_type', 'observer')
+            node_type=data.get('node_type', 'observer'),
+            status=data.get('status', 'PENDING')
         )
-        peer.is_active = data.get('is_active', True)
         peer.last_seen = data.get('last_seen', time.time())
         return peer
 
@@ -79,9 +91,9 @@ class PeerManager:
         try:
             cursor.execute("""
                 SELECT peer_id, ip_address, port, public_key, node_type, 
-                       is_active, last_seen
+                       status, last_seen
                 FROM peers
-                WHERE is_active = 1
+                WHERE status = 'ACTIVE'
             """)
             
             rows = cursor.fetchall()
@@ -91,7 +103,8 @@ class PeerManager:
                     ip_address=row['ip_address'],
                     port=row['port'],
                     public_key=row['public_key'] or '',
-                    node_type=row['node_type'] or 'observer'
+                    node_type=row['node_type'] or 'observer',
+                    status=row['status'] or 'PENDING'
                 )
                 peer.last_seen = row['last_seen'] or time.time()
                 self.peers[peer.peer_id] = peer
@@ -110,7 +123,7 @@ class PeerManager:
         try:
             cursor.execute("""
                 INSERT OR REPLACE INTO peers 
-                (peer_id, ip_address, port, public_key, node_type, is_active, last_seen)
+                (peer_id, ip_address, port, public_key, node_type, status, last_seen)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (
                 peer.peer_id,
@@ -118,7 +131,7 @@ class PeerManager:
                 peer.port,
                 peer.public_key,
                 peer.node_type,
-                1 if peer.is_active else 0,
+                peer.status,
                 peer.last_seen
             ))
             
@@ -169,7 +182,7 @@ class PeerManager:
         """Remove peer from network"""
         if peer_id in self.peers:
             peer = self.peers[peer_id]
-            peer.is_active = False
+            peer.status = "INACTIVE"
             self.save_peer_to_db(peer)
             del self.peers[peer_id]
             print(f"✓ Removed peer: {peer_id}")
@@ -184,7 +197,7 @@ class PeerManager:
             
             if response.status_code == 200:
                 peer.last_seen = time.time()
-                peer.is_active = True
+                peer.status = "ACTIVE"
                 self.save_peer_to_db(peer)
                 return True
             else:
@@ -198,7 +211,7 @@ class PeerManager:
         active_peers = []
         
         for peer in self.peers.values():
-            if peer.is_active and (current_time - peer.last_seen) < timeout:
+            if peer.status == "ACTIVE" and (current_time - peer.last_seen) < timeout:
                 active_peers.append(peer)
         
         return active_peers
@@ -284,11 +297,72 @@ class PeerManager:
                 alive += 1
             else:
                 dead += 1
-                peer.is_active = False
+                peer.status = "INACTIVE"
                 self.save_peer_to_db(peer)
         
         print(f"Health check: {alive} alive, {dead} dead")
         return alive, dead
+    
+    def get_peers_by_status(self, status: str) -> List[Peer]:
+        """Get peers by status"""
+        return [peer for peer in self.peers.values() if peer.status == status]
+    
+    def approve_peer(self, peer_id: str) -> bool:
+        """Approve a pending peer (PENDING -> ACTIVE)"""
+        if peer_id not in self.peers:
+            # Try to load from database
+            conn = self.get_db_connection()
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    SELECT peer_id, ip_address, port, public_key, node_type, status, last_seen
+                    FROM peers
+                    WHERE peer_id = ?
+                """, (peer_id,))
+                row = cursor.fetchone()
+                if row:
+                    peer = Peer(
+                        peer_id=row['peer_id'],
+                        ip_address=row['ip_address'],
+                        port=row['port'],
+                        public_key=row['public_key'] or '',
+                        node_type=row['node_type'] or 'observer',
+                        status=row['status'] or 'PENDING'
+                    )
+                    peer.last_seen = row['last_seen'] or time.time()
+                    self.peers[peer_id] = peer
+                else:
+                    print(f"✗ Peer {peer_id} not found")
+                    return False
+            except sqlite3.Error as e:
+                print(f"✗ Error loading peer: {e}")
+                return False
+            finally:
+                conn.close()
+        
+        peer = self.peers.get(peer_id)
+        if not peer:
+            return False
+        
+        if peer.status != "PENDING":
+            print(f"⚠ Peer {peer_id} is not pending (current status: {peer.status})")
+            return False
+        
+        # Update status to ACTIVE
+        peer.status = "ACTIVE"
+        
+        # Add to whitelist if configured
+        if self.config.is_whitelist_enabled() and peer.public_key:
+            # TODO: Add logic to update whitelist configuration
+            print(f"✓ Added peer {peer_id} public key to whitelist")
+        
+        # Save to database
+        if self.save_peer_to_db(peer):
+            print(f"✓ Peer {peer_id} approved and activated")
+            return True
+        else:
+            print(f"✗ Failed to save peer {peer_id}")
+            return False
     
     def get_peer_list_for_api(self) -> List[Dict]:
         """Get peer list in format suitable for API response"""

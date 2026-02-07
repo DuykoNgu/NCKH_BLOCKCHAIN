@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS peers (
     port INTEGER NOT NULL,
     public_key TEXT,
     node_type TEXT,  -- 'validator', 'observer'
-    is_active INTEGER DEFAULT 1,
+    status TEXT DEFAULT 'PENDING',  -- 'PENDING', 'ACTIVE', 'INACTIVE'
     last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

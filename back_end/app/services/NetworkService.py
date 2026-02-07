@@ -152,10 +152,12 @@ class NetworkService:
         """Get network statistics"""
         active_peers = self.peer_manager.get_active_peers()
         validator_peers = self.peer_manager.get_validator_peers()
+        pending_peers = self.peer_manager.get_peers_by_status("PENDING")
         
         return {
             'total_peers': len(self.peer_manager.peers),
             'active_peers': len(active_peers),
+            'pending_peers': len(pending_peers),
             'validator_peers': len(validator_peers),
             'observer_peers': len(active_peers) - len(validator_peers),
             'whitelist_enabled': self.config.is_whitelist_enabled(),
@@ -163,6 +165,15 @@ class NetworkService:
             'ntp_offset': self.ntp_client.cached_offset or 0.0,
             'is_time_synced': self.ntp_client.check_time_sync()
         }
+    
+    def approve_peer(self, peer_id: str) -> bool:
+        """Approve a pending peer (PENDING -> ACTIVE)"""
+        return self.peer_manager.approve_peer(peer_id)
+    
+    def get_pending_peers(self) -> List[Dict]:
+        """Get all pending peers awaiting approval"""
+        pending_peers = self.peer_manager.get_peers_by_status("PENDING")
+        return [peer.to_dict() for peer in pending_peers]
     
     def health_check(self) -> Dict:
         """Perform health check on network"""
