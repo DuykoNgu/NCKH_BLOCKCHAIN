@@ -40,7 +40,7 @@ def get_peers():
             "port": 5000,
             "public_key": "04a1b2c3...",
             "node_type": "validator",
-            "is_active": true,
+            "status": "ACTIVE",
             "last_seen": 1234567890.0
         },
         ...
@@ -302,6 +302,67 @@ def get_slot_info():
         return jsonify({'error': str(e)}), 500
 
 
+@network_bp.route('/peers/<peer_id>/approve', methods=['POST'])
+def approve_peer(peer_id: str):
+    """
+    Approve a pending peer (MOET only)
+    Transitions peer from PENDING -> ACTIVE and adds to whitelist
+    
+    Response:
+    {
+        "success": true,
+        "message": "Peer approved successfully"
+    }
+    """
+    try:
+        # TODO: Add MOET role check here
+        service = get_network_service()
+        success = service.approve_peer(peer_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Peer approved successfully'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to approve peer or peer not found'
+            }), 404
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/peers/pending', methods=['GET'])
+def get_pending_peers():
+    """
+    Get all pending peers awaiting approval (MOET only)
+    
+    Response:
+    [
+        {
+            "peer_id": "abc123...",
+            "ip_address": "10.0.1.2",
+            "port": 5000,
+            "public_key": "04a1b2c3...",
+            "node_type": "validator",
+            "status": "PENDING",
+            "last_seen": 1234567890.0
+        },
+        ...
+    ]
+    """
+    try:
+        # TODO: Add MOET role check here
+        service = get_network_service()
+        pending_peers = service.get_pending_peers()
+        return jsonify(pending_peers), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @network_bp.route('/stats', methods=['GET'])
 def get_network_stats():
     """
@@ -311,6 +372,7 @@ def get_network_stats():
     {
         "total_peers": 10,
         "active_peers": 8,
+        "pending_peers": 2,
         "validator_peers": 3,
         "observer_peers": 5,
         "whitelist_enabled": true,

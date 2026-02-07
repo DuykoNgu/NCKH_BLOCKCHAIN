@@ -85,3 +85,4 @@ class AccountService:
                 return False, "Invalid signature"
         except Exception as e:
             return False, f"Verification error: {str(e)}"
+
