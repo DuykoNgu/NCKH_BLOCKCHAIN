@@ -7,7 +7,11 @@ import InputField from '@/components/common/layout/InputField';
 
 type FieldName = keyof FormFields;
 
-export default function CreateWalletForm() {
+interface CreateWalletFormProps {
+  onWalletCreated?: (mnemonic: string, address: string) => void;
+}
+
+export default function CreateWalletForm({ onWalletCreated }: CreateWalletFormProps) {
   const [form, setForm] = useState<FormFields>({password: '', confirmPassword: ''});
   const [errors, setErrors] = useState({ passwordError: '', confirmPasswordError: ''});
   const [loading, setLoading] = useState(false);
@@ -35,10 +39,18 @@ export default function CreateWalletForm() {
     }
     setLoading(true);
     try {
-      await createWallet(form.password);
-      navigate("/login/existing");
+      const result = await createWallet(form.password);
+      // Gọi callback để thông báo cho parent component
+      if (onWalletCreated) {
+        onWalletCreated(result.mnemonic, result.address);
+      } else {
+        // Fallback: navigate trực tiếp nếu không có callback
+        navigate("/login/existing");
+      }
     } catch {
       alert('Failed to create wallet');
+    } finally {
+      setLoading(false);
     }
   };
 
