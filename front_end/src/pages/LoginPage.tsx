@@ -1,6 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TrongDongWatermark } from '@/components/common/TrongDongWatermark';
 import LoginHome from '@/components/common/loginpage_common/LoginHome';
 import ImportWallet from '@/components/common/loginpage_common/ImportWallet';
 import CreateWallet from '@/components/common/loginpage_common/CreateWallet';
@@ -85,20 +84,16 @@ const LoginPage = () => {
     }
   };
 
-  // Render home page
-  if (step === 'home') {
-    return <LoginHome />;
-  }
+  // Render content based on step - Scene3D stays mounted at root level
+  const renderContent = () => {
+    // Render home page
+    if (step === 'home' && !showSeed) {
+      return <LoginHome />;
+    }
 
-  // Render seed display
-  if (showSeed) {
-    return (
-      <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
-        {/* <TrongDongWatermark opacity={0.04} /> */}
-        <Suspense fallback={null}>
-          <Scene3D />
-        </Suspense>
-
+    // Render seed display
+    if (showSeed) {
+      return (
         <div className="relative z-10 w-full max-w-md mx-4">
           <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
             <SeedDisplay 
@@ -108,40 +103,50 @@ const LoginPage = () => {
             />
           </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  // Render import/login page
-  if (step === 'import') {
+    // Render import/login page
+    if (step === 'import') {
+      return (
+        <ImportWallet
+          error={error}
+          isLoading={isLoading}
+          showPassword={showPassword}
+          password={password}
+          onPasswordChange={setPassword}
+          onTogglePassword={() => setShowPassword(!showPassword)}
+          onLogin={handleLogin}
+          onBack={() => navigate('/login')}
+        />
+      );
+    }
+
+    // Render create password page
     return (
-      <ImportWallet
+      <CreateWallet
         error={error}
         isLoading={isLoading}
         showPassword={showPassword}
         password={password}
+        confirmPassword={confirmPassword}
         onPasswordChange={setPassword}
+        onConfirmPasswordChange={setConfirmPassword}
         onTogglePassword={() => setShowPassword(!showPassword)}
-        onLogin={handleLogin}
+        onCreateWallet={handleCreateWallet}
         onBack={() => navigate('/login')}
       />
     );
-  }
+  };
 
-  // Render create password page
+  // Always render Scene3D at root to prevent re-initialization when navigating
   return (
-    <CreateWallet
-      error={error}
-      isLoading={isLoading}
-      showPassword={showPassword}
-      password={password}
-      confirmPassword={confirmPassword}
-      onPasswordChange={setPassword}
-      onConfirmPasswordChange={setConfirmPassword}
-      onTogglePassword={() => setShowPassword(!showPassword)}
-      onCreateWallet={handleCreateWallet}
-      onBack={() => navigate('/login')}
-    />
+    <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
+      <Suspense fallback={null}>
+        <Scene3D />
+      </Suspense>
+      {renderContent()}
+    </div>
   );
 };
 

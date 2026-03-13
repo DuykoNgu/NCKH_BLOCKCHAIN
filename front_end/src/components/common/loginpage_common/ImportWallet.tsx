@@ -1,11 +1,8 @@
-import { useState, lazy, Suspense } from 'react';
-import { TrongDongWatermark } from '@/components/common/TrongDongWatermark';
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Eye, EyeOff, Wallet } from 'lucide-react';
-
-const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
 interface ImportWalletProps {
   error: string;
@@ -29,14 +26,8 @@ const ImportWallet = ({
   onBack,
 }: ImportWalletProps) => {
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
-      {/* <TrongDongWatermark opacity={0.04} /> */}
-      <Suspense fallback={null}>
-        <Scene3D />
-      </Suspense>
-
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
+    <div className="relative z-10 w-full max-w-md mx-4">
+      <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
           <div className="flex flex-col items-center">
             <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mb-6">
               <Wallet className="w-10 h-10 text-primary-foreground" />
@@ -93,7 +84,6 @@ const ImportWallet = ({
           </div>
         </div>
       </div>
-    </div>
   );
 };
 

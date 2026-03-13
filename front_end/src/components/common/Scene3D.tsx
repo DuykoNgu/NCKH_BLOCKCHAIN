@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from 'react';
+import { memo, useRef, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
@@ -77,7 +77,6 @@ function OrbitRing({ radius, speed, color, thickness = 0.008 }: { radius: number
   );
 }
 
-// Mouse-reactive main drum
 function TrongDongDisc() {
   const groupRef = useRef<THREE.Group>(null!);
   const innerRef = useRef<THREE.Group>(null!);
@@ -244,7 +243,7 @@ function TrongDongDisc() {
   );
 }
 
-export default function Scene3D() {
+export default memo(function Scene3D() {
   return (
     <div className="absolute inset-0 pointer-events-auto" style={{ zIndex: 0 }}>
       <Canvas
@@ -272,4 +271,4 @@ export default function Scene3D() {
       </Canvas>
     </div>
   );
-}
+});

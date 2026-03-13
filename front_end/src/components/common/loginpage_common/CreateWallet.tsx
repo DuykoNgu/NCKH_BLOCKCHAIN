@@ -1,12 +1,8 @@
-import { lazy, Suspense } from 'react';
-import { TrongDongWatermark } from '@/components/common/TrongDongWatermark';
-import { TrongDongDivider } from '@/components/common/TrongDongWatermark';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-
-const Scene3D = lazy(() => import('@/components/common/Scene3D'));
+import { TrongDongDivider } from '@/components/common/TrongDongWatermark';
 
 interface CreateWalletProps {
   error: string;
@@ -34,14 +30,8 @@ const CreateWallet = ({
   onBack,
 }: CreateWalletProps) => {
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
-      {/* <TrongDongWatermark opacity={0.04} /> */}
-      <Suspense fallback={null}>
-        <Scene3D />
-      </Suspense>
-
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
+    <div className="relative z-10 w-full max-w-md mx-4">
+      <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
           <div className="flex flex-col">
             <button onClick={onBack} className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6 self-start">
               <ArrowLeft size={16} className="mr-1" /> Quay lại
@@ -104,7 +94,6 @@ const CreateWallet = ({
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
