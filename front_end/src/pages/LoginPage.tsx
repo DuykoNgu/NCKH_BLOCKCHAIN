@@ -94,7 +94,7 @@ const LoginPage = () => {
   if (showSeed) {
     return (
       <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
-        <TrongDongWatermark opacity={0.04} />
+        {/* <TrongDongWatermark opacity={0.04} /> */}
         <Suspense fallback={null}>
           <Scene3D />
         </Suspense>
