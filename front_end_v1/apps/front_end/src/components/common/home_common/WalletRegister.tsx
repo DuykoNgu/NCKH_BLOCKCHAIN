@@ -9,13 +9,9 @@ export const WalletRegister = () => {
   const {showToast} = useRadixToast();
 
   const [validatorName, setValidatorName] = useState('');
-  const [stakeAmount, setStakeAmount] = useState('');
   const [commissionRate, setCommissionRate] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const minStake = 32; // Minimum stake amount
-  const balance = 0; // Placeholder for balance, replace with actual value
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,25 +73,6 @@ export const WalletRegister = () => {
             onChange={(e) => setValidatorName(e.target.value)}
             className="bg-secondary/50 border-border focus:border-accent text-sm sm:text-base"
           />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="stakeAmount" className="text-foreground text-sm sm:text-base">Số lượng ETH Stake</Label>
-          <div className="relative">
-            <Input
-              id="stakeAmount"
-              type="number"
-              placeholder={`Tối thiểu ${minStake} ETH`}
-              value={stakeAmount}
-              onChange={(e) => setStakeAmount(e.target.value)}
-              min={minStake}
-              step="0.01"
-              className="bg-secondary/50 border-border focus:border-accent pr-12 sm:pr-14 text-sm sm:text-base"
-            />
-            <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs sm:text-sm">
-              ETH
-            </span>
-          </div>
         </div>
 
         <div className="space-y-2">

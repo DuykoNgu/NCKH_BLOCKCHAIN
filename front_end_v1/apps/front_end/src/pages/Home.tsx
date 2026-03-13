@@ -1,6 +1,7 @@
 import { Dashboard } from "@/components/common/layout/Dashboard";
 import React from "react";
 import { logoutUser } from "@/services/authService";
+import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";
 
 const Home: React.FC = () => {
   const address = localStorage.getItem("address") || "";
@@ -13,7 +14,8 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="relative">
+      <TrongDongWatermark />
       <Dashboard
         address={address}
         balance={balance}
