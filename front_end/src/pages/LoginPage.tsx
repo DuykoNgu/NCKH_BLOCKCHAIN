@@ -26,7 +26,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-blue-600 via-purple-700 to-indigo-800 animate-gradient flex flex-col items-center justify-center">
+    <div className="w-screen h-screen flex flex-col items-center justify-center">
       <div className="animate-bounce-in-up">
         {mnemonic ? (
           <MnemonicBackup mnemonic={mnemonic} address={address} onConfirmed={handleBackupConfirmed} />

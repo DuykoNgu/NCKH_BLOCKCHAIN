@@ -4,7 +4,6 @@ import { PDF_Preview } from "../home_common/PDF_Preview";
 import { StatGridContent } from "../home_common/StatGridContent";
 import { WalletIn4 } from "../home_common/WalletIn4";
 import { WalletRegister } from "../home_common/WalletRegister";
-import { TransactionList } from "@/components/common/home_common/TransactionList";
 interface DashboardProps {
   address: string;
   balance: string | null;
@@ -38,7 +37,6 @@ export const Dashboard = ({
           <div className="lg:col-span-2 space-y-6">
             <NFTManagement account={address} />
             <PDF_Preview />
-            <TransactionList />
           </div>
         </div>
       </main>

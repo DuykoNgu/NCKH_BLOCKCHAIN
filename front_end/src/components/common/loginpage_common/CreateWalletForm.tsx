@@ -62,14 +62,14 @@ export default function CreateWalletForm({ onWalletCreated }: CreateWalletFormPr
         <button
           type="submit"
           disabled={loading}
-          className="bg-black text-white px-10 py-3 rounded-xl text-lg font-semibold w-[400px] disabled:opacity-50 hover:scale-105 active:scale-95"
+          className="bg-primary text-primary-foreground px-10 py-3 rounded-xl text-lg font-semibold w-[400px] disabled:opacity-50 hover:scale-105 active:scale-95"
         >
           {loading ? 'Creating...' : 'Create Wallet'}
         </button>
       </form>
       <button
         onClick={() => navigate('/login')}
-        className="mt-4 bg-gray-600 text-white px-10 py-3 rounded-xl text-lg font-semibold w-[400px] hover:scale-105 active:scale-95"
+        className="mt-4 bg-secondary text-secondary-foreground px-10 py-3 rounded-xl text-lg font-semibold w-[400px] hover:scale-105 active:scale-95"
       >
         Back
       </button>
