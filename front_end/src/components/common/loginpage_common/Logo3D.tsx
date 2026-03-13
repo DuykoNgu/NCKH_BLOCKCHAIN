@@ -39,11 +39,11 @@ function LogoModel({ disableRotation = false }: { disableRotation?: boolean }) {
       if (!isDragging.current) return;
 
       const deltaX = e.clientX - previousMousePosition.current.x;
-      const deltaY = e.clientY - previousMousePosition.current.y;
+      // Chỉ cho phép quay ngang (Y axis), không cho quay thẳng đứng (X axis)
 
       setRotation(prev => [
-        prev[0] + deltaY * 0.01,
-        prev[1] + deltaX * 0.01,
+        prev[0], // Giữ nguyên X rotation
+        prev[1] + deltaX * 0.01, // Chỉ thay đổi Y rotation
         prev[2]
       ]);
 

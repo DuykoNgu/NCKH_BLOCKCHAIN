@@ -32,19 +32,19 @@ export default function LoginWallet() {
           placeholder="Enter your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 px-4 py-2 rounded-xl w-[400px] text-white border border-solid"
+          className="mb-4 px-4 py-2 rounded-xl w-[400px] border border-solid bg-background text-foreground"
         />
         <button
           type="submit"
           disabled={loading}
-          className="bg-black text-white px-10 py-3 rounded-xl text-lg font-semibold w-[400px] disabled:opacity-50 transition duration-300 hover:scale-105 active:scale-95"
+          className="bg-primary text-primary-foreground px-10 py-3 rounded-xl text-lg font-semibold w-[400px] disabled:opacity-50 transition duration-300 hover:scale-105 active:scale-95"
         >
           {loading ? 'Logging in...' : 'Login'}
         </button>
       </form>
       <button
         onClick={() => navigate('/login')}
-        className="mt-4 bg-gray-600 text-white px-10 py-3 rounded-xl text-lg font-semibold w-[400px] transition duration-300 hover:scale-105 active:scale-95"
+        className="mt-4 bg-secondary text-secondary-foreground px-10 py-3 rounded-xl text-lg font-semibold w-[400px] transition duration-300 hover:scale-105 active:scale-95"
       >
         Back
       </button>
