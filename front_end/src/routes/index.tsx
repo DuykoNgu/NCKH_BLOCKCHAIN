@@ -7,7 +7,6 @@ const ROUTES = {
   LOGIN: '/login',
 } as const;
 
-
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const Home = lazy(() => import('@/pages/Home'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));

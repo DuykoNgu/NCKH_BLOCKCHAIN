@@ -2,7 +2,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button} from "@/components/ui/button";
 import { Copy, ExternalLink, LogOut } from 'lucide-react';
-import Logo3D from '@/components/common/loginpage_common/Logo3D';
 import { useRadixToast } from "@/hooks/use-radix-toast";
 interface WalletCardProps {
   address: string;
@@ -53,8 +52,8 @@ export const WalletIn4 = ({
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden">
-              <Logo3D width={60} height={60} disableRotation={false} />
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="text-lg">👤</span>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Địa chỉ</p>
