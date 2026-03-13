@@ -47,6 +47,9 @@ const HeroSection = () => {
           <a href="#solution" className="inline-block bg-primary text-primary-foreground font-heading text-sm tracking-wider uppercase px-8 py-4 hover:opacity-90 transition-opacity">
             Tìm Hiểu Thêm
           </a>
+          <a href="http://localhost:5173" target="_blank" rel="noopener noreferrer" className="inline-block border border-foreground text-foreground font-heading text-sm tracking-wider uppercase px-8 py-4 hover:border-primary hover:text-primary transition-colors">
+            Truy Cập App
+          </a>
           <a href="#process" className="inline-block border border-foreground text-foreground font-heading text-sm tracking-wider uppercase px-8 py-4 hover:border-primary hover:text-primary transition-colors">
             Quy Trình
           </a>
