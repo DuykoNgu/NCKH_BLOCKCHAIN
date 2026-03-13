@@ -51,6 +51,10 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   };
 
   saveUserData(userData);
+
+  // Set login state so user can access home
+  localStorage.setItem('isLoggedIn', 'true');
+
   return { address };
 };
 
