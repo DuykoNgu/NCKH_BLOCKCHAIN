@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Eye, EyeOff, Wallet } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 interface ImportWalletProps {
   error: string;
@@ -30,12 +29,12 @@ const ImportWallet = ({
       <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
           <div className="flex flex-col items-center">
             <div className="w-20 h-20 rounded-2xl bg-primary flex items-center justify-center mb-6">
-              <Wallet className="w-10 h-10 text-primary-foreground" />
+              <ShieldCheck className="w-10 h-10 text-primary-foreground" />
             </div>
 
             <h2 className="font-display text-xl font-bold text-foreground mb-1">Chào mừng trở lại</h2>
             <p className="text-sm text-muted-foreground mb-6 text-center">
-              Nhập mật khẩu để mở khóa ví của bạn
+              Nhập mật khẩu để truy cập tài khoản của bạn
             </p>
 
             {error && (
@@ -70,7 +69,7 @@ const ImportWallet = ({
                 disabled={isLoading || !password || password.length < 8}
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >
-                {isLoading ? 'Đang đăng nhập...' : 'Mở khóa ví'}
+                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
                 <ArrowRight size={16} className="ml-2" />
               </Button>
             </div>
@@ -79,7 +78,7 @@ const ImportWallet = ({
               onClick={onBack} 
               className="mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              ← Tạo ví mới
+              ← Tạo tài khoản mới
             </button>
           </div>
         </div>

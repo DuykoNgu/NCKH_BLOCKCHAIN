@@ -71,8 +71,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
               <Award className="w-5 h-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-lg">Danh sách NFT Chứng chỉ</CardTitle>
-              <CardDescription>Tổng cộng: {nfts.length} chứng chỉ</CardDescription>
+              <CardTitle className="text-lg">Danh sách Chứng chỉ số</CardTitle>
+              <CardDescription>Tổng cộng: {nfts.length} chứng chỉ đã cấp</CardDescription>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={fetchNFTs} disabled={isLoading}>
@@ -86,7 +86,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Tìm kiếm theo Token ID, Student ID, hoặc Tổ chức..."
+              placeholder="Tìm kiếm theo Mã chứng chỉ, Student ID, hoặc Tổ chức..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-background/50"
@@ -98,7 +98,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>Token ID</TableHead>
+                <TableHead>Mã chứng chỉ</TableHead>
                 <TableHead>Sinh viên</TableHead>
                 <TableHead>Loại bằng</TableHead>
                 <TableHead>Tổ chức</TableHead>

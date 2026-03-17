@@ -17,7 +17,7 @@ export default function Contracts() {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
       <motion.div variants={item}>
         <h2 className="font-display text-2xl font-bold text-foreground">Smart Contract</h2>
-        <p className="text-sm text-muted-foreground mt-1">Quản lý và tương tác với smart contract DegreeNFT</p>
+        <p className="text-sm text-muted-foreground mt-1">Quản lý và tương tác với smart contract EduChain Vault</p>
       </motion.div>
 
       {/* Contract Header */}

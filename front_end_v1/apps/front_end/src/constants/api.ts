@@ -1,17 +1,23 @@
 export const AUTH_SERVER = {
-  WALLET_LOGIN: '/auth/wallet/login',
-  WALLET_REGISTER: '/auth/wallet/register',
-  WALLET_NONCE: '/auth/nonce',
+  WALLET_LOGIN: '/users/auth/verify',
+  WALLET_REGISTER: '/users/auth/register',
+  WALLET_NONCE: '/users/auth/get_nonce',
+  PROFILE_UPDATE: '/users/profile/update',
+} as const;
+
+export const TRANSACTION_SERVER = {
+  GET_ALL: '/transactions/all',
+  GET_BY_ADDRESS: '/transactions/address/:address',
 } as const;
 
 export const NFT_SERVER = {
-  CREATE: '/create',
-  GET_BY_ID: '/:tokenId',
-  GET_STUDENT_NFTS: '/student/:studentId',
-  GET_USER_NFTS: '/user/:recipientAddress',
-  GET_ALL: '/all',
-  VERIFY: '/:tokenId/verify',
-  REVOKE: '/:tokenId/revoke',
-  VERIFY_BATCH: '/verify/batch',
-  GET_METADATA_HASH: '/:tokenId/metadata-hash',
+  CREATE: '/nft/create',
+  GET_BY_ID: '/nft/:tokenId',
+  GET_STUDENT_NFTS: '/nft/student/:studentId',
+  GET_USER_NFTS: '/nft/user/:recipientAddress',
+  GET_ALL: '/nft/all',
+  VERIFY: '/nft/:tokenId/verify',
+  REVOKE: '/nft/:tokenId/revoke',
+  VERIFY_BATCH: '/nft/verify/batch',
+  GET_METADATA_HASH: '/nft/:tokenId/metadata-hash',
 } as const;

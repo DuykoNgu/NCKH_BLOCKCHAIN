@@ -43,12 +43,19 @@ def create_nft():
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
         
+        issued_at = data.get('issued_at')
+        if issued_at:
+            try:
+                issued_at = float(issued_at)
+            except (ValueError, TypeError):
+                issued_at = None
+
         metadata = NFTmetadata(
             degree_type=data['degree_type'],
             pdf_url=data['pdf_url'],
             pdf_hash=data['pdf_hash'],
             institution_address=data['institution_address'],
-            
+            issued_at=issued_at
         )
         
         message_to_verify = metadata.get_signing_data()
@@ -105,6 +112,7 @@ def create_nft():
         # Create NFT
         nft = NFTService.create_nft(
             issuer_address=issuer.address,
+            issuer_pubkey=issuer.public_key,
             metadata=metadata,
             recipient=recipient
         )

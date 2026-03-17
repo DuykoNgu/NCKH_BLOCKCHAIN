@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.cpython-*.pyc
+*.so
+*.pyd
 
 # Distribution / packaging
 .Python
@@ -17,6 +19,7 @@ dist/
 env/
 venv/
 ENV/
+*.env.local
 
 # IDE
 .vscode/
@@ -27,19 +30,51 @@ ENV/
 # macOS
 .DS_Store
 
-# SQLite database files
+# DB and Data
 *.db
+*.sqlite
+*.sqlite3
 
 # Test files
 tests/test_*.py
 **/test_*.py
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
 
 # Logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lockb
 
 # Node modules
 node_modules/
+**/node_modules/
 
-# Frontend build
-front_end/dist/
-front_end/.vite/
+# Frontend builds
+dist/
+.vite/
+.next/
+out/
+.vercel
+.turbo
+front_end_v1/apps/*/dist/
+front_end_v1/apps/*/.vite/
+
+# Temporary files
+tmp/
+temp/
+
+# Misc
+.DS_Store
+Thumbs.db

@@ -18,7 +18,7 @@ export const NFTVerify = () => {
 
   const handleSingleVerify = async () => {
     if (!singleTokenId.trim()) {
-      toast.error('Vui lòng nhập Token ID');
+      toast.error('Vui lòng nhập Mã chứng chỉ');
       return;
     }
 
@@ -45,7 +45,7 @@ export const NFTVerify = () => {
   const handleBatchVerify = async () => {
     const validIds = batchTokenIds.filter((id) => id.trim());
     if (validIds.length === 0) {
-      toast.error('Vui lòng nhập ít nhất một Token ID');
+      toast.error('Vui lòng nhập ít nhất một Mã chứng chỉ');
       return;
     }
 
@@ -89,8 +89,8 @@ export const NFTVerify = () => {
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
-            <CardTitle className="text-lg">Xác minh NFT Chứng chỉ</CardTitle>
-            <CardDescription>Kiểm tra tính hợp lệ của chứng chỉ blockchain</CardDescription>
+            <CardTitle className="text-lg">Xác nhận Chứng chỉ số</CardTitle>
+            <CardDescription>Kiểm tra tính pháp lý của chứng chỉ trên hệ thống</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -104,7 +104,7 @@ export const NFTVerify = () => {
           <TabsContent value="single" className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Nhập Token ID..."
+                placeholder="Nhập Mã chứng chỉ..."
                 value={singleTokenId}
                 onChange={(e) => setSingleTokenId(e.target.value)}
                 className="bg-background/50 font-mono"
@@ -145,7 +145,7 @@ export const NFTVerify = () => {
                         : 'Chứng chỉ không hợp lệ'}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Token: {singleResult.token_id.slice(0, 20)}...
+                      Mã số: {singleResult.token_id.slice(0, 20)}...
                     </p>
                     {singleResult.is_revoked && (
                       <Badge variant="destructive" className="mt-2">
@@ -163,7 +163,7 @@ export const NFTVerify = () => {
               {batchTokenIds.map((id, index) => (
                 <div key={index} className="flex gap-2">
                   <Input
-                    placeholder={`Token ID ${index + 1}`}
+                    placeholder={`Mã chứng chỉ ${index + 1}`}
                     value={id}
                     onChange={(e) => updateBatchInput(index, e.target.value)}
                     className="bg-background/50 font-mono text-sm"
@@ -185,7 +185,7 @@ export const NFTVerify = () => {
             <div className="flex gap-2">
               <Button variant="outline" onClick={addBatchInput} className="flex-1">
                 <Plus className="w-4 h-4 mr-2" />
-                Thêm Token ID
+                Thêm Mã chứng chỉ
               </Button>
               <Button onClick={handleBatchVerify} disabled={isVerifying} className="flex-1">
                 {isVerifying ? (

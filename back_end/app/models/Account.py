@@ -7,11 +7,15 @@ class Role(Enum):
      CLIENT = "client"
 
 class Account:
-     def __init__(self, public_key: str, address: str, role: Role, org_name: str = None, is_active: int = 1, created_at: str = None):
+     def __init__(self, public_key: str, address: str, role: Role, org_name: str = None, 
+                  full_name: str = None, avatar_url: str = None,
+                  is_active: int = 1, created_at: str = None):
           self.public_key = public_key
           self.address = address
           self.role = role
           self.org_name = org_name
+          self.full_name = full_name
+          self.avatar_url = avatar_url
           self.is_active = is_active
           self.created_at = created_at
 
@@ -19,8 +23,10 @@ class Account:
           return {
                "public_key": self.public_key,
                "address": self.address,
-               "role": self.role,
+               "role": self.role.value if hasattr(self.role, 'value') else str(self.role),
                "org_name": self.org_name,
+               "full_name": self.full_name,
+               "avatar_url": self.avatar_url,
                "is_active": self.is_active,
                "created_at": self.created_at
           }

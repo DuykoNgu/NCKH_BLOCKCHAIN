@@ -61,9 +61,9 @@ def verify():
         return jsonify({"Status":"fail", "message":"Nonce expired"},401)
     
     try:
-        account = AccountRepository.get_account_by_address(address)
+        account = AccountService.get_account_by_address(address)
         if not account:
-            return jsonify({"status":"fail", "message":"account not found"},404)
+            return jsonify({"status":"fail", "message":"account not found"}),404
         
         public_key = account.public_key
 
@@ -79,8 +79,39 @@ def verify():
             return jsonify({
                 "status": "success",
                 "token": token,
-                "user": {"address": account.address, "public_key": account.public_key, "role": account.role.value if hasattr(account.role, 'value') else account.role}
+                "user": {
+                    "address": account.address, 
+                    "public_key": account.public_key, 
+                    "role": account.role.value if hasattr(account.role, 'value') else account.role,
+                    "full_name": account.full_name,
+                    "avatar_url": account.avatar_url
+                }
             })
     
     except Exception as e:
         return jsonify({"status":"fail", "message": "Invalid signature"}),401
+@user_bp.route('/profile/update', methods=['POST'])
+def update_profile():
+    data = request.json
+    print(f"DEBUG: update_profile data: {data}")
+    address = data.get('address')
+    full_name = data.get('full_name')
+    avatar_url = data.get('avatar_url')
+    
+    if not address:
+        return jsonify({"error": "Missing address"}), 400
+        
+    success, account, message = AccountService.update_profile(address, full_name, avatar_url)
+    
+    if success:
+        return jsonify({
+            "status": "success",
+            "message": message,
+            "user": account.to_dict()
+        }), 200
+    else:
+        print(f"DEBUG: update_profile failed: {message}")
+        return jsonify({
+            "status": "fail",
+            "error": message
+        }), 400

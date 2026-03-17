@@ -10,13 +10,14 @@ class NFTService:
     """Service để quản lý business logic của NFT"""
 
     @staticmethod
-    def create_nft(issuer_address: str, metadata: NFTmetadata, 
+    def create_nft(issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, 
                    recipient: Account) -> NFT:
         """Tạo NFT mới"""
         nft = NFT(
             issuer_address=issuer_address,
+            issuer_pubkey=issuer_pubkey,
             metadata=metadata,
-            recipient_address=recipient
+            owner_address=recipient
         )
         return nft
 
@@ -26,7 +27,7 @@ class NFTService:
         nft_data = {
             "token_id": nft.token_id,
             "metadata": nft.metadata.to_dict(),
-            "recipient_address": nft.recipient_address.address
+            "owner_address": nft.owner_address.address
         }
         nft_data_bytes = json.dumps(nft_data, sort_keys=True).encode()
         nft.issuer_signature = CryptoUtils.sign_data(nft_data_bytes, issuer_private_key)
@@ -41,7 +42,7 @@ class NFTService:
         nft_data = {
             "token_id": nft.token_id,
             "metadata": nft.metadata.to_dict(),
-            "recipient_address": nft.recipient_address.address
+            "owner_address": nft.owner_address.address
         }
         nft_data_bytes = json.dumps(nft_data, sort_keys=True).encode()
         return CryptoUtils.verify_signature(nft_data_bytes, nft.issuer_signature, nft.issuer_pubkey)
@@ -82,7 +83,7 @@ class NFTService:
             results["details"].append({
                 "token_id": nft.token_id,
                 "is_valid": is_valid,
-                "recipient": nft.recipient_address.address
+                "recipient": nft.owner_address.address
             })
         
         return results

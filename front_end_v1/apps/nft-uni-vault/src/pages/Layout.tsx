@@ -13,7 +13,7 @@ export default function Layout() {
           <header className="h-14 flex items-center justify-between border-b border-border px-4">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <h1 className="font-display text-lg font-semibold text-foreground hidden sm:block">DegreeNFT</h1>
+              <h1 className="font-display text-lg font-semibold text-foreground hidden sm:block">EduChain Vault</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
