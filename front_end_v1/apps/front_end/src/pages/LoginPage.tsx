@@ -4,7 +4,8 @@ import LoginHome from '@/components/common/loginpage_common/LoginHome';
 import ImportWallet from '@/components/common/loginpage_common/ImportWallet';
 import CreateWallet from '@/components/common/loginpage_common/CreateWallet';
 import SeedDisplay from '@/components/common/loginpage_common/SeedDisplay';
-import { createWallet, loginWallet } from '@/services/authService';
+import { createWallet } from '@/services/authService';
+import { useWallet } from '@/hooks/useWallet';
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
 const LoginPage = () => {
@@ -64,6 +65,8 @@ const LoginPage = () => {
     navigate('/login/existing');
   };
 
+  const { unlock } = useWallet();
+
   const handleLogin = async () => {
     if (!password || password.length < 8) {
       setError('Vui lòng nhập mật khẩu (tối thiểu 8 ký tự)');
@@ -74,7 +77,7 @@ const LoginPage = () => {
     setError('');
 
     try {
-      await loginWallet(password);
+      await unlock(password);
       navigate('/');
     } catch (err) {
       setError('Đăng nhập thất bại. Vui lòng kiểm tra lại mật khẩu.');

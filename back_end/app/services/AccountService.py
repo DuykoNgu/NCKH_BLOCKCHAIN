@@ -11,6 +11,7 @@ class AccountService:
     """Service for Account business logic"""
     @staticmethod
     def register_account(address: str,public_key: str,role: Role = Role.CLIENT) -> Tuple[bool, Optional[Account], str]:
+        address = address.lower()
         try:
             existing =  AccountRepository.get_account_by_address(address)
             if existing:
@@ -37,6 +38,7 @@ class AccountService:
     @staticmethod
     def get_account_by_address(address: str) -> Optional[Account]:
         """Get account by address"""
+        address = address.lower()
         try:
             return AccountRepository.get_account_by_address(address)
         except Exception as e:
@@ -56,6 +58,7 @@ class AccountService:
     @staticmethod
     def delete_account(address: str) -> Tuple[bool, str]:
         """Delete account"""
+        address = address.lower()
         try:
             account = AccountRepository.get_account_by_address(address)
             if not account:
@@ -86,3 +89,29 @@ class AccountService:
         except Exception as e:
             return False, f"Verification error: {str(e)}"
 
+    @staticmethod
+    def update_profile(address: str, full_name: str = None, avatar_url: str = None) -> Tuple[bool, Optional[Account], str]:
+        """Update account profile (name and avatar)"""
+        address = address.lower()
+        logger.info(f"Updating profile for address: {address}")
+        try:
+            account = AccountRepository.get_account_by_address(address)
+            if not account:
+                logger.warning(f"Profile update failed: Account {address} not found")
+                return False, None, "Account not found"
+            
+            logger.info(f"Found account: {account.address}. New name: {full_name}")
+            
+            if full_name is not None:
+                account.full_name = full_name
+            if avatar_url is not None:
+                account.avatar_url = avatar_url
+                
+            success = AccountRepository.update_account(account)
+            if success:
+                return True, account, "Profile updated successfully"
+            else:
+                return False, None, "Failed to update profile in database"
+        except Exception as e:
+            logger.error(f"Error updating profile: {e}")
+            return False, None, f"Update error: {str(e)}"

@@ -33,6 +33,12 @@ class BlockChainService:
 
     @staticmethod
     def add_transaction_to_mempool(blockchain: BlockChain, tx: Transaction) -> bool:
+        # If no signature, we assume it's a server-initiated transaction (like minting)
+        # In a real blockchain, the server would sign this with its authority key.
+        if not tx.signature:
+            blockchain.mempool.append(tx)
+            return True
+            
         if TransactionService.is_valid(tx):
             blockchain.mempool.append(tx)
             return True

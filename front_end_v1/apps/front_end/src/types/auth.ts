@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'client';
+export type UserRole = 'moet' | 'validator' | 'client' | 'admin';
 export interface WalletLoginData {
   address: string;
   signature: string;

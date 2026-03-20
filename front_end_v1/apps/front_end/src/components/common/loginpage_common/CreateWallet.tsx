@@ -39,7 +39,7 @@ const CreateWallet = ({
 
             <h2 className="font-display text-xl font-bold text-foreground mb-1">Tạo mật khẩu</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Mật khẩu dùng để mở khóa ví trên thiết bị này.
+              Mật khẩu dùng để bảo mật tài khoản trên thiết bị này.
             </p>
 
             {error && (
@@ -87,7 +87,7 @@ const CreateWallet = ({
                 disabled={isLoading || !password || password.length < 8 || password !== confirmPassword}
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >
-                {isLoading ? 'Đang tạo ví...' : 'Tiếp tục'}
+                {isLoading ? 'Đang tạo tài khoản...' : 'Tiếp tục'}
                 <ShieldCheck size={16} className="ml-2" />
               </Button>
             </div>

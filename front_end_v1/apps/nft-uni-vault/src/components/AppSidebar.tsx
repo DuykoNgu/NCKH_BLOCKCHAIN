@@ -56,7 +56,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div>
-              <h2 className="font-display text-sm font-bold text-foreground">DegreeNFT</h2>
+              <h2 className="font-display text-sm font-bold text-foreground">EduChain Vault</h2>
               <p className="text-xs text-muted-foreground">Blockchain Verify</p>
             </div>
           )}

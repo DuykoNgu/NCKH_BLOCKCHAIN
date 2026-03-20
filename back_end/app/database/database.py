@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS account (
     public_key TEXT NOT NULL,
     role TEXT NOT NULL,    --'moet', 'validator', 'client'
     org_name TEXT,
+    full_name TEXT,
+    avatar_url TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
@@ -40,14 +42,14 @@ CREATE TABLE IF NOT EXISTS nft (
     issuer_address TEXT NOT NULL,
 
     metadata_id INTEGER,
-    recipient_address TEXT, 
+    owner_address TEXT, 
 
     issuer_signature TEXT,
     is_valid INTEGER DEFAULT 1,
     minted_at INTEGER,
 
     FOREIGN KEY (metadata_id) REFERENCES nft_metadata(metadata_id) ON DELETE CASCADE,
-    FOREIGN KEY (recipient_address) REFERENCES account(address) on DELETE CASCADE
+    FOREIGN KEY (owner_address) REFERENCES account(address) on DELETE CASCADE
 );
 
 -------------------------------------------------
@@ -93,20 +95,6 @@ CREATE TABLE IF NOT EXISTS block (
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
 
--------------------------------------------------
--- 5. Transaction
--------------------------------------------------
-CREATE TABLE IF NOT EXISTS transactions (
-    tx_hash TEXT PRIMARY KEY,
-    sender_address TEXT,
-    recipient_address TEXT,
-    signature TEXT,
-    timestamp REAL,
-    payload TEXT,
-    block_id TEXT,
-    FOREIGN KEY (sender_address) REFERENCES account(address),
-    FOREIGN KEY (block_id) REFERENCES block(block_id) 
-);
 
 -------------------------------------------------
 -- 6. Peers (P2P Network)
@@ -128,6 +116,38 @@ def init_db():
      cursor = conn.cursor()
      
      cursor.executescript(schema_sql)
+     
+     # Migration: Add columns if they don't exist
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN full_name TEXT")
+     except sqlite3.OperationalError:
+          pass # column already exists
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN avatar_url TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN owner_address TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_pubkey TEXT")
+     except sqlite3.OperationalError:
+          pass
+
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_address TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_signature TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
      conn.commit()
      
      cursor.close()

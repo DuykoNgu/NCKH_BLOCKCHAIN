@@ -44,7 +44,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       if (response.success) {
         setResult({
           success: true,
-          message: 'NFT chứng chỉ đã được tạo thành công!',
+          message: 'Chứng chỉ số đã được cấp phát thành công!',
           tokenId: response.token_id,
         });
         // Reset form
@@ -59,7 +59,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       } else {
         setResult({
           success: false,
-          message: response.error || 'Có lỗi xảy ra khi tạo NFT',
+          message: response.error || 'Có lỗi xảy ra khi cấp phát chứng chỉ',
         });
       }
     } catch (error) {
@@ -80,8 +80,8 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             <FileText className="w-5 h-5 text-white" />
           </div>
           <div>
-            <CardTitle className="text-lg">Tạo NFT Chứng chỉ</CardTitle>
-            <CardDescription>Mint chứng chỉ mới lên blockchain</CardDescription>
+            <CardTitle className="text-lg">Cấp phát Chứng chỉ số</CardTitle>
+            <CardDescription>Lưu trữ chứng chỉ mới lên hệ thống EduChain</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -157,7 +157,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="recipient_address">Địa chỉ ví người nhận</Label>
+            <Label htmlFor="recipient_address">Địa chỉ định danh người nhận</Label>
             <Input
               id="recipient_address"
               placeholder="0x..."
@@ -187,7 +187,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
                 </p>
                 {result.tokenId && (
                   <p className="text-xs text-muted-foreground mt-1 font-mono">
-                    Token ID: {result.tokenId}
+                    Mã số chứng chỉ: {result.tokenId}
                   </p>
                 )}
               </div>
@@ -207,7 +207,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Tạo NFT Chứng chỉ
+                Cấp phát Chứng chỉ
               </>
             )}
           </Button>

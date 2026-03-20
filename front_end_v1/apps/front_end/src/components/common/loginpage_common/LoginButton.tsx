@@ -1,4 +1,4 @@
-import { Wallet, KeyRound, ArrowRight } from 'lucide-react';
+import { ShieldCheck, KeyRound, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface LoginButtonProps {
@@ -13,7 +13,7 @@ export default function LoginButton({ onCreateWallet, onImportWallet }: LoginBut
         onClick={onCreateWallet}
         className="w-full h-14 rounded-xl font-display font-semibold text-sm tracking-wide group"
       >
-        Tạo ví mới
+        Tạo tài khoản định danh
         <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
       </Button>
 
@@ -23,7 +23,7 @@ export default function LoginButton({ onCreateWallet, onImportWallet }: LoginBut
         className="w-full h-14 rounded-xl font-display font-semibold text-sm tracking-wide border-border/60 hover:bg-secondary/60"
       >
         <KeyRound size={16} className="mr-2" />
-        Tôi đã có ví
+        Tôi đã có tài khoản
       </Button>
     </div>
   );
@@ -33,7 +33,7 @@ export function WalletIcon() {
   return (
     <div className="mb-10 relative">
       <div className="w-24 h-24 rounded-2xl bg-primary flex items-center justify-center shadow-[0_8px_30px_-4px_hsla(0,0%,0%,0.25)]">
-        <Wallet className="w-12 h-12 text-primary-foreground" />
+        <ShieldCheck className="w-12 h-12 text-primary-foreground" />
       </div>
       <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-secondary border border-border flex items-center justify-center">
         <svg 
