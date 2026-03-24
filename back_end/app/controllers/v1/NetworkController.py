@@ -1,11 +1,13 @@
 """
 Network Controller for EduChain P2P API
-REST API endpoints for peer discovery and gossip protocol
+REST API endpoints for peer discovery, gossip protocol, and chain sync
 """
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 
 from app.services.NetworkService import get_network_service
+from app.repositories.BlockRepository import BlockRepository
+from app.blockchain_instance import get_blockchain_instance
 
 
 # Create blueprint for network routes
@@ -385,6 +387,75 @@ def get_network_stats():
         service = get_network_service()
         stats = service.get_network_stats()
         return jsonify(stats), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/blocks/height', methods=['GET'])
+def get_chain_height():
+    """
+    Get current blockchain height (for chain sync protocol)
+    
+    Response:
+    {
+        "height": 105,
+        "latest_block_hash": "abc123..."
+    }
+    """
+    try:
+        blockchain = get_blockchain_instance()
+        height = len(blockchain.chain) - 1  # -1 because genesis is index 0
+        
+        latest_hash = ""
+        if len(blockchain.chain) > 0:
+            latest_hash = blockchain.get_last_block().block_hash
+        
+        return jsonify({
+            'height': height,
+            'latest_block_hash': latest_hash
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/blocks/range', methods=['GET'])
+def get_blocks_for_sync():
+    """
+    Get blocks in a given index range with full data (for chain sync)
+    Returns full block data including transactions for P2P sync
+    
+    Query params:
+    - start: start block index (inclusive)
+    - end: end block index (inclusive)
+    
+    Response:
+    {
+        "blocks": [
+            { full block dict with transactions... },
+            ...
+        ]
+    }
+    """
+    try:
+        start_index = request.args.get('start', 0, type=int)
+        end_index = request.args.get('end', 100, type=int)
+        
+        # Limit range to prevent abuse
+        if end_index - start_index > 50:
+            end_index = start_index + 50
+        
+        blocks = BlockRepository.get_blocks_by_range(start_index, end_index)
+        
+        # Return full block data with transactions for sync
+        block_list = []
+        for b in blocks:
+            block_list.append(b.to_dict())
+        
+        return jsonify({
+            'blocks': block_list
+        }), 200
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500

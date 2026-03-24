@@ -149,9 +149,8 @@ def init_db():
           pass
           
      conn.commit()
-     
      cursor.close()
-     print("Database initialized successfully.")
+     print(f"Database initialized successfully at {DB_PATH}")
      
 if __name__ == "__main__":
      init_db()

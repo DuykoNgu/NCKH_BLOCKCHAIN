@@ -22,7 +22,6 @@ class ValidatorWorker:
         self, 
         my_validator_index: int,
         total_validators: int,
-        private_key: str,
         public_key: str,
         slot_duration: int = 5
     ):
@@ -32,15 +31,15 @@ class ValidatorWorker:
         Args:
             my_validator_index: Index of this validator (0-based)
             total_validators: Total number of validators in the network
-            private_key: Private key for signing blocks (hex string)
             public_key: Public key of this validator (hex string)
             slot_duration: Duration of each slot in seconds (default: 5)
         """
         self.my_index = my_validator_index
         self.total_validators = total_validators
-        self.private_key = private_key
+        self.__private_key: Optional[str] = None  # Private key stored securely in memory
         self.public_key = public_key
         self.slot_duration = slot_duration
+        self.is_active = False  # Validator activation status
         
         # Get blockchain and network instances
         self.blockchain = get_blockchain_instance()
@@ -54,6 +53,55 @@ class ValidatorWorker:
         # Statistics
         self.blocks_mined = 0
         self.last_block_time = 0
+    
+    def activate(self, raw_private_key: str) -> bool:
+        """
+        Activate validator with decrypted private key
+        
+        Args:
+            raw_private_key: Decrypted private key (hex string)
+            
+        Returns:
+            True if activation successful, False otherwise
+        """
+        if self.is_active:
+            print("⚠ Validator is already active")
+            return True
+        
+        try:
+            # Store private key in memory
+            self.__private_key = raw_private_key
+            self.is_active = True
+            
+            # Start mining worker
+            self.start()
+            
+            print("✓ Validator activated successfully")
+            return True
+        except Exception as e:
+            print(f"✗ Failed to activate validator: {e}")
+            self.__private_key = None
+            self.is_active = False
+            return False
+    
+    def deactivate(self) -> None:
+        """
+        Deactivate validator and clear private key from memory
+        """
+        if not self.is_active:
+            print("⚠ Validator is not active")
+            return
+        
+        # Stop mining worker
+        self.stop()
+        
+        # Securely clear private key from memory
+        if self.__private_key:
+            self.__private_key = '0' * len(self.__private_key)
+            self.__private_key = None
+        
+        self.is_active = False
+        print("✓ Validator deactivated and private key cleared from memory")
     
     def start(self) -> None:
         """Start the validator worker in a background thread"""
@@ -107,6 +155,11 @@ class ValidatorWorker:
     def _mine_and_broadcast_block(self) -> None:
         """Mine a new block and broadcast it to the network"""
         try:
+            # Check if validator is active
+            if not self.is_active or self.__private_key is None:
+                print("⚠ Validator not active, skipping block creation")
+                return
+            
             # Get max transactions per block from config
             from network.config_loader import get_config
             config = get_config()
@@ -143,10 +196,10 @@ class ValidatorWorker:
                 
                 print(f"\n--- Block {blocks_created}/{blocks_needed} ---")
                 
-                # Mine the block with size limit
+                # Mine the block with size limit using private key from memory
                 block = BlockChainService.mine_block(
                     self.blockchain,
-                    self.private_key,
+                    self.__private_key,
                     self.public_key,
                     max_transactions=max_tx_per_block
                 )
@@ -197,6 +250,7 @@ class ValidatorWorker:
     def get_stats(self) -> dict:
         """Get validator worker statistics"""
         return {
+            "is_active": self.is_active,
             "is_running": self.is_running,
             "validator_index": self.my_index,
             "total_validators": self.total_validators,
@@ -219,20 +273,18 @@ def get_validator_worker() -> Optional[ValidatorWorker]:
 def start_validator_worker(
     my_validator_index: int,
     total_validators: int,
-    private_key: str,
     public_key: str
 ) -> ValidatorWorker:
     """
-    Start the global validator worker
+    Initialize the global validator worker (without activation)
     
     Args:
         my_validator_index: Index of this validator (0-based)
         total_validators: Total number of validators
-        private_key: Private key for signing blocks
         public_key: Public key of this validator
         
     Returns:
-        ValidatorWorker: The started worker instance
+        ValidatorWorker: The initialized worker instance (not yet activated)
     """
     global _validator_worker
     
@@ -243,11 +295,11 @@ def start_validator_worker(
     _validator_worker = ValidatorWorker(
         my_validator_index=my_validator_index,
         total_validators=total_validators,
-        private_key=private_key,
         public_key=public_key
     )
     
-    _validator_worker.start()
+    print("✓ Validator worker initialized (not yet activated)")
+    print("  Use POST /api/v1/auth/activate to activate with passphrase")
     
     return _validator_worker
 

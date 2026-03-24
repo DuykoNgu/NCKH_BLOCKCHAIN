@@ -3,7 +3,7 @@ import os
 
 # Get the directory where this file is located
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'NCKH_educhain.db')
+DB_PATH = os.path.join(DB_DIR, 'node_b.db')
 
 def get_connection():
     """Get database connection"""

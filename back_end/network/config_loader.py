@@ -75,6 +75,11 @@ class NetworkConfig:
         network = self.get_network_config()
         return network.get('node_id', '')
     
+    def get_max_peers(self) -> int:
+        """Get maximum allowed peers"""
+        network = self.get_network_config()
+        return network.get('max_peers', 2)
+    
     def set_node_id(self, node_id: str) -> None:
         """Set node ID and save to config"""
         if 'network' not in self.config:

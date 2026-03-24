@@ -16,7 +16,7 @@ class NetworkService:
     
     def __init__(self, db_path: str = 'NCKH_educhain.db'):
         self.config = get_config()
-        self.peer_manager = PeerManager(db_path)
+        self.peer_manager = PeerManager()
         self.gossip = GossipProtocol(self.peer_manager)
         self.ntp_client = NTPClient()
         self.consensus_timer = ConsensusTimer(self.ntp_client)

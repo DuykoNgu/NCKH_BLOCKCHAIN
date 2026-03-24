@@ -9,7 +9,7 @@ from typing import List, Dict, Optional, Tuple
 import hashlib
 import json
 from enum import Enum
-
+from app.database.connection import get_connection
 from network.config_loader import get_config
 
 
@@ -71,21 +71,14 @@ class Peer:
 class PeerManager:
     """Manages peer connections and discovery"""
     
-    def __init__(self, db_path: str = 'NCKH_educhain.db'):
-        self.db_path = db_path
+    def __init__(self):
         self.config = get_config()
         self.peers: Dict[str, Peer] = {}
         self.load_peers_from_db()
     
-    def get_db_connection(self) -> sqlite3.Connection:
-        """Get database connection"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-    
     def load_peers_from_db(self) -> None:
         """Load peers from database"""
-        conn = self.get_db_connection()
+        conn = get_connection()
         cursor = conn.cursor()
         
         try:
@@ -117,7 +110,7 @@ class PeerManager:
     
     def save_peer_to_db(self, peer: Peer) -> bool:
         """Save peer to database"""
-        conn = self.get_db_connection()
+        conn = get_connection()
         cursor = conn.cursor()
         
         try:
@@ -158,6 +151,11 @@ class PeerManager:
         if peer_id in self.peers:
             print(f"⚠ Peer {ip_address}:{port} already exists")
             return self.peers[peer_id]
+            
+        # Check max peers limit
+        if len(self.peers) >= self.config.get_max_peers():
+            print(f"⚠ Max peers limit reached ({self.config.get_max_peers()}). Cannot add {ip_address}:{port}")
+            return None
         
         # Validate against whitelist if enabled
         if self.config.is_whitelist_enabled() and public_key:
@@ -311,7 +309,7 @@ class PeerManager:
         """Approve a pending peer (PENDING -> ACTIVE)"""
         if peer_id not in self.peers:
             # Try to load from database
-            conn = self.get_db_connection()
+            conn = get_connection()
             cursor = conn.cursor()
             try:
                 cursor.execute("""
