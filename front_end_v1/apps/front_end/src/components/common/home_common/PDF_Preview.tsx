@@ -1,4 +1,4 @@
-import pdfFile from "@/assets/[JD] Vị trí TTS_FE.pdf";
+import pdfFile from "../../../assets/[JD] Vị trí TTS_FE.pdf";
 import { CollapsibleContent } from "./CollapsibleContent";
 import { PDFViewer } from "./PDFViewer";
 

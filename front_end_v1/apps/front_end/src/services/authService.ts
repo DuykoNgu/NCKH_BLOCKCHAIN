@@ -1,6 +1,6 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/ultis/cryptoVault";
 import saveUserData from "@/ultis/saveDataToStorage";
-import { generateWallet, restoreWallet, validateMnemonic } from "@/ultis/walletGenerator";
+import { generateWallet, restoreWallet, validateMnemonic, bytesToHex } from "@/ultis/walletGenerator";
 import { AUTH_SERVER } from "@/constants/api";
 
 export interface CreateWalletResult {
@@ -11,6 +11,12 @@ export interface CreateWalletResult {
 export const createWallet = async (password: string): Promise<CreateWalletResult> => {
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
+
+  console.log("mnemonic -",mnemonic);
+
+  console.log("privatekey -",bytesToHex(privateKey));
+
+  console.log("Adress- ",address);
 
   // Mã hóa private key bằng password
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
