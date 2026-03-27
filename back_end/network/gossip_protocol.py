@@ -141,7 +141,7 @@ class GossipProtocol:
                             timeout: int = 5) -> bool:
         """Send message to a specific peer"""
         try:
-            url = f"{peer.get_url()}{endpoint}"
+            url = f"{peer.get_url()}/api/v1/network{endpoint}"
             response = requests.post(url, json=message, timeout=timeout)
             
             if response.status_code == 200:
@@ -254,7 +254,7 @@ class GossipProtocol:
     def request_block(self, peer: Peer, block_hash: str) -> Optional[Dict]:
         """Request full block data from peer"""
         try:
-            url = f"{peer.get_url()}/gossip/block/{block_hash}"
+            url = f"{peer.get_url()}/api/v1/network/gossip/block/{block_hash}"
             response = requests.get(url, timeout=10)
             
             if response.status_code == 200:

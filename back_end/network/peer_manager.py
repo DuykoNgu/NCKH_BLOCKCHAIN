@@ -79,6 +79,7 @@ class PeerManager:
     def load_peers_from_db(self) -> None:
         """Load peers from database"""
         conn = get_connection()
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         try:
@@ -190,7 +191,7 @@ class PeerManager:
     def ping_peer(self, peer: Peer, timeout: int = 5) -> bool:
         """Ping peer to check if it's alive"""
         try:
-            url = f"{peer.get_url()}/health"
+            url = f"{peer.get_url()}/api/v1/network/health"
             response = requests.get(url, timeout=timeout)
             
             if response.status_code == 200:
@@ -226,7 +227,7 @@ class PeerManager:
         discovered_peers = []
         
         try:
-            url = f"http://{seed_node['ip']}:{seed_node['port']}/peers"
+            url = f"http://{seed_node['ip']}:{seed_node['port']}/api/v1/network/peers"
             response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
@@ -310,6 +311,7 @@ class PeerManager:
         if peer_id not in self.peers:
             # Try to load from database
             conn = get_connection()
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             try:
                 cursor.execute("""
