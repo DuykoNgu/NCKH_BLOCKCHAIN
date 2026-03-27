@@ -21,7 +21,7 @@ class AccountRepository:
             role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
             
             cursor.execute('''
-                INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, is_active, created_at)
+                INSERT OR IGNORE INTO account (public_key, address, role, org_name, full_name, avatar_url, is_active, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (account.public_key, account.address, role_value, account.org_name, 
                   account.full_name, account.avatar_url, account.is_active, account.created_at))

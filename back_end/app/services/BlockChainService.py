@@ -47,9 +47,70 @@ class BlockChainService:
     @staticmethod
     def execute_transaction(blockchain: BlockChain, tx: Transaction) -> bool:
         payload = tx.payload
+
+        # Generic key-value state update
         if payload.get("op") == "set":
             blockchain.state_db[payload["key"]] = payload["value"]
             return True
+
+        # Account registration transaction
+        if payload.get("op") == "account_register":
+            try:
+                from app.repositories.AccountRepository import AccountRepository
+                from app.models.Account import Account, Role
+                import datetime
+
+                address = payload.get("address", "").lower()
+                public_key = payload.get("public_key", "")
+                role_str = payload.get("role", "client")
+
+                role_map = {
+                    "client": Role.CLIENT,
+                    "validator": Role.VALIDATOR,
+                    "moet": Role.MOET,
+                }
+                role = role_map.get(role_str.lower(), Role.CLIENT)
+
+                account = Account(
+                    address=address,
+                    public_key=public_key,
+                    role=role,
+                    is_active=1,
+                    created_at=payload.get(
+                        "created_at",
+                        datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+                    ),
+                )
+                # INSERT OR IGNORE so applying the same block twice is safe
+                AccountRepository.create_account(account)
+                print(f"[TX] account_register applied: {address}")
+                return True
+            except Exception as e:
+                print(f"[TX] account_register error: {e}")
+                return False
+
+        # Account profile update transaction
+        if payload.get("op") == "account_update":
+            try:
+                from app.repositories.AccountRepository import AccountRepository
+
+                address = payload.get("address", "").lower()
+                account = AccountRepository.get_account_by_address(address)
+                if not account:
+                    print(f"[TX] account_update skipped – address not found: {address}")
+                    return False
+
+                if "full_name" in payload:
+                    account.full_name = payload["full_name"]
+                if "avatar_url" in payload:
+                    account.avatar_url = payload["avatar_url"]
+
+                AccountRepository.update_account(account)
+                print(f"[TX] account_update applied: {address}")
+                return True
+            except Exception as e:
+                print(f"[TX] account_update error: {e}")
+                return False
 
         return False
 
