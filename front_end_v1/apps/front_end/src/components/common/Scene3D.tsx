@@ -1,4 +1,4 @@
-import { memo, useRef, useMemo, useCallback } from 'react';
+import { memo, useRef, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
@@ -82,16 +82,6 @@ function TrongDongDisc() {
   const innerRef = useRef<THREE.Group>(null!);
   const mouseTarget = useRef({ x: 0, y: 0 });
   const { viewport } = useThree();
-
-  const handlePointerMove = useCallback((e: THREE.Event) => {
-    // @ts-ignore
-    if (e.pointer) {
-      // @ts-ignore
-      mouseTarget.current.x = (e.pointer.x / viewport.width) * 2;
-      // @ts-ignore
-      mouseTarget.current.y = (e.pointer.y / viewport.height) * 2;
-    }
-  }, [viewport]);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;

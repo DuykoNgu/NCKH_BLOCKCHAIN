@@ -1,9 +1,9 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import LoginHome from '@/components/common/loginpage_common/LoginHome';
-import ImportWallet from '@/components/common/loginpage_common/ImportWallet';
-import CreateWallet from '@/components/common/loginpage_common/CreateWallet';
-import SeedDisplay from '@/components/common/loginpage_common/SeedDisplay';
+import LoginHome from '@/components/common/auth/LoginHome';
+import ImportWallet from '@/components/common/auth/ImportWallet';
+import CreateWallet from '@/components/common/auth/CreateWallet';
+import SeedDisplay from '@/components/common/auth/SeedDisplay';
 import { createWallet } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
@@ -78,7 +78,7 @@ const LoginPage = () => {
 
     try {
       await unlock(password);
-      navigate('/');
+      navigate('/home');
     } catch (err) {
       setError('Đăng nhập thất bại. Vui lòng kiểm tra lại mật khẩu.');
       console.error(err);
