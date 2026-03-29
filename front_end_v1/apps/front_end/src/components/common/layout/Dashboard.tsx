@@ -1,9 +1,9 @@
 import { Header } from "./Header";
-import { NFTManagement } from "../nft/NFTManagernent";
-import { PDF_Preview } from "../home_common/PDF_Preview";
-import { WalletIn4 } from "../home_common/WalletIn4";
-import { WalletRegister } from "../home_common/WalletRegister";
-import { TransactionList } from "../home_common/TransactionList";
+import { NFTManagement } from "../nft/NFTManagement";
+import { PDFPreview as PDF_Preview } from "../pdf/PDFPreview";
+import { WalletInfo as WalletIn4 } from "../wallet/WalletInfo";
+import { WalletRegister } from "../wallet/WalletRegister";
+import { TransactionList } from "../transaction/TransactionList";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardProps {

@@ -1,6 +1,6 @@
-import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/ultis/cryptoVault";
-import saveUserData from "@/ultis/saveDataToStorage";
-import { generateWallet, restoreWallet, validateMnemonic } from "@/ultis/walletGenerator";
+import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
+import saveUserData from "@/utils/saveDataToStorage";
+import { generateWallet, restoreWallet, validateMnemonic } from "@/utils/walletGenerator";
 import { AUTH_SERVER } from "@/constants/api";
 
 export interface CreateWalletResult {
