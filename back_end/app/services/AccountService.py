@@ -1,181 +1,117 @@
-"""
-AccountService - Web3 + Backend API pattern
-
-Nguyên tắc:
-- Không có register() — identity được tạo qua REGISTER_IDENTITY transaction
-- verify_signature() recover từ tx, không lookup DB
-- Backend chỉ index data từ chain đã confirm
-- on_chain_* methods xử lý sau khi tx được confirm
-"""
+"""AccountService - Business logic layer for Account operations"""
 from typing import Optional, List, Tuple
+from app.repositories.AccountRepository import AccountRepository
+from app.models.Account import Account, Role
+from app.utils.CryptoUtils import CryptoUtils
+from app.utils.logger import get_logger
 import datetime
 
-from app.repositories.AccountRepository import AccountRepository
-from app.repositories.TransactionRepository import TransactionRepository
-from app.services.TransactionService import TransactionService
-from app.models.Account import Account, Role
-from app.models.Transaction import Transaction, TxType
-from app.utils.logger import get_logger
-
 logger = get_logger(__name__)
-
-
 class AccountService:
-
-    # ─────────────────────────────────────────────
-    # AUTH — không cần register, verify từ tx
-    # ─────────────────────────────────────────────
-
+    """Service for Account business logic"""
     @staticmethod
-    def verify_login_signature(address: str, signature: str,
-                                pubkey: str, nonce: str) -> Tuple[bool, str]:
-        """
-        Verify login signature.
-        Tạo một tx giả (không lưu) để verify — không cần DB lookup.
-        """
-        import hashlib
-        # Build tx giống như client đã build
-        from app.models.Transaction import Transaction, TxType
-        tx = Transaction(
-            tx_type=TxType.REGISTER_IDENTITY,
-            sender_address=address,
-            sender_pubkey=pubkey,
-            payload={"nonce": nonce},
-            nonce=0,
-        )
-        tx.signature = signature
-
-        is_valid, message = TransactionService.verify(tx)
-        return is_valid, message
-
-    @staticmethod
-    def get_or_create(address: str, pubkey: str) -> Tuple[Account, bool]:
-        """
-        Lấy account nếu tồn tại, tạo mới nếu chưa có.
-        Được gọi sau khi verify login signature thành công.
-        created = True nếu là lần đầu login.
-        """
+    def register_account(address: str,public_key: str,role: Role = Role.CLIENT) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
-        existing = AccountRepository.get_by_address(address)
-        if existing:
-            return existing, False
-
-        # Lần đầu login → tạo account với role CLIENT mặc định
-        now = datetime.datetime.now()
-        account = Account(
-            address=address,
-            role=Role.CLIENT,
-            is_active=1,
-            created_at=now.strftime("%d/%m/%Y %H:%M:%S"),
-            public_key=pubkey,  # cache để verify nhanh
-        )
-        AccountRepository.create_account(account)
-        logger.info(f"[AccountService] New account created: {address}")
-        return account, True
-
-    @staticmethod
-    def get_by_address(address: str) -> Optional[Account]:
-        return AccountRepository.get_by_address(address.lower())
-
-    @staticmethod
-    def get_all() -> List[Account]:
-        return AccountRepository.get_all()
-
-    # ─────────────────────────────────────────────
-    # ON-CHAIN HANDLERS
-    # Được gọi bởi ChainIndexer sau khi tx confirm
-    # KHÔNG gọi trực tiếp từ API request
-    # ─────────────────────────────────────────────
-
-    @staticmethod
-    def on_register_identity_confirmed(tx: Transaction) -> bool:
-        """
-        Xử lý sau khi REGISTER_IDENTITY tx được confirm vào block.
-        Tạo hoặc update account trong DB index.
-        """
-        address = tx.sender_address
-        role_str = tx.payload.get("role", "client")
         try:
-            role = Role(role_str)
-        except ValueError:
-            role = Role.CLIENT
+            existing =  AccountRepository.get_account_by_address(address)
+            if existing:
+                return False, None, "Account already exists"
+            
+            now = datetime.datetime.now()
+            account = Account(
+                address= address,
+                public_key= public_key,
+                role = role,
+                is_active=1,
+                created_at=now.strftime("%d/%m/%Y %H:%M:%S")
+            )
 
-        existing = AccountRepository.get_by_address(address)
-        if existing:
-            logger.info(f"[AccountService] Identity re-confirmed: {address}")
-            return True
-
-        now = datetime.datetime.now()
-        account = Account(
-            address=address,
-            role=role,
-            is_active=1,
-            created_at=now.strftime("%d/%m/%Y %H:%M:%S"),
-            public_key=tx.sender_pubkey,
-        )
-        success = AccountRepository.create_account(account)
-        logger.info(f"[AccountService] on_register_identity_confirmed: {address} → {success}")
-        return success
-
-    @staticmethod
-    def on_update_profile_confirmed(tx: Transaction) -> bool:
-        """
-        Xử lý sau khi UPDATE_PROFILE tx confirm.
-        Cache profile data vào DB, lưu tx_hash để client verify on-chain.
-        """
-        address = tx.sender_address
-        full_name = tx.payload.get("full_name")
-        avatar_url = tx.payload.get("avatar_url")
-        tx_hash = tx.tx_hash
-
-        success = AccountRepository.update_profile_tx_hash(
-            address, tx_hash, full_name, avatar_url
-        )
-        logger.info(f"[AccountService] on_update_profile_confirmed: {address} tx={tx_hash}")
-        return success
-
-    @staticmethod
-    def on_assign_role_confirmed(tx: Transaction) -> bool:
-        """
-        Xử lý sau khi ASSIGN_ROLE tx confirm.
-        Chỉ MOET mới có thể gửi tx loại này — đã verify ở TransactionService.
-        """
-        target_address = tx.recipient_address
-        new_role_str = tx.payload.get("role", "client")
-        try:
-            new_role = Role(new_role_str)
-        except ValueError:
-            logger.error(f"[AccountService] Invalid role in ASSIGN_ROLE tx: {new_role_str}")
-            return False
-
-        success = AccountRepository.update_role(target_address, new_role)
-        logger.info(f"[AccountService] on_assign_role_confirmed: {target_address} → {new_role_str}")
-        return success
-
-    # ─────────────────────────────────────────────
-    # ADMIN
-    # ─────────────────────────────────────────────
-
-    @staticmethod
-    def revoke_access(address: str) -> Tuple[bool, str]:
-        """
-        Deactivate account — không xóa để giữ on-chain history.
-        Chỉ MOET mới được gọi endpoint này.
-        """
-        try:
-            success = AccountRepository.deactivate(address.lower())
+            success = AccountRepository.create_account(account)
             if success:
-                return True, "Access revoked"
-            return False, "Address not found"
+                return True, account, "Account registered successfully"
+            else:
+                return False, None, "Failed to save account to database"
+            
         except Exception as e:
-            return False, f"Error: {str(e)}"
+            return False, None,f"Regisration error:{str(e)}"
+       
+    @staticmethod
+    def get_account_by_address(address: str) -> Optional[Account]:
+        """Get account by address"""
+        address = address.lower()
+        try:
+            return AccountRepository.get_account_by_address(address)
+        except Exception as e:
+            logger.error(f"Error getting account by address: {e}")
+            return None
 
     @staticmethod
-    def get_transaction_history(address: str) -> List[Transaction]:
-        """Lấy toàn bộ lịch sử tx của một address từ DB index."""
-        sent = TransactionRepository.get_by_sender(address.lower())
-        received = TransactionRepository.get_by_recipient(address.lower())
+    def get_all_account() -> List[Account]:
+        """Get all accounts"""
+        try:
+            return AccountRepository.get_all_accounts()
+        except Exception as e:
+            logger.error(f"Error getting all accounts: {e}")
+            return []
 
-        # Merge + dedup + sort by timestamp
-        all_txs = {tx.tx_hash: tx for tx in sent + received}
-        return sorted(all_txs.values(), key=lambda t: t.timestamp, reverse=True)
+
+    @staticmethod
+    def delete_account(address: str) -> Tuple[bool, str]:
+        """Delete account"""
+        address = address.lower()
+        try:
+            account = AccountRepository.get_account_by_address(address)
+            if not account:
+                return False, "Account not found"
+            
+            success = AccountRepository.delete_account(address)
+            if success:
+                return True, "Account deleted successfully"
+            else:
+                return False, "Failed to delete account"
+        except Exception as e:
+            return False, f"Error deleting account: {str(e)}"
+
+    @staticmethod
+    def verify_user_signature(address: str, message: str, signature: str) -> Tuple[bool, str]:
+        """Verify a message signed by account"""
+        try:
+            account = AccountRepository.get_account_by_address(address)
+            if not account:
+                return False, "account not found"
+            
+            # Verify signature
+            is_valid = CryptoUtils.verify_signature(message, signature, account.public_key)
+            if is_valid:
+                return True, "Signature valid"
+            else:
+                return False, "Invalid signature"
+        except Exception as e:
+            return False, f"Verification error: {str(e)}"
+
+    @staticmethod
+    def update_profile(address: str, full_name: str = None, avatar_url: str = None) -> Tuple[bool, Optional[Account], str]:
+        """Update account profile (name and avatar)"""
+        address = address.lower()
+        logger.info(f"Updating profile for address: {address}")
+        try:
+            account = AccountRepository.get_account_by_address(address)
+            if not account:
+                logger.warning(f"Profile update failed: Account {address} not found")
+                return False, None, "Account not found"
+            
+            logger.info(f"Found account: {account.address}. New name: {full_name}")
+            
+            if full_name is not None:
+                account.full_name = full_name
+            if avatar_url is not None:
+                account.avatar_url = avatar_url
+                
+            success = AccountRepository.update_account(account)
+            if success:
+                return True, account, "Profile updated successfully"
+            else:
+                return False, None, "Failed to update profile in database"
+        except Exception as e:
+            logger.error(f"Error updating profile: {e}")
+            return False, None, f"Update error: {str(e)}"
