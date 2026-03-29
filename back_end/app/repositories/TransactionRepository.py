@@ -1,202 +1,175 @@
-"""
-TransactionRepository - Web3 pattern
-
-Thay đổi so với cũ:
-- Thêm tx_type + nonce vào schema
-- Index theo tx_type để query nhanh (MINT_NFT, ASSIGN_ROLE...)
-- sender_pubkey lưu để verify offline, không phải để làm identity
-"""
-import json
+"""TransactionRepository - Data access layer for Transaction operations"""
 from typing import Optional, List
 from app.database.connection import get_connection
-from app.models.Transaction import Transaction, TxType
-from app.utils.logger import get_logger
-
-logger = get_logger(__name__)
-
-BASE_SELECT = """
-    SELECT tx_hash, tx_id, tx_type, sender_address, sender_pubkey,
-           recipient_address, payload, nonce, signature, timestamp, block_id
+from app.models.Transaction import Transaction
+from json import dumps
+BASE_TRANSACTION_SELECT = """
+    SELECT tx_hash, sender_address, recipient_address, 
+           payload, signature, timestamp, block_id
     FROM transactions
 """
-
-
 class TransactionRepository:
+    """Repository for Transaction database operations"""
+    
     @staticmethod
-    def create(tx: Transaction) -> bool:
+    def create_transaction(transaction: Transaction) -> bool:
+        """Tạo transaction mới (Đã sửa lỗi dấu ? và khớp schema)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
+            
+            # 7 cột tương ứng với 7 dấu chấm hỏi
             cursor.execute('''
-                INSERT INTO transactions
-                    (tx_hash, tx_id, tx_type, sender_address, sender_pubkey,
-                     recipient_address, payload, nonce, signature, timestamp, block_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO transactions 
+                (tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
-                tx.tx_hash,
-                tx.tx_id,
-                tx.tx_type.value,
-                tx.sender_address,
-                tx.sender_pubkey,
-                tx.recipient_address,
-                json.dumps(tx.payload),
-                tx.nonce,
-                tx.signature,
-                tx.timestamp,
-                tx.block_id,
+                transaction.tx_hash, 
+                transaction.sender_address,
+                transaction.recipient_address, 
+                dumps(transaction.payload), 
+                transaction.signature,
+                transaction.timestamp, 
+                transaction.block_id
             ))
+            
             conn.commit()
             conn.close()
             return True
         except Exception as e:
-            logger.error(f"[TxRepo] create error: {e}")
+            print(f"Error creating transaction: {e}")
             return False
 
     @staticmethod
-    def update_block_id(tx_hash: str, block_id: str) -> bool:
-        """Gắn block_id sau khi tx được confirm vào block."""
+    def get_transaction_by_id(tx_id: str) -> Optional[Transaction]:
+        """Lấy transaction theo hash (Đã sửa lỗi tên cột và index)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                'UPDATE transactions SET block_id = ? WHERE tx_hash = ?',
-                (block_id, tx_hash)
-            )
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            logger.error(f"[TxRepo] update_block_id error: {e}")
-            return False
-        
-    @staticmethod
-    def get_by_hash(tx_hash: str) -> Optional[Transaction]:
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute(f"{BASE_SELECT} WHERE tx_hash = ?", (tx_hash,))
+            
+            # Sửa thành tx_hash = ?
+            query = f"{BASE_TRANSACTION_SELECT} WHERE tx_hash = ?"
+            cursor.execute(query, (tx_id,))
             row = cursor.fetchone()
             conn.close()
-            return TransactionRepository._parse(row)
+            
+            return TransactionRepository._parse_transaction_row(row)
         except Exception as e:
-            logger.error(f"[TxRepo] get_by_hash error: {e}")
+            print(f"Error getting transaction: {e}")
             return None
 
     @staticmethod
-    def get_by_sender(sender_address: str) -> List[Transaction]:
+    def get_transactions_by_sender(sender_address: str) -> List[Transaction]:
+        """Lấy danh sách transaction theo người gửi (Đã rút gọn bằng helper)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                f"{BASE_SELECT} WHERE sender_address = ? ORDER BY timestamp DESC",
-                (sender_address.lower(),)
-            )
+            
+            query = f"{BASE_TRANSACTION_SELECT} WHERE sender_address = ? ORDER BY timestamp DESC"
+            cursor.execute(query, (sender_address,))
             rows = cursor.fetchall()
             conn.close()
-            return [TransactionRepository._parse(r) for r in rows if r]
+            
+            return [TransactionRepository._parse_transaction_row(row) for row in rows if row]
         except Exception as e:
-            logger.error(f"[TxRepo] get_by_sender error: {e}")
+            print(f"Error getting transactions: {e}")
             return []
 
     @staticmethod
-    def get_by_recipient(recipient_address: str) -> List[Transaction]:
+    def get_transactions_by_recipient(recipient_address: str) -> List[Transaction]:
+        """Lấy tất cả giao dịch theo người nhận"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                f"{BASE_SELECT} WHERE recipient_address = ? ORDER BY timestamp DESC",
-                (recipient_address.lower(),)
-            )
+            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE recipient_address = ? ORDER BY timestamp DESC"
+            cursor.execute(query, (recipient_address,))
             rows = cursor.fetchall()
             conn.close()
-            return [TransactionRepository._parse(r) for r in rows if r]
+            return [TransactionRepository._parse_transaction_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"[TxRepo] get_by_recipient error: {e}")
+            print(f"Error fetching recipient txs: {e}")
             return []
 
     @staticmethod
-    def get_by_type(tx_type: TxType) -> List[Transaction]:
-        """
-        Query theo loại tx — ví dụ lấy tất cả MINT_NFT để index NFTs.
-        """
+    def get_all_transactions() -> List[Transaction]:
+        """Lấy toàn bộ lịch sử giao dịch"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                f"{BASE_SELECT} WHERE tx_type = ? ORDER BY timestamp DESC",
-                (tx_type.value,)
-            )
+            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} ORDER BY timestamp DESC"
+            cursor.execute(query)
             rows = cursor.fetchall()
             conn.close()
-            return [TransactionRepository._parse(r) for r in rows if r]
+            return [TransactionRepository._parse_transaction_row(row) for row in rows]
         except Exception as e:
-            logger.error(f"[TxRepo] get_by_type error: {e}")
+            print(f"Error fetching all txs: {e}")
             return []
 
     @staticmethod
-    def get_by_address_and_type(address: str, tx_type: TxType) -> List[Transaction]:
-        """Lấy tx theo sender + type — ví dụ: tất cả MINT_NFT của một MOET."""
+    def get_transactions_by_type(tx_type: str) -> List[Transaction]:
+        """Get transactions by type (from payload)"""
         try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute(
-                f"{BASE_SELECT} WHERE sender_address = ? AND tx_type = ? ORDER BY timestamp DESC",
-                (address.lower(), tx_type.value)
-            )
-            rows = cursor.fetchall()
-            conn.close()
-            return [TransactionRepository._parse(r) for r in rows if r]
+            all_txs = TransactionRepository.get_all_transactions()
+            return [tx for tx in all_txs if tx.payload.get('type') == tx_type]
         except Exception as e:
-            logger.error(f"[TxRepo] get_by_address_and_type error: {e}")
+            print(f"Error getting transactions by type: {e}")
             return []
 
     @staticmethod
-    def get_pending() -> List[Transaction]:
-        """Lấy transactions chưa được confirm vào block (block_id rỗng)."""
+    def count_transactions() -> int:
+        """Get total number of transactions"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute(
-                f"{BASE_SELECT} WHERE block_id = '' OR block_id IS NULL ORDER BY timestamp ASC"
-            )
-            rows = cursor.fetchall()
-            conn.close()
-            return [TransactionRepository._parse(r) for r in rows if r]
-        except Exception as e:
-            logger.error(f"[TxRepo] get_pending error: {e}")
-            return []
-
-    @staticmethod
-    def count() -> int:
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
+            
             cursor.execute('SELECT COUNT(*) FROM transactions')
             count = cursor.fetchone()[0]
             conn.close()
             return count
         except Exception as e:
-            logger.error(f"[TxRepo] count error: {e}")
+            print(f"Error counting transactions: {e}")
             return 0
 
     @staticmethod
-    def _parse(row) -> Optional[Transaction]:
+    def get_transactions_by_date_range(start_timestamp: float, end_timestamp: float) -> List[Transaction]:
+        """Lấy danh sách giao dịch trong khoảng thời gian xác định"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            # Sử dụng biến BASE_TRANSACTION_SELECT đã thống nhất ở các hàm trước
+            # Toán tử BETWEEN giúp truy vấn ngắn gọn và tối ưu hơn >= AND <=
+            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
+            
+            cursor.execute(query, (start_timestamp, end_timestamp))
+            rows = cursor.fetchall()
+            conn.close()
+            
+            # Sử dụng List Comprehension và hàm helper để parse dữ liệu sạch sẽ
+            return [TransactionRepository._parse_transaction_row(row) for row in rows if row]
+            
+        except Exception as e:
+            print(f"Error getting transactions by date range: {e}")
+            return []
+    
+    @staticmethod
+    def _parse_transaction_row(row) -> Optional[Transaction]:
+        """Helper method to parse database row into Transaction object"""
         if not row:
             return None
+        
+        import json
+        
         try:
             return Transaction(
                 tx_hash=row[0],
-                tx_id=row[1],
-                tx_type=TxType(row[2]),
-                sender_address=row[3],
-                sender_pubkey=row[4],
-                recipient_address=row[5],
-                payload=json.loads(row[6]) if row[6] else {},
-                nonce=row[7],
-                signature=row[8],
-                timestamp=row[9],
-                block_id=row[10],
+                sender_address=row[1],
+                recipient_address=row[2],
+                payload=json.loads(row[3]) if row[3] else {},
+                signature=row[4],
+                timestamp=row[5],
+                block_id=row[6]
             )
         except Exception as e:
-            logger.error(f"[TxRepo] _parse error: {e}")
+            print(f"Error parsing transaction row: {e}")
             return None

@@ -1,0 +1,16 @@
+{
+  "name": "my-monorepo",
+  "private": true,
+  "scripts": {
+    "install:all": "cd apps/blockchain-degree-nfts && npm install && cd ../../front_end && npm install --legacy-peer-deps && cd ../nft-uni-vault && npm install",
+    "start": "npm run install:all && npm run dev",
+    "dev": "concurrently -n 'blockchain-degree-nfts,front_end,nft-uni-vault' -c 'green,blue,yellow' 'npm:dev:blockchain-degree-nfts' 'npm:dev:front_end' 'npm:dev:nft-uni-vault'",
+    "dev:blockchain-degree-nfts": "cd apps/blockchain-degree-nfts && npm run dev",
+    "dev:front_end": "cd apps/front_end && npm run dev",
+    "dev:nft-uni-vault": "cd apps/nft-uni-vault && npm run dev",
+    "build": "npm run build --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
