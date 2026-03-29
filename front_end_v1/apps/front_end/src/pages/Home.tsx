@@ -1,4 +1,4 @@
-import { Dashboard } from "@/components/dashboard/Dashboard";
+import { Dashboard } from "@/components/common/layout/Dashboard";
 import React from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";

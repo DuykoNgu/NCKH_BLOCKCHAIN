@@ -13,7 +13,7 @@ export function TrongDongWatermark({className = '', opacity = 0.05}: { className
         <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
             <svg
                 viewBox="0 0 400 400"
-                className="absolute w-[400px] h-[400px] -right-32 -top-32 text-primary animate-spin-slow"
+                className="absolute w-[600px] h-[600px] -right-48 -top-48 text-primary animate-spin-slow"
                 style={{opacity, transformOrigin: "center"}}
             >
                 <circle cx="200" cy="200" r="195" fill="none" stroke="currentColor" strokeWidth="2"/>

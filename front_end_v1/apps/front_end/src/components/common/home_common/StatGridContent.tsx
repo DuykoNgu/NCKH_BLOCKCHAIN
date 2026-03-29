@@ -1,5 +1,5 @@
 import { Award, Activity, Shield, Users, Server } from 'lucide-react';
-import { StatCard } from '@/components/dashboard/StatCard';
+import { StatCard } from '@/components/common/layout/StatCard';
 import { useAuth } from '@/hooks/useAuth';
 
 export const StatGridContent = () => {

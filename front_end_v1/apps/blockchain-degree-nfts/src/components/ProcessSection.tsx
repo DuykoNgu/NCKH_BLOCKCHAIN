@@ -31,14 +31,14 @@ const ProcessSection = () => {
         <div className="relative">
           {/* Chain line */}
           <motion.div
-            className="absolute left-6 top-0 bottom-0 chain-line z-0"
+            className="absolute left-6 top-0 bottom-0 chain-line"
             initial={{ scaleY: 0 }}
             animate={isInView ? { scaleY: 1 } : {}}
             transition={{ duration: 1.5, delay: 0.3, ease: "easeOut" }}
             style={{ transformOrigin: "top" }}
           />
 
-          <div className="space-y-16 relative z-10">
+          <div className="space-y-16">
             {steps.map((step, index) => (
               <motion.div
                 key={index}

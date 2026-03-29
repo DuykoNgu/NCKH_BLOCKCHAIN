@@ -38,7 +38,7 @@ const SolutionSection = () => {
           Không thể sao chép, không thể chỉnh sửa, và bất kỳ ai cũng có thể xác thực tính hợp lệ trong vài giây.
         </motion.p>
 
-        <div className="grid md:grid-cols-3 gap-px bg-border">
+        <div className="grid md:grid-cols-3 gap-0 border border-border">
           {[
             { icon: Shield, title: "Bảo mật tuyệt đối", desc: "Dữ liệu được mã hóa và phân tán trên toàn mạng lưới blockchain, loại bỏ rủi ro tấn công tập trung." },
             { icon: Link, title: "Minh bạch hoàn toàn", desc: "Mọi giao dịch đều được ghi nhận công khai, cho phép kiểm chứng lịch sử cấp phát và chuyển nhượng văn bằng." },
@@ -46,7 +46,7 @@ const SolutionSection = () => {
           ].map((item, index) => (
             <motion.div
               key={index}
-              className="p-8 md:p-10 bg-card"
+              className={`p-8 md:p-10 bg-card ${index < 2 ? 'md:border-r border-b md:border-b-0 border-border' : ''}`}
               initial={{ opacity: 0, y: 30 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.8, delay: 0.3 + index * 0.15 }}

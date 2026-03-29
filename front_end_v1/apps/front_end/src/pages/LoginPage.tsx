@@ -1,9 +1,9 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import LoginHome from '@/components/auth/LoginHome';
-import ImportWallet from '@/components/auth/ImportWallet';
-import CreateWallet from '@/components/auth/CreateWallet';
-import SeedDisplay from '@/components/auth/SeedDisplay';
+import LoginHome from '@/components/common/loginpage_common/LoginHome';
+import ImportWallet from '@/components/common/loginpage_common/ImportWallet';
+import CreateWallet from '@/components/common/loginpage_common/CreateWallet';
+import SeedDisplay from '@/components/common/loginpage_common/SeedDisplay';
 import { createWallet } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 import { Button } from '@/components/ui/button';

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import LoginButton, { WalletIcon } from "@/components/auth/LoginButton";
+import LoginButton, { WalletIcon } from "@/components/common/loginpage_common/LoginButton";
 
 const LoginHome = () => {
   const navigate = useNavigate();

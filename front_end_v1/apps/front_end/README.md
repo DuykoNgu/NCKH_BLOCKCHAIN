@@ -1,39 +1,68 @@
-Follow these steps:
+# NCKH Blockchain - Front End
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Dự án front-end cho nghiên cứu khoa học về Blockchain, sử dụng React và TypeScript.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Công nghệ sử dụng
 
-# Step 3: Install the necessary dependencies.
-npm i
+- **React**: 19.2.0 - Thư viện JavaScript cho xây dựng giao diện người dùng
+- **TypeScript**: 5.9.3 - Ngôn ngữ lập trình với type checking
+- **Vite**: Công cụ build và dev server nhanh
+- **Axios**: 1.13.2 - Thư viện HTTP client cho API calls
+- **ESLint**: Công cụ linting code
+- **Node.js Types**: Type definitions cho Node.js
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+## Cách clone và chạy dự án
 
-**Edit a file directly in GitHub**
+### Yêu cầu hệ thống
+- Node.js (phiên bản 18 trở lên)
+- npm hoặc yarn
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Các bước cài đặt
 
-**Use GitHub Codespaces**
+1. **Clone repository:**
+   ```bash
+   git clone <repository-url>
+   cd NCKH_BLOCKCHAIN/front_end
+   ```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+2. **Cài đặt dependencies:**
+   ```bash
+   npm install
+   ```
 
-## What technologies are used for this project?
+3. **Thiết lập biến môi trường:**
+   Tạo file `.env` trong thư mục `front_end` và thêm:
+   ```
+   VITE_API_URL=http://localhost:3000/api
+   ```
+   (Thay đổi URL theo backend server của bạn)
 
-This project is built with:
+4. **Chạy development server:**
+   ```bash
+   npm run dev
+   ```
+   Server sẽ chạy trên `http://localhost:5173`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+5. **Build cho production:**
+   ```bash
+   npm run build
+   ```
+
+6. **Preview build:**
+   ```bash
+   npm run preview
+   ```
+
+## Cấu trúc dự án
+
+- `src/`: Source code React
+- `configs/`: Cấu hình axios và các config khác
+- `public/`: Static assets
+- `dist/`: Build output (sau khi build)
+
+## Lệnh hữu ích
+
+- `npm run dev`: Chạy development server
+- `npm run build`: Build cho production
+- `npm run lint`: Kiểm tra linting
+- `npm run preview`: Preview production build
