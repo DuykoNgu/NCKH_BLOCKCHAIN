@@ -11,15 +11,8 @@
     "seed_nodes": [
         {
             "name": "Node A (Local)",
-            "ip": "127.0.0.1",
+            "ip": "192.168.79.76",
             "port": 5000,
-            "public_key": "",
-            "role": "validator"
-        },
-        {
-            "name": "Node B (Local)",
-            "ip": "127.0.0.1",
-            "port": 5001,
             "public_key": "",
             "role": "validator"
         }

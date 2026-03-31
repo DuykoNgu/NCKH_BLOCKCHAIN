@@ -79,6 +79,7 @@ class PeerManager:
     def load_peers_from_db(self) -> None:
         """Load peers from database"""
         conn = get_connection()
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
         try:
@@ -310,6 +311,7 @@ class PeerManager:
         if peer_id not in self.peers:
             # Try to load from database
             conn = get_connection()
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             try:
                 cursor.execute("""
