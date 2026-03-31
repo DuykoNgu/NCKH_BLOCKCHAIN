@@ -1,9 +1,6 @@
 import sqlite3
 import os
-
-# Get the directory where this file is located
-DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'node_b.db')
+from app.database.database import DB_PATH
 
 def get_connection():
     """Get database connection"""

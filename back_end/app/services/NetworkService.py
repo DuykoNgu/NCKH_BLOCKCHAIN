@@ -176,12 +176,14 @@ class NetworkService:
         return [peer.to_dict() for peer in pending_peers]
     
     def health_check(self) -> Dict:
-        """Perform health check on network"""
-        alive, dead = self.peer_manager.health_check_all_peers()
+        """Return basic health status without actively pinging (prevents infinite ping loop)"""
+        active_peers = len(self.peer_manager.get_active_peers())
+        total_peers = len(self.peer_manager.peers)
+        dead = total_peers - active_peers
         
         return {
-            'status': 'healthy' if alive > 0 else 'unhealthy',
-            'peers_alive': alive,
+            'status': 'healthy',
+            'peers_alive': active_peers,
             'peers_dead': dead,
             'time_synced': self.check_time_sync(),
             'timestamp': time.time()

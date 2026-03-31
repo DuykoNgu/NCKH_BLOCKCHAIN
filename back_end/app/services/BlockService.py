@@ -17,7 +17,7 @@ class BlockService:
             return ""
 
         tx_hashes = [
-            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode()).hexdigest()
+            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode())
             for tx in transactions
         ]
 
@@ -29,7 +29,7 @@ class BlockService:
                 right = tx_hashes[i] if i + 1 >= len(tx_hashes) else tx_hashes[i + 1]
                 combined = left + right
 
-                temp.append(HashUtils.hash_sha256(combined.encode()).hexdigest())
+                temp.append(HashUtils.hash_sha256(combined.encode()))
 
             tx_hashes = temp
 
