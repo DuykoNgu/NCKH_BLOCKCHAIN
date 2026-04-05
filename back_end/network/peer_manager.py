@@ -307,7 +307,16 @@ class PeerManager:
         return [peer for peer in self.peers.values() if peer.status == status]
     
     def approve_peer(self, peer_id: str) -> bool:
-        """Approve a pending peer (PENDING -> ACTIVE)"""
+        """
+        Approve a pending peer (PENDING -> INACTIVE)
+        Peer will become ACTIVE when node activates and sends public_key
+        
+        Args:
+            peer_id: ID of peer to approve
+            
+        Returns:
+            True if successful, False otherwise
+        """
         if peer_id not in self.peers:
             # Try to load from database
             conn = get_connection()
@@ -348,20 +357,126 @@ class PeerManager:
             print(f"⚠ Peer {peer_id} is not pending (current status: {peer.status})")
             return False
         
-        # Update status to ACTIVE
-        peer.status = "ACTIVE"
-        
-        # Add to whitelist if configured
-        if self.config.is_whitelist_enabled() and peer.public_key:
-            # TODO: Add logic to update whitelist configuration
-            print(f"✓ Added peer {peer_id} public key to whitelist")
+        # Update status: PENDING -> INACTIVE (waiting for node activation)
+        peer.status = "INACTIVE"
         
         # Save to database
         if self.save_peer_to_db(peer):
-            print(f"✓ Peer {peer_id} approved and activated")
+            print(f"✓ Peer {peer_id} approved and set to INACTIVE (awaiting activation)")
             return True
         else:
             print(f"✗ Failed to save peer {peer_id}")
+            return False
+    
+    def update_peer_activation_by_ip_port(self, ip_address: str, port: int, public_key: str, node_type: str = "validator") -> bool:
+        """
+        Update peer activation by IP:port (called when node activates and sends public_key)
+        Stage 3 of peer lifecycle: INACTIVE -> ACTIVE with public_key saved
+        
+        Args:
+            ip_address: IP address of peer
+            port: Port of peer
+            public_key: Public key from node's keystore
+            node_type: Node type (validator, observer, etc.)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Generate peer_id from IP:port
+        peer_id = f"{ip_address}:{port}"
+        
+        # Try to find peer in memory or load from database
+        if peer_id not in self.peers:
+            conn = get_connection()
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            try:
+                cursor.execute("""
+                    SELECT peer_id, ip_address, port, public_key as existing_pubkey, node_type, status, last_seen
+                    FROM peers
+                    WHERE ip_address = ? AND port = ?
+                """, (ip_address, port))
+                row = cursor.fetchone()
+                if row:
+                    peer = Peer(
+                        peer_id=row['peer_id'],
+                        ip_address=row['ip_address'],
+                        port=row['port'],
+                        public_key=row['existing_pubkey'] or '',
+                        node_type=row['node_type'] or 'observer',
+                        status=row['status'] or 'PENDING'
+                    )
+                    peer.last_seen = row['last_seen'] or time.time()
+                    self.peers[peer_id] = peer
+                else:
+                    print(f"✗ Peer {ip_address}:{port} not found")
+                    conn.close()
+                    return False
+            except sqlite3.Error as e:
+                print(f"✗ Error loading peer: {e}")
+                conn.close()
+                return False
+            finally:
+                conn.close()
+        
+        peer = self.peers.get(peer_id)
+        if not peer:
+            print(f"✗ Peer {peer_id} not found in memory")
+            return False
+        
+        if peer.status != "INACTIVE":
+            print(f"⚠ Peer {peer_id} is not in INACTIVE state (current: {peer.status}), cannot activate")
+            return False
+        
+        # Update peer with public_key and node_type from activation request
+        peer.public_key = public_key
+        peer.node_type = node_type
+        peer.status = "ACTIVE"
+        peer.last_seen = time.time()
+        
+        # Save to database
+        if self.save_peer_to_db(peer):
+            print(f"✓ Peer {peer_id} activated: public_key saved, status set to ACTIVE")
+            return True
+        else:
+            print(f"✗ Failed to save activated peer {peer_id}")
+            return False
+    
+    def update_peer_status_by_public_key(self, public_key: str, status: str, node_type: str = "validator") -> bool:
+        """
+        Update peer status by public key (used for activation/deactivation broadcasts)
+        
+        Args:
+            public_key: Public key of peer
+            status: New status (ACTIVE, INACTIVE, PENDING)
+            node_type: Type of node (validator, observer)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        # Find peer by public key
+        target_peer = None
+        for peer in self.peers.values():
+            if peer.public_key == public_key:
+                target_peer = peer
+                break
+        
+        if not target_peer:
+            print(f"⚠ Peer with public key {public_key[:16]}... not found")
+            return False
+        
+        # Update peer info
+        old_status = target_peer.status
+        target_peer.status = status
+        target_peer.node_type = node_type
+        target_peer.last_seen = time.time()
+        
+        # Save to database
+        if self.save_peer_to_db(target_peer):
+            print(f"✓ Updated peer {target_peer.peer_id} status: {old_status} → {status} (type: {node_type})")
+            return True
+        else:
+            print(f"✗ Failed to update peer status in database")
             return False
     
     def get_peer_list_for_api(self) -> List[Dict]:

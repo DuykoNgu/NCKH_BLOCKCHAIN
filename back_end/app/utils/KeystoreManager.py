@@ -232,11 +232,7 @@ def create_keystore(passphrase: str):
     keystore_path = "node.keystore"
     if os.path.exists(keystore_path):
         print(f"⚠️  WARNING: Keystore file already exists: {keystore_path}")
-        response = input("Do you want to overwrite it? (yes/no): ").strip().lower()
-        if response != 'yes':
-            print("Setup cancelled.")
-            return
-        print()
+
     
     # Step 1: Generate keypair
     print("[1/3] Generating keypair...")

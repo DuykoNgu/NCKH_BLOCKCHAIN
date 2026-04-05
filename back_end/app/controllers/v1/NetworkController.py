@@ -59,38 +59,45 @@ def get_peers():
 @network_bp.route('/peers/register', methods=['POST'])
 def register_peer():
     """
-    Register a new peer with the network
+    Register a new peer with the network (PENDING status, no public_key yet)
     
     Request body:
     {
         "ip_address": "10.0.1.5",
         "port": 5000,
-        "public_key": "04xyz...",
         "node_type": "observer"
     }
     
     Response:
     {
         "success": true,
-        "peer": { ... }
+        "peer": {
+            "peer_id": "abc123...",
+            "ip_address": "10.0.1.5",
+            "port": 5000,
+            "public_key": "",
+            "node_type": "observer",
+            "status": "PENDING",
+            "last_seen": 1234567890.0
+        }
     }
     """
     try:
         data = request.get_json()
         
-        # Validate required fields
-        required_fields = ['ip_address', 'port', 'public_key']
+        # Validate required fields (public_key NOT required for registration)
+        required_fields = ['ip_address', 'port']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         service = get_network_service()
         
-        # Register peer
+        # Register peer (without public_key, status = PENDING)
         peer = service.register_peer(
             ip_address=data['ip_address'],
             port=data['port'],
-            public_key=data['public_key'],
+            public_key="",  # Empty - will be filled when node activates
             node_type=data.get('node_type', 'observer')
         )
         
@@ -104,6 +111,60 @@ def register_peer():
                 'success': False,
                 'error': 'Peer not authorized or already exists'
             }), 403
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/peers/status-update', methods=['POST'])
+def update_peer_status():
+    """
+    Update peer status when node activates (from active_node.py)
+    Updates public_key from node's keystore and sets status to ACTIVE
+    
+    Request body:
+    {
+        "ip_address": "192.168.1.100",
+        "port": 5000,
+        "public_key": "04abc...",
+        "node_type": "validator"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Peer activated - public_key saved and status set to ACTIVE"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['ip_address', 'port', 'public_key']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        service = get_network_service()
+        
+        # Update peer: find by IP:port, save public_key, set status to ACTIVE
+        success = service.update_peer_activation(
+            ip_address=data['ip_address'],
+            port=data['port'],
+            public_key=data['public_key'],
+            node_type=data.get('node_type', 'validator')
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Peer activated - public_key saved and status set to ACTIVE'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Peer not found or update failed'
+            }), 404
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -308,12 +369,14 @@ def get_slot_info():
 def approve_peer(peer_id: str):
     """
     Approve a pending peer (MOET only)
-    Transitions peer from PENDING -> ACTIVE and adds to whitelist
+    Transitions peer from PENDING -> INACTIVE (waiting for node to activate)
+    
+    Request body: {} (empty)
     
     Response:
     {
         "success": true,
-        "message": "Peer approved successfully"
+        "message": "Peer approved and set to INACTIVE (awaiting activation)"
     }
     """
     try:
@@ -324,7 +387,7 @@ def approve_peer(peer_id: str):
         if success:
             return jsonify({
                 'success': True,
-                'message': 'Peer approved successfully'
+                'message': 'Peer approved and set to INACTIVE (awaiting node activation)'
             }), 200
         else:
             return jsonify({

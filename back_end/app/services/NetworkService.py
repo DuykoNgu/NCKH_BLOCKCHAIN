@@ -175,6 +175,38 @@ class NetworkService:
         pending_peers = self.peer_manager.get_peers_by_status("PENDING")
         return [peer.to_dict() for peer in pending_peers]
     
+    def update_peer_status(self, public_key: str, status: str, node_type: str = "validator") -> bool:
+        """
+        Update peer status by public key
+        Used when peer broadcasts activation/deactivation
+        
+        Args:
+            public_key: Public key of peer
+            status: New status (ACTIVE, INACTIVE, PENDING)
+            node_type: Type of node (validator, observer)
+            
+        Returns:
+            True if update successful, False otherwise
+        """
+        return self.peer_manager.update_peer_status_by_public_key(public_key, status, node_type)
+    
+    def update_peer_activation(self, ip_address: str, port: int, public_key: str, node_type: str = "validator") -> bool:
+        """
+        Update peer activation by IP:port (Stage 3 of peer lifecycle)
+        Called when node activates and sends public_key via status-update endpoint
+        Transitions peer from INACTIVE -> ACTIVE
+        
+        Args:
+            ip_address: IP address of peer
+            port: Port of peer
+            public_key: Public key from node's keystore
+            node_type: Node type (validator, observer)
+            
+        Returns:
+            True if update successful, False otherwise
+        """
+        return self.peer_manager.update_peer_activation_by_ip_port(ip_address, port, public_key, node_type)
+    
     def health_check(self) -> Dict:
         """Return basic health status without actively pinging (prevents infinite ping loop)"""
         active_peers = len(self.peer_manager.get_active_peers())

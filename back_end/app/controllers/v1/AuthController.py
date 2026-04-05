@@ -122,6 +122,93 @@ def activate_validator():
             'message': 'Internal server error'
         }), 500
 
+@auth_bp.route('/activate-with-key', methods=['POST'])
+def activate_validator_with_key():
+    """
+    Activate validator with pre-decrypted private key (used by active_node.py)
+    This is called from active_node.py which has already decrypted the private key
+    
+    Request Body:
+        {
+            "private_key_hex": "string"
+        }
+    
+    Response:
+        {
+            "success": true/false,
+            "message": "string",
+            "validator_info": {
+                "is_active": bool,
+                "validator_index": int,
+                "total_validators": int
+            }
+        }
+    """
+    try:
+        # Get private key from request
+        data = request.get_json()
+        
+        if not data or 'private_key_hex' not in data:
+            return jsonify({
+                'success': False,
+                'message': 'Private key is required'
+            }), 400
+        
+        private_key_hex = data['private_key_hex']
+        
+        # Get validator worker instance
+        validator_worker = get_validator_worker()
+        
+        if validator_worker is None:
+            return jsonify({
+                'success': False,
+                'message': 'Validator worker not initialized'
+            }), 500
+        
+        # Check if already active
+        if validator_worker.is_active:
+            return jsonify({
+                'success': True,
+                'message': 'Validator is already active',
+                'validator_info': {
+                    'is_active': True,
+                    'validator_index': validator_worker.my_index,
+                    'total_validators': validator_worker.total_validators
+                }
+            }), 200
+        
+        # Activate validator with decrypted private key
+        success = validator_worker.activate(private_key_hex)
+        
+        # Secure delete private key from request data
+        KeystoreManager.secure_delete(private_key_hex)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Validator activated successfully',
+                'validator_info': {
+                    'is_active': validator_worker.is_active,
+                    'validator_index': validator_worker.my_index,
+                    'total_validators': validator_worker.total_validators
+                }
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Failed to activate validator'
+            }), 500
+    
+    except Exception as e:
+        print(f"✗ Activation with key error: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        return jsonify({
+            'success': False,
+            'message': 'Internal server error'
+        }), 500
+
 @auth_bp.route('/create_key_store', methods=['POST'])
 def create_key_store():
     try:
