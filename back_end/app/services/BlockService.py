@@ -2,11 +2,15 @@ import hashlib
 import json
 from typing import List
 
+from flask import request, jsonify
+
 from app.utils.HashUtils import HashUtils
 from app.utils.CryptoUtils import CryptoUtils
 
 from app.models.Block import Block
+from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
+from app.repositories.BlockRepository import BlockRepository
 
 
 class BlockService:
@@ -17,7 +21,7 @@ class BlockService:
             return ""
 
         tx_hashes = [
-            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode())
+            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode()).hexdigest()
             for tx in transactions
         ]
 
@@ -29,7 +33,7 @@ class BlockService:
                 right = tx_hashes[i] if i + 1 >= len(tx_hashes) else tx_hashes[i + 1]
                 combined = left + right
 
-                temp.append(HashUtils.hash_sha256(combined.encode()))
+                temp.append(HashUtils.hash_sha256(combined.encode()).hexdigest())
 
             tx_hashes = temp
 
@@ -89,3 +93,55 @@ class BlockService:
         """Xác thực chữ ký block"""
         message = BlockService.get_signing_data(block)
         return CryptoUtils.verify_signature(message, block.validator_signature, public_key_hex)
+
+    # Tạo block mới
+    @staticmethod
+    def create_block(index: int, block_id: str, pre_hash: str, merkle_root: str,
+                     validator_pubkey: str, private_key: str, 
+                     transactions: List[Transaction] = None) -> Block:
+        """
+        Create a new block
+        
+        Args:
+            index (int): Block index
+            block_id (str): Block ID
+            pre_hash (str): Previous block hash
+            merkle_root (str): Merkle root of transactions
+            validator_pubkey (str): Validator's public key
+            private_key (str): Validator's private key for signing
+            transactions (List[Transaction]): List of transactions in the block
+            
+        Returns:
+            Block: The created block object
+            
+        Raises:
+            ValueError: If required parameters are missing
+        """
+        try:
+            if transactions is None:
+                transactions = []
+            
+            # Create block header
+            block_header = BlockHeader(
+                index=index,
+                pre_hash=pre_hash,
+                merkle_root=merkle_root,
+                validator_pubkey=validator_pubkey
+            )
+            
+            # Create block
+            block = Block(
+                index=index,
+                block_id=block_id,
+                block_header=block_header,
+                transactions=transactions
+            )
+            
+            # Calculate hash and sign block
+            block.block_hash = BlockService.calculate_hash(block)
+            BlockService.sign_block(block, private_key)
+            
+            return block
+                
+        except Exception as e:
+            raise Exception(f"Error creating block: {str(e)}")

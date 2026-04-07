@@ -170,6 +170,67 @@ def update_peer_status():
         return jsonify({'error': str(e)}), 500
 
 
+@network_bp.route('/peers/activation', methods=['POST'])
+def receive_node_activation():
+    """
+    Receive node activation message from another node.
+    This endpoint implements the node activation protocol:
+    
+    Step 1 [Node A]: Node creates signed payload and broadcasts
+    Step 2 [Node B, C...]: Receive activation message and verify
+    - Verify authentication (signature verification)
+    - Check authorization (is peer authorized?)
+    - Update peer status (PENDING -> ACTIVE)
+    - Optionally create activation transaction for mempool
+    
+    Request body:
+    {
+        "type": "NODE_ACTIVATION",
+        "payload": {
+            "node_id": "04abc...",  // Public key
+            "ip": "192.168.1.100",
+            "port": 5000,
+            "timestamp": 1234567890,
+            "status": "ACTIVE"
+        },
+        "signature": "3045022100abc..."
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Peer status updated to ACTIVE",
+        "peer_id": "04abc123",
+        "action": "added|updated"
+    }
+    """
+    try:
+        from app.services.NodeActivationService import NodeActivationService
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Invalid request body'}), 400
+        
+        if data.get('type') != 'NODE_ACTIVATION':
+            return jsonify({'error': 'Invalid message type'}), 400
+        
+        # Process activation message
+        result = NodeActivationService.handle_activation_message(data)
+        
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            status_code = 401 if result.get('step') == 'authentication' else \
+                         403 if result.get('step') == 'authorization' else 400
+            return jsonify(result), status_code
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'step': 'error'}), 500
+
+
 @network_bp.route('/gossip/transaction', methods=['POST'])
 def receive_transaction_gossip():
     """

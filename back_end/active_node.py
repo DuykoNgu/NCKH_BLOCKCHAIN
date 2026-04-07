@@ -5,7 +5,8 @@ This script:
 1. Loads the keystore created by setup.py
 2. Asks for passphrase to unlock private key
 3. Activates the validator for block mining
-4. Broadcasts peer status update to other nodes
+4. Creates signed activation payload and broadcasts to network
+5. Optionally creates activation transaction for mempool
 
 Usage:
     python active_node.py
@@ -17,13 +18,15 @@ import json
 import getpass
 import requests
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 # Add app to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.utils.KeystoreManager import KeystoreManager
+from app.services.NodeActivationService import NodeActivationService
+from app.utils.CryptoUtils import CryptoUtils
 
 # Load environment variables
 load_dotenv()
@@ -302,6 +305,129 @@ class NodeActivator:
             self.print_warning(f"Error broadcasting status: {e}")
             return True  # Non-critical
     
+    def broadcast_signed_activation(self, private_key: str, seed_nodes: list) -> Dict:
+        """
+        Broadcast SIGNED node activation message to all seed nodes.
+        
+        This implements Step 1 of the node activation protocol:
+        - Create a JSON payload with node identification info
+        - Sign the payload with the node's private key
+        - Broadcast to all seed nodes
+        
+        Args:
+            private_key: Node's private key (hex format)
+            seed_nodes: List of seed nodes from config
+            
+        Returns:
+            dict: Broadcast results with success/failure counts
+        """
+        self.print_section("Step 5: Broadcasting Signed Activation Message")
+        
+        try:
+            # Load node configuration for IP and port
+            config_path = ".node_config.json"
+            if not os.path.exists(config_path):
+                self.print_warning("Node config not found - skipping signed broadcast")
+                return {'success_count': 0, 'failed_count': 0, 'results': []}
+            
+            with open(config_path, 'r') as f:
+                node_config = json.load(f)
+            
+            node_ip = node_config.get('ip_address', '127.0.0.1')
+            node_port = node_config.get('port', 5000)
+            
+            # Step 1: Create activation payload
+            self.print_info("Step 5.1: Creating activation payload...")
+            payload = NodeActivationService.create_activation_payload(
+                node_id=self.public_key,
+                ip=node_ip,
+                port=node_port
+            )
+            self.print_success(f"Payload created: {self.public_key[:16]}... at {node_ip}:{node_port}")
+            
+            # Step 2: Sign the payload
+            self.print_info("Step 5.2: Signing activation payload...")
+            signature = NodeActivationService.sign_activation_payload(payload, private_key)
+            self.print_success(f"Payload signed: {signature[:32]}...")
+            
+            # Step 3: Broadcast to seed nodes
+            self.print_info("Step 5.3: Broadcasting to seed nodes...")
+            results = NodeActivationService.broadcast_activation(
+                node_id=self.public_key,
+                ip=node_ip,
+                port=node_port,
+                signature=signature,
+                seed_nodes=seed_nodes
+            )
+            
+            # Display results
+            self.print_info(f"\nBroadcast Results:")
+            self.print_success(f"  ✓ Successful: {results['success_count']}")
+            self.print_warning(f"  ✗ Failed: {results['failed_count']}")
+            
+            for result in results.get('results', []):
+                status_emoji = "✓" if result['status'] == 'success' else "✗"
+                print(f"    {status_emoji} {result['seed_node']}: {result['message']}")
+            
+            return results
+            
+        except Exception as e:
+            self.print_error(f"Error broadcasting signed activation: {e}")
+            import traceback
+            traceback.print_exc()
+            return {'success_count': 0, 'failed_count': 0, 'results': [], 'error': str(e)}
+    
+    def create_activation_transaction(self, private_key: str) -> Optional[object]:
+        """
+        Create an activation transaction to be added to the mempool.
+        
+        This transaction represents the node activation in the blockchain
+        and can be included in blocks for consensus tracking.
+        
+        Args:
+            private_key: Node's private key (hex format)
+            
+        Returns:
+            Transaction object or None if failed
+        """
+        self.print_section("Step 6: Creating Activation Transaction")
+        
+        try:
+            # Get node address from public key
+            node_address = CryptoUtils.get_address_from_pubkey(self.public_key)
+            
+            self.print_info(f"Creating activation transaction for {node_address}...")
+            
+            tx = NodeActivationService.create_activation_transaction(
+                node_id=self.public_key,
+                ip=os.getenv('NODE_IP', '127.0.0.1'),
+                port=int(os.getenv('NODE_PORT', '5000')),
+                sender_address=node_address,
+                private_key=private_key
+            )
+            
+            if tx:
+                self.print_success(f"Activation transaction created: {tx.tx_id[:32]}...")
+                self.print_info(f"Transaction will be added to mempool for next block")
+                
+                # Try to add to mempool
+                success = NodeActivationService.add_activation_to_mempool(tx)
+                if success:
+                    self.print_success("Transaction added to mempool")
+                    return tx
+                else:
+                    self.print_warning("Failed to add transaction to mempool")
+                    return tx  # Return anyway, some error occurred
+            else:
+                self.print_warning("Failed to create activation transaction")
+                return None
+                
+        except Exception as e:
+            self.print_warning(f"Error creating activation transaction: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
     def display_summary(self) -> None:
         """Display activation summary"""
         self.print_header("✅ Node Activated Successfully!")
@@ -366,10 +492,42 @@ class NodeActivator:
         if not self.activate_validator():
             return False
         
-        # Step 5: Broadcast status update
+        # Step 5: Broadcast status update (backward compatibility)
         self.broadcast_peer_status_update()
         
-        # Step 6: Display summary
+        # Step 6: Load network config for seed nodes
+        try:
+            network_config_path = os.path.join(
+                os.path.dirname(__file__),
+                'network',
+                'config.json'
+            )
+            
+            if os.path.exists(network_config_path):
+                with open(network_config_path, 'r') as f:
+                    network_config = json.load(f)
+                
+                seed_nodes = network_config.get('seed_nodes', [])
+                
+                if seed_nodes and self.private_key:
+                    # Broadcast signed activation to seed nodes
+                    self.broadcast_signed_activation(self.private_key, seed_nodes)
+                    
+                    # Create activation transaction for mempool
+                    self.create_activation_transaction(self.private_key)
+            else:
+                self.print_info("Network config not found - skipping signed broadcast")
+        
+        except Exception as e:
+            self.print_warning(f"Error in additional activation steps: {e}")
+        
+        finally:
+            # Clean up private key from memory
+            if self.private_key:
+                KeystoreManager.secure_delete(self.private_key)
+                self.private_key = None
+        
+        # Display summary
         self.display_summary()
         
         return True
