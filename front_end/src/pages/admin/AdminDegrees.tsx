@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
+import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { degrees } from "@/data/admin/mockData";
+import { adminService } from "@/services/adminService";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
   pending: { label: "Đang chờ", icon: Clock, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
   rejected: { label: "Từ chối", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
+  revoked: { label: "Đã thu hồi", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
@@ -25,15 +26,40 @@ export default function Degrees() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [mintOpen, setMintOpen] = useState(false);
+  const [degrees, setDegrees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDegrees = async () => {
+    try {
+      setLoading(true);
+      const data = await adminService.getAllNFTs();
+      setDegrees(data.nfts || []);
+    } catch (error) {
+      console.error("Failed to fetch degrees:", error);
+      toast.error("Không thể tải danh sách bằng cấp");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDegrees();
+  }, []);
 
   const filtered = degrees.filter((d) => {
-    const matchSearch = d.name.toLowerCase().includes(search.toLowerCase()) || d.degree.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === "all" || d.status === filterStatus;
+    const name = d.recipient_name || "";
+    const degreeType = d.metadata?.degree_type || "";
+    const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || 
+                      degreeType.toLowerCase().includes(search.toLowerCase());
+    
+    const status = d.is_valid ? "verified" : "revoked";
+    const matchStatus = filterStatus === "all" || status === filterStatus;
+    
     return matchSearch && matchStatus;
   });
 
   const handleMint = () => {
-    toast.success("Đã tạo yêu cầu Mint NFT bằng cấp mới!");
+    toast.success("Hệ thống hiện tại yêu cầu Trường đại học tự Mint. Admin chỉ có quyền quản lý và thu hồi.");
     setMintOpen(false);
   };
 
@@ -42,20 +68,23 @@ export default function Degrees() {
       <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-display text-2xl font-bold text-foreground">Bằng cấp NFT</h2>
-          <p className="text-sm text-muted-foreground mt-1">Quản lý tất cả bằng cấp đã phát hành dưới dạng NFT</p>
+          <p className="text-sm text-muted-foreground mt-1">Quản lý tất cả bằng cấp đã phát hành dưới dạng NFT trong mạng lưới</p>
         </div>
         <Dialog open={mintOpen} onOpenChange={setMintOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
-              Mint NFT mới
+              Cấp bằng mới
             </Button>
           </DialogTrigger>
           <DialogContent className="glass-card border-border">
             <DialogHeader>
-              <DialogTitle className="font-display">Mint NFT Bằng cấp mới</DialogTitle>
+              <DialogTitle className="font-display">Cấp bằng NFT mới</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
+              <div className="p-4 rounded-lg bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-sm">
+                Lưu ý: Theo quy trình nghiệp vụ, bằng cấp sẽ được trực tiếp các Trường đại học (Validator) khởi tạo và ký duyệt.
+              </div>
               <div className="space-y-2">
                 <Label>Họ và tên sinh viên</Label>
                 <Input placeholder="Nhập họ tên..." />
@@ -72,19 +101,7 @@ export default function Degrees() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Ngành học</Label>
-                <Input placeholder="Nhập ngành học..." />
-              </div>
-              <div className="space-y-2">
-                <Label>Trường đại học</Label>
-                <Input placeholder="Nhập tên trường..." />
-              </div>
-              <div className="space-y-2">
-                <Label>Năm tốt nghiệp</Label>
-                <Input placeholder="2024" type="number" />
-              </div>
-              <Button onClick={handleMint} className="w-full">Mint NFT</Button>
+              <Button onClick={handleMint} className="w-full">Khởi tạo yêu cầu</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -109,19 +126,19 @@ export default function Degrees() {
               <CheckCircle2 className="h-5 w-5 text-green-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => d.status === "verified").length}</p>
+              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => d.is_valid).length}</p>
               <p className="text-xs text-muted-foreground">Đã xác thực</p>
             </div>
           </CardContent>
         </Card>
         <Card className="glass-card">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-yellow-400/20 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-yellow-400" />
+            <div className="h-10 w-10 rounded-lg bg-destructive/20 flex items-center justify-center">
+              <XCircle className="h-5 w-5 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => d.status === "pending").length}</p>
-              <p className="text-xs text-muted-foreground">Đang chờ</p>
+              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => !d.is_valid).length}</p>
+              <p className="text-xs text-muted-foreground">Đã thu hồi</p>
             </div>
           </CardContent>
         </Card>
@@ -131,7 +148,7 @@ export default function Degrees() {
       <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Tìm kiếm theo tên, ngành học..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Tìm kiếm theo tên, loại bằng..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -141,8 +158,7 @@ export default function Degrees() {
           <SelectContent>
             <SelectItem value="all">Tất cả</SelectItem>
             <SelectItem value="verified">Đã xác thực</SelectItem>
-            <SelectItem value="pending">Đang chờ</SelectItem>
-            <SelectItem value="rejected">Từ chối</SelectItem>
+            <SelectItem value="revoked">Đã thu hồi</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>
@@ -157,22 +173,34 @@ export default function Degrees() {
                   <TableHead>Token ID</TableHead>
                   <TableHead>Sinh viên</TableHead>
                   <TableHead className="hidden md:table-cell">Bằng cấp</TableHead>
-                  <TableHead className="hidden lg:table-cell">Trường</TableHead>
-                  <TableHead className="hidden sm:table-cell">Ngày</TableHead>
+                  <TableHead className="hidden lg:table-cell">Cơ sở cấp</TableHead>
+                  <TableHead className="hidden sm:table-cell">Ngày cấp</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((deg) => {
-                  const sc = statusConfig[deg.status];
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-32 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span>Đang tải dữ liệu...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.map((deg) => {
+                  const status = deg.is_valid ? "verified" : "revoked";
+                  const sc = statusConfig[status];
+                  const dateStr = deg.minted_at ? new Date(deg.minted_at * 1000).toLocaleDateString("vi-VN") : "N/A";
+                  
                   return (
-                    <TableRow key={deg.id}>
-                      <TableCell className="font-mono text-primary text-sm">{deg.tokenId}</TableCell>
-                      <TableCell className="font-medium text-foreground">{deg.name}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{deg.degree}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground">{deg.university}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">{deg.date}</TableCell>
+                    <TableRow key={deg.token_id}>
+                      <TableCell className="font-mono text-primary text-xs">{deg.token_id.slice(0, 8)}...</TableCell>
+                      <TableCell className="font-medium text-foreground">{deg.recipient_name}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{deg.metadata?.degree_type}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">{deg.metadata?.institution_address}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{dateStr}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={sc.className}>
                           <sc.icon className="h-3 w-3 mr-1" />
@@ -200,3 +228,4 @@ export default function Degrees() {
     </motion.div>
   );
 }
+

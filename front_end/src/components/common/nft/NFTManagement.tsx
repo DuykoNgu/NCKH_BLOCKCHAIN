@@ -34,7 +34,7 @@ export const NFTManagement = ({ account }: NFTManagementProps) => {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className={`grid w-full mb-6 ${isUser ? 'grid-cols-1' : isAdmin ? 'grid-cols-4' : 'grid-cols-3'}`}>
           {isUser && <TabsTrigger value="my-nfts">Chứng chỉ của tôi</TabsTrigger>}
-          {!isUser && <TabsTrigger value="all-nfts">Tất cả</TabsTrigger>}
+          {!isUser && <TabsTrigger value="all-nfts">{isValidator ? 'Danh sách chứng chỉ' : 'Tất cả'}</TabsTrigger>}
           {(isAdmin || isValidator) && <TabsTrigger value="create">Cấp phát</TabsTrigger>}
           {!isUser && <TabsTrigger value="verify">Xác minh</TabsTrigger>}
           {isAdmin && <TabsTrigger value="network">Mạng lưới</TabsTrigger>}
@@ -50,9 +50,11 @@ export const NFTManagement = ({ account }: NFTManagementProps) => {
           </TabsContent>
         )}
 
-        <TabsContent value="create">
-          <NFTCreate account={account} />
-        </TabsContent>
+        {(isAdmin || isValidator) && (
+          <TabsContent value="create">
+            <NFTCreate account={account} />
+          </TabsContent>
+        )}
 
         {!isUser && (
           <TabsContent value="verify">

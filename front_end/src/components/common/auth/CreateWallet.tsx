@@ -14,6 +14,17 @@ interface CreateWalletProps {
   onConfirmPasswordChange: (password: string) => void;
   onTogglePassword: () => void;
   onCreateWallet: () => void;
+  isSchool?: boolean;
+  schoolName?: string;
+  onSchoolNameChange?: (name: string) => void;
+  taxId?: string;
+  onTaxIdChange?: (id: string) => void;
+  representative?: string;
+  onRepresentativeChange?: (rep: string) => void;
+  email?: string;
+  onEmailChange?: (email: string) => void;
+  phone?: string;
+  onPhoneChange?: (phone: string) => void;
   onBack: () => void;
 }
 
@@ -27,6 +38,17 @@ const CreateWallet = ({
   onConfirmPasswordChange,
   onTogglePassword,
   onCreateWallet,
+  isSchool,
+  schoolName,
+  onSchoolNameChange,
+  taxId,
+  onTaxIdChange,
+  representative,
+  onRepresentativeChange,
+  email,
+  onEmailChange,
+  phone,
+  onPhoneChange,
   onBack,
 }: CreateWalletProps) => {
   return (
@@ -37,9 +59,13 @@ const CreateWallet = ({
               <ArrowLeft size={16} className="mr-1" /> Quay lại
             </button>
 
-            <h2 className="font-display text-xl font-bold text-foreground mb-1">Tạo mật khẩu</h2>
+            <h2 className="font-display text-xl font-bold text-foreground mb-1">
+              {isSchool ? 'Đăng ký Trường học / Tổ chức' : 'Tạo mật khẩu'}
+            </h2>
             <p className="text-sm text-muted-foreground mb-6">
-              Mật khẩu dùng để bảo mật tài khoản trên thiết bị này.
+              {isSchool 
+                ? 'Đăng ký định danh cho tổ chức cấp phát văn bằng.' 
+                : 'Mật khẩu dùng để bảo mật tài khoản trên thiết bị này.'}
             </p>
 
             {error && (
@@ -49,6 +75,63 @@ const CreateWallet = ({
             )}
 
             <div className="space-y-4">
+              {isSchool && onSchoolNameChange && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên trường học / Tổ chức</Label>
+                    <Input
+                      type="text"
+                      value={schoolName || ''}
+                      onChange={(e) => onSchoolNameChange(e.target.value)}
+                      placeholder="VD: Trường Đại học Bách Khoa"
+                      className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mã số thuế / Mã Cơ Sở GD</Label>
+                    <Input
+                      type="text"
+                      value={taxId || ''}
+                      onChange={(e) => onTaxIdChange && onTaxIdChange(e.target.value)}
+                      placeholder="VD: 0100684128"
+                      className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Người đại diện pháp luật</Label>
+                    <Input
+                      type="text"
+                      value={representative || ''}
+                      onChange={(e) => onRepresentativeChange && onRepresentativeChange(e.target.value)}
+                      placeholder="Họ và tên"
+                      className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email liên hệ</Label>
+                      <Input
+                        type="email"
+                        value={email || ''}
+                        onChange={(e) => onEmailChange && onEmailChange(e.target.value)}
+                        placeholder="... @edu.vn"
+                        className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Số điện thoại</Label>
+                      <Input
+                        type="tel"
+                        value={phone || ''}
+                        onChange={(e) => onPhoneChange && onPhoneChange(e.target.value)}
+                        placeholder="0912..."
+                        className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu</Label>
                 <div className="relative">
@@ -84,10 +167,16 @@ const CreateWallet = ({
 
               <Button
                 onClick={onCreateWallet}
-                disabled={isLoading || !password || password.length < 8 || password !== confirmPassword}
+                disabled={
+                  isLoading || 
+                  !password || 
+                  password.length < 8 || 
+                  password !== confirmPassword ||
+                  (isSchool && (!schoolName || !taxId || !representative || !email || !phone))
+                }
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >
-                {isLoading ? 'Đang tạo tài khoản...' : 'Tiếp tục'}
+                {isLoading ? 'Đang tạo...' : 'Tiếp tục'}
                 <ShieldCheck size={16} className="ml-2" />
               </Button>
             </div>

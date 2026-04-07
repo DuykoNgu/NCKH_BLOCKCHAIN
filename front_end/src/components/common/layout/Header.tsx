@@ -1,5 +1,4 @@
-import { ShieldCheck, Info } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ShieldCheck } from "lucide-react"
 
 export const Header = () => {
   return (
@@ -12,13 +11,6 @@ export const Header = () => {
             </div>
             <span className="text-xl font-bold text-gradient">EduChain</span>
           </div>
-
-          <Button asChild variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-            <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer">
-              <Info className="w-4 h-4" />
-              Giới thiệu dự án
-            </a>
-          </Button>
         </div>
 
         <div className="flex items-center gap-2">

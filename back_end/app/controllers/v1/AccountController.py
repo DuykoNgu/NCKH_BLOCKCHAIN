@@ -13,9 +13,12 @@ user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 @user_bp.route('/auth/get_nonce', methods=['GET'])
 def get_nonce():
-    address = request.args.get('address').lower()
+    addr_raw = request.args.get('address')
+    if not addr_raw:
+        return jsonify({"error": "address is required"}), 400
+    address = addr_raw.lower()
     nonce = uuid.uuid4().hex
-    r.set(f"nonce:{address}",nonce, ex=300) 
+    r.set(f"nonce:{address}", nonce, ex=300) 
     return jsonify({"nonce": nonce})
 
 @user_bp.route('/auth/register', methods=['POST']) 
@@ -58,7 +61,7 @@ def verify():
 
     stored_nonce = r.get(f"nonce:{address}")
     if not stored_nonce:
-        return jsonify({"Status":"fail", "message":"Nonce expired"},401)
+        return jsonify({"status":"fail", "message":"Nonce expired"}), 401
     
     try:
         account = AccountService.get_account_by_address(address)
@@ -68,7 +71,9 @@ def verify():
         public_key = account.public_key
 
         vk = VerifyingKey.from_string(bytes.fromhex(public_key), curve=SECP256k1)
-        is_valid = vk.verify(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        # Frontend sends msg_hash (SHA-256 of nonce), so we use verify_digest
+        is_valid = vk.verify_digest(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        
         if is_valid:
             r.delete(f"nonce:{address}")
             token = jwt.encode({
@@ -84,7 +89,8 @@ def verify():
                     "public_key": account.public_key, 
                     "role": account.role.value if hasattr(account.role, 'value') else account.role,
                     "full_name": account.full_name,
-                    "avatar_url": account.avatar_url
+                    "avatar_url": account.avatar_url,
+                    "is_active": account.is_active
                 }
             })
     
@@ -97,11 +103,15 @@ def update_profile():
     address = data.get('address')
     full_name = data.get('full_name')
     avatar_url = data.get('avatar_url')
+    tax_id = data.get('tax_id')
+    representative = data.get('representative')
+    email = data.get('email')
+    phone = data.get('phone')
     
     if not address:
         return jsonify({"error": "Missing address"}), 400
         
-    success, account, message = AccountService.update_profile(address, full_name, avatar_url)
+    success, account, message = AccountService.update_profile(address, full_name, avatar_url, tax_id, representative, email, phone)
     
     if success:
         return jsonify({
@@ -115,3 +125,57 @@ def update_profile():
             "status": "fail",
             "error": message
         }), 400
+
+@user_bp.route('/pending_validators', methods=['GET'])
+def get_pending_validators():
+    # Fetch all accounts
+    # In a real app we'd have a specific DB query, but for now we filter all accounts
+    all_accounts = AccountService.get_all_account()
+    
+    # Filter for role 'validator' and is_active == 0
+    pending = [acc for acc in all_accounts if 
+               (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator') 
+               and acc.is_active == 0]
+    
+    return jsonify({
+        "status": "success",
+        "data": [acc.to_dict() for acc in pending]
+    }), 200
+
+@user_bp.route('/approve_validator', methods=['POST'])
+def approve_validator():
+    data = request.json
+    address = data.get('address')
+    
+    if not address:
+        return jsonify({"error": "Missing address"}), 400
+        
+    account = AccountService.get_account_by_address(address)
+    if not account:
+        return jsonify({"error": "Account not found"}), 404
+        
+    account.is_active = 1
+    
+    success = AccountRepository.update_account(account)
+    if success:
+        return jsonify({
+            "status": "success",
+            "message": "Validator approved successfully",
+            "user": account.to_dict()
+        }), 200
+    else:
+        return jsonify({
+            "status": "fail",
+            "error": "Failed to update validator"
+        }), 500
+
+@user_bp.route('/profile/<address>', methods=['GET'])
+def get_profile(address):
+    account = AccountService.get_account_by_address(address.lower())
+    if not account:
+        return jsonify({"error": "Account not found"}), 404
+        
+    return jsonify({
+        "status": "success",
+        "user": account.to_dict()
+    }), 200

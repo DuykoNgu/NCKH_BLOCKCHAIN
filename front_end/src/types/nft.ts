@@ -4,6 +4,7 @@ export interface NFTMetadata {
   pdf_url: string;
   pdf_hash: string;
   institution: string;
+  institution_address?: string;
 }
 
 export interface NFT {

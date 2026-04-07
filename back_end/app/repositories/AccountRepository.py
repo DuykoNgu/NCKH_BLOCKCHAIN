@@ -21,10 +21,10 @@ class AccountRepository:
             role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
             
             cursor.execute('''
-                INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, is_active, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (account.public_key, account.address, role_value, account.org_name, 
-                  account.full_name, account.avatar_url, account.is_active, account.created_at))
+                  account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.created_at))
             conn.commit()
             conn.close()
             return True
@@ -38,7 +38,7 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url FROM account WHERE address = ?', (address,))
+            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone FROM account WHERE address = ?', (address,))
             row = cursor.fetchone()
             conn.close()
             
@@ -50,6 +50,10 @@ class AccountRepository:
                     org_name=row[3],
                     full_name=row[6] if len(row) > 6 else None,
                     avatar_url=row[7] if len(row) > 7 else None,
+                    tax_id=row[8] if len(row) > 8 else None,
+                    representative=row[9] if len(row) > 9 else None,
+                    email=row[10] if len(row) > 10 else None,
+                    phone=row[11] if len(row) > 11 else None,
                     is_active=row[4],
                     created_at=row[5]
                 )
@@ -64,7 +68,7 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url FROM account')
+            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone FROM account')
             rows = cursor.fetchall()
             conn.close()
             
@@ -77,6 +81,10 @@ class AccountRepository:
                     org_name=row[3],
                     full_name=row[6] if len(row) > 6 else None,
                     avatar_url=row[7] if len(row) > 7 else None,
+                    tax_id=row[8] if len(row) > 8 else None,
+                    representative=row[9] if len(row) > 9 else None,
+                    email=row[10] if len(row) > 10 else None,
+                    phone=row[11] if len(row) > 11 else None,
                     is_active=row[4],
                     created_at=row[5]
                 ))
@@ -93,10 +101,10 @@ class AccountRepository:
             cursor = conn.cursor()
             cursor.execute('''
                 UPDATE account 
-                SET public_key = ?, role = ?, org_name = ?, full_name = ?, avatar_url = ?, is_active = ?
+                SET public_key = ?, role = ?, org_name = ?, full_name = ?, avatar_url = ?, tax_id = ?, representative = ?, email = ?, phone = ?, is_active = ?
                 WHERE address = ?
             ''', (account.public_key, account.role.value if hasattr(account.role, 'value') else account.role, 
-                  account.org_name, account.full_name, account.avatar_url, account.is_active, account.address))
+                  account.org_name, account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.address))
             conn.commit()
             conn.close()
             return cursor.rowcount > 0
