@@ -3,7 +3,7 @@ import os
 
 # Get database path
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'NCKH_educhain.db')
+DB_PATH = os.path.join(DB_DIR, 'node_a.db')
 schema_sql = """
 pragma foreign_keys = ON;
 -------------------------------------------------
@@ -94,7 +94,6 @@ CREATE TABLE IF NOT EXISTS block (
 
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
-
 
 -------------------------------------------------
 -- 6. Peers (P2P Network)

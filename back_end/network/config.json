@@ -3,7 +3,7 @@
         "node_id": "",
         "node_type": "validator",
         "listen_host": "0.0.0.0",
-        "listen_port": 5000,
+        "listen_port": 5001,
         "max_peers": 2,
         "ping_interval": 30,
         "peer_timeout": 120
@@ -11,8 +11,8 @@
     "seed_nodes": [
         {
             "name": "Node A (Local)",
-            "ip": "192.168.79.76",
-            "port": 5000,
+            "ip": "127.0.0.1",
+            "port": 5001,
             "public_key": "",
             "role": "validator"
         }
@@ -41,7 +41,9 @@
         "slot_duration": 5,
         "block_time": 5,
         "validator_rotation": true,
-        "max_transactions_per_block": 100
+        "max_transactions_per_block": 100,
+        "min_transactions_to_mine": 1,
+        "mining_timeout_seconds": 30
     },
     "keystore": {
         "filepath": "node.keystore",

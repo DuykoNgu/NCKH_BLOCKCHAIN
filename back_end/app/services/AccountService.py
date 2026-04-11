@@ -76,6 +76,7 @@ class AccountService:
         try:
             existing = AccountRepository.get_account_by_address(address)
             if existing:
+                logger.warning(f"⚠ Account already exists: {address}")
                 return False, None, "Account already exists"
 
             now = datetime.datetime.now()
@@ -90,9 +91,13 @@ class AccountService:
             )
 
             # 1. Write to local DB immediately (fast UX)
+            logger.info(f"→ Registering account: {address} (role={role.value if hasattr(role, 'value') else role})")
             success = AccountRepository.create_account(account)
             if not success:
+                logger.error(f"✗ Failed to save account to database: {address}")
                 return False, None, "Failed to save account to database"
+
+            logger.info(f"✓ Account registered successfully: {address}")
 
             # 2. Submit blockchain transaction so other nodes can sync
             role_str = role.value if hasattr(role, "value") else str(role)
@@ -109,6 +114,7 @@ class AccountService:
             return True, account, "Account registered successfully"
 
         except Exception as e:
+            logger.error(f"✗ Registration error: {str(e)}")
             return False, None, f"Registration error: {str(e)}"
 
     @staticmethod

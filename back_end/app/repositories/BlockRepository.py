@@ -1,9 +1,13 @@
 """BlockRepository - Data access layer for Block operations"""
 from typing import Optional, List
+import json
 from app.database.connection import get_connection
 from app.models.Block import Block
 from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class BlockRepository:
@@ -32,18 +36,23 @@ class BlockRepository:
                 VALUES (?, ?, ?, ?, ?)
             ''', (block.block_id, block.index, header_id, block.block_hash, block.validator_signature))
             
-            # Insert transactions for this block
+            # Update transactions to associate them with this block
+            updated_tx_count = 0
             for tx in block.transactions:
                 cursor.execute('''
-                    INSERT INTO block_transactions (block_id, tx_id)
-                    VALUES (?, ?)
-                ''', (block.block_id, tx.tx_id))
+                    UPDATE transactions 
+                    SET block_id = ?
+                    WHERE tx_hash = ?
+                ''', (block.block_id, tx.tx_hash))
+                if cursor.rowcount > 0:
+                    updated_tx_count += 1
             
             conn.commit()
             conn.close()
+            logger.info(f"✓ Block created: {block.block_id[:16]}... with {updated_tx_count} transactions")
             return True
         except Exception as e:
-            print(f"Error creating block: {e}")
+            logger.error(f"✗ Error creating block: {e}")
             return False
 
     @staticmethod
@@ -71,9 +80,10 @@ class BlockRepository:
             ''', (block_row[2],))  # header_id is at index 2
             header_row = cursor.fetchone()
             
-            # Get transactions
+            # Get transactions from transactions table with this block_id
             cursor.execute('''
-                SELECT tx_id FROM block_transactions WHERE block_id = ?
+                SELECT tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id
+                FROM transactions WHERE block_id = ?
             ''', (block_id,))
             tx_rows = cursor.fetchall()
             
@@ -88,7 +98,19 @@ class BlockRepository:
                 timestamp=header_row[4]
             )
             
-            transactions = [Transaction(tx_id=row[0]) for row in tx_rows]
+            # Build Transaction objects from rows
+            transactions = []
+            for row in tx_rows:
+                tx = Transaction(
+                    tx_hash=row[0],
+                    sender_address=row[1],
+                    recipient_address=row[2],
+                    payload=json.loads(row[3]) if row[3] else {},
+                    signature=row[4],
+                    timestamp=row[5],
+                    block_id=row[6]
+                )
+                transactions.append(tx)
             
             block = Block(
                 index=block_row[1],

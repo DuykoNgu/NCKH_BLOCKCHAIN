@@ -8,8 +8,9 @@ from app.core.config import SECRET_KEY, REDIS_HOST, REDIS_PORT, REDIS_DB
 import uuid
 from app.models.Account import Role
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
-
+from utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
+logger = get_logger(__name__)
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 @user_bp.route('/auth/get_nonce', methods=['GET'])
 def get_nonce():

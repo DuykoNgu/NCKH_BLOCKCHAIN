@@ -2,7 +2,12 @@
 from typing import Optional, List
 from app.database.connection import get_connection
 from app.models.Transaction import Transaction
+from app.utils.logger import get_logger
 from json import dumps
+import time
+
+logger = get_logger(__name__)
+
 BASE_TRANSACTION_SELECT = """
     SELECT tx_hash, sender_address, recipient_address, 
            payload, signature, timestamp, block_id
@@ -13,32 +18,50 @@ class TransactionRepository:
     
     @staticmethod
     def create_transaction(transaction: Transaction) -> bool:
-        """Tạo transaction mới (Đã sửa lỗi dấu ? và khớp schema)"""
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            
-            # 7 cột tương ứng với 7 dấu chấm hỏi
-            cursor.execute('''
-                INSERT INTO transactions 
-                (tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                transaction.tx_hash, 
-                transaction.sender_address,
-                transaction.recipient_address, 
-                dumps(transaction.payload), 
-                transaction.signature,
-                transaction.timestamp, 
-                transaction.block_id
-            ))
-            
-            conn.commit()
-            conn.close()
-            return True
-        except Exception as e:
-            print(f"Error creating transaction: {e}")
-            return False
+        """Tạo transaction mới với retry logic"""
+        max_retries = 3
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                conn = get_connection()
+                cursor = conn.cursor()
+                
+                # 7 cột tương ứng với 7 dấu chấm hỏi
+                cursor.execute('''
+                    INSERT INTO transactions 
+                    (tx_id,tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    transaction.tx_id,
+                    transaction.tx_hash, 
+                    transaction.sender_address,
+                    transaction.recipient_address, 
+                    dumps(transaction.payload), 
+                    transaction.signature,
+                    transaction.timestamp, 
+                    transaction.block_id
+                ))
+                
+                conn.commit()   
+                conn.close()
+                logger.info(f"✓ Transaction created: {transaction.tx_hash[:16]}...")
+                return True
+            except Exception as e:
+                if "locked" in str(e).lower() and attempt < max_retries - 1:
+                    # Retry on database lock
+                    logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                logger.error(f"✗ Error creating transaction {transaction.tx_hash[:16]}...: {e}")
+                try:
+                    conn.close()
+                except:
+                    pass
+                return False
+        
+        return False
 
     @staticmethod
     def get_transaction_by_id(tx_id: str) -> Optional[Transaction]:
