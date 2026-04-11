@@ -9,7 +9,7 @@ import requests
 from typing import List, Dict, Set, Optional
 import hashlib
 import json
-
+from app.models.Transaction import Transaction
 from network.peer_manager import PeerManager, Peer
 from network.config_loader import get_config
 
@@ -318,6 +318,58 @@ class GossipProtocol:
         
         return block_data
     
+    def _process_validator_activation(self, tx: 'Transaction') -> None:
+        """
+        Process validator activation transaction:
+        Extract public_key, ip_address, port from payload
+        Update peer record with public_key and set to ACTIVE
+        """
+        try:
+            payload = tx.payload
+            
+            # Extract activation info from payload
+            public_key = payload.get("public_key")
+            ip_address = payload.get("ip_address")
+            port = payload.get("port")
+            
+            if not public_key or not ip_address or not port:
+                print(f"⚠ Incomplete activation payload: pubkey={bool(public_key)}, ip={bool(ip_address)}, port={bool(port)}")
+                return
+            
+            # Generate peer_id using same method as peer_manager
+            import hashlib
+            peer_id = hashlib.sha256(f"{ip_address}:{port}".encode()).hexdigest()[:16]
+            
+            print(f"→ Updating peer {peer_id}... with public_key={public_key[:16]}...")
+            
+            # Update peer record in database with public_key and ACTIVE status
+            from app.repositories.PeerRepository import PeerRepository
+            
+            success = PeerRepository.update_peer_public_key_and_activate(
+                peer_id=peer_id,
+                ip_address=ip_address,
+                port=port,
+                public_key=public_key
+            )
+            
+            if success:
+                print(f"✓ Peer {peer_id}... activated and saved with public_key")
+                
+                # Also update in-memory peer manager if it exists
+                peer = self.peer_manager.peers.get(peer_id)
+                if peer:
+                    peer.public_key = public_key
+                    peer.status = "ACTIVE"
+                    self.peer_manager.save_peer_to_db(peer)
+                    print(f"✓ Updated in-memory peer {peer_id}... to ACTIVE")
+            else:
+                print(f"⚠ Failed to update peer {peer_id}... in database")
+        
+        except Exception as e:
+            print(f"✗ Error processing validator activation: {e}")
+            import traceback
+            traceback.print_exc()
+    
     def receive_transaction(self, tx_data: Dict, sender_peer_id: str = None) -> bool:
         """
         Handle received transaction from gossip
@@ -351,7 +403,13 @@ class GossipProtocol:
             # Validate transaction signature
             if not TransactionService.is_valid(tx):
                 print(f"✗ Invalid transaction signature: {tx_hash[:8]}...")
+                print(f"  sender_address={tx.sender_address}, sender_pubkey={tx.sender_pubkey[:16] if tx.sender_pubkey else 'None'}..., signature={tx.signature[:16] if tx.signature else 'empty'}...")
                 return False
+            
+            # ✨ Special handling for system transactions (validator activation)
+            if tx.sender_address == "system" and tx.payload.get("op") == "validator_activate":
+                print(f"→ Processing validator activation transaction: {tx_hash[:8]}...")
+                self._process_validator_activation(tx)
             
             # Add to blockchain mempool
             blockchain = get_blockchain_instance()

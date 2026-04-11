@@ -63,7 +63,16 @@ class TransactionService:
     def is_valid(transaction: Transaction) -> bool:
         """
         Kiểm tra chữ ký người gửi có khớp với payload không.
+        
+        Special case: System transactions (activation, deactivation, etc) don't require signatures.
+        They are identified by sender_address="system" with empty signature.
         """
+        # System transactions: skip signature validation
+        if transaction.sender_address == "system" and not transaction.signature:
+            # Just verify that sender_pubkey is present
+            return bool(transaction.sender_pubkey)
+        
+        # Regular transactions: require both sender_pubkey and signature
         if not transaction.sender_pubkey or not transaction.signature:
             return False
 
