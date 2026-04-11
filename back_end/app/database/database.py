@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT,
     payload TEXT,
     block_id TEXT,
-    FOREIGN KEY (sender_address) REFERENCES account(address),
+    FOREIGN KEY (sender_address) REFERENCES account(address) ON DELETE SET NULL,
     FOREIGN KEY (block_id) REFERENCES block(block_id)
 );
 
@@ -146,6 +146,19 @@ def init_db():
           cursor.execute("ALTER TABLE nft ADD COLUMN issuer_signature TEXT")
      except sqlite3.OperationalError:
           pass
+     
+     # Migration: Convert "system" sender_address to NULL for existing system transactions
+     try:
+          cursor.execute("""
+               UPDATE transactions 
+               SET sender_address = NULL 
+               WHERE sender_address = 'system'
+          """)
+          rows_updated = cursor.rowcount
+          if rows_updated > 0:
+               print(f"✓ Migrated {rows_updated} system transactions (converted sender_address='system' to NULL)")
+     except sqlite3.Error as e:
+          print(f"⚠ Migration warning: {e}")
           
      conn.commit()
      cursor.close()

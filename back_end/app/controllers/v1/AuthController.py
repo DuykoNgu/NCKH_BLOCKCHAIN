@@ -91,6 +91,7 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
         from app.models.Transaction import Transaction
         from app.services.BlockChainService import BlockChainService
         from app.blockchain_instance import get_blockchain_instance
+        from app.repositories.TransactionRepository import TransactionRepository
         import datetime
         import hashlib
         
@@ -126,6 +127,12 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
         blockchain = get_blockchain_instance()
         BlockChainService.add_transaction_to_mempool(blockchain, tx)
         logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
+        
+        # Save to database for persistence
+        if TransactionRepository.create_transaction(tx):
+            logger.info(f"✓ Activation transaction saved to database: {tx_hash[:16]}...")
+        else:
+            logger.warning(f"⚠ Warning: Failed to save activation transaction to database, but still in mempool")
         
         # Broadcast to peers
         try:

@@ -59,12 +59,16 @@ def get_peers():
 @network_bp.route('/peers/register', methods=['POST'])
 def register_peer():
     """
-    Register a new peer with the network (PENDING status, no public_key yet)
+    Register a new peer with the network
+    
+    If public_key is provided: peer becomes ACTIVE immediately (trusted bootstrap registration)
+    If public_key is NOT provided: peer status is PENDING (requires approval)
     
     Request body:
     {
         "ip_address": "10.0.1.5",
         "port": 5000,
+        "public_key": "04abc..." (OPTIONAL - if provided, peer is trusted),
         "node_type": "observer"
     }
     
@@ -75,9 +79,9 @@ def register_peer():
             "peer_id": "abc123...",
             "ip_address": "10.0.1.5",
             "port": 5000,
-            "public_key": "",
+            "public_key": "04abc...",
             "node_type": "observer",
-            "status": "PENDING",
+            "status": "ACTIVE" or "PENDING",
             "last_seen": 1234567890.0
         }
     }
@@ -85,31 +89,46 @@ def register_peer():
     try:
         data = request.get_json()
         
-        # Validate required fields (public_key NOT required for registration)
+        # Validate required fields
         required_fields = ['ip_address', 'port']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
         
         service = get_network_service()
+        public_key = data.get('public_key', '')
         
-        # Register peer (without public_key, status = PENDING)
+        # Register peer
+        # If public_key is provided, trust it and set status to INACTIVE (for initial discovery)
+        # The /peers/status-update endpoint will set it to ACTIVE
         peer = service.register_peer(
             ip_address=data['ip_address'],
             port=data['port'],
-            public_key="",  # Empty - will be filled when node activates
-            node_type=data.get('node_type', 'observer')
+            public_key=public_key,
+            node_type=data.get('node_type', 'validator')
         )
         
         if peer:
+            # If public_key was provided during registration, update peer to INACTIVE 
+            # (pending activation confirmation)
+            if public_key:
+                from app.repositories.PeerRepository import PeerRepository
+                import hashlib
+                peer_id = hashlib.sha256(
+                    f"{data['ip_address']}:{data['port']}".encode()
+                ).hexdigest()[:16]
+                PeerRepository.update_peer_status(peer_id, "INACTIVE")
+                peer['status'] = 'INACTIVE'
+            
             return jsonify({
                 'success': True,
-                'peer': peer
+                'peer': peer,
+                'message': f"Peer registered with status {peer.get('status', 'PENDING')}"
             }), 200
         else:
             return jsonify({
                 'success': False,
-                'error': 'Peer not authorized or already exists'
+                'error': 'Peer registration failed'
             }), 403
     
     except Exception as e:

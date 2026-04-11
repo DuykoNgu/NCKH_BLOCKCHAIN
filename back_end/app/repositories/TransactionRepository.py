@@ -27,15 +27,17 @@ class TransactionRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # 7 cột tương ứng với 7 dấu chấm hỏi
+                # Handle NULL sender_address for system transactions
+                sender_addr = transaction.sender_address if transaction.sender_address != "system" else None
+                
                 cursor.execute('''
                     INSERT INTO transactions 
-                    (tx_id,tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
+                    (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     transaction.tx_id,
                     transaction.tx_hash, 
-                    transaction.sender_address,
+                    sender_addr,
                     transaction.recipient_address, 
                     dumps(transaction.payload), 
                     transaction.signature,

@@ -48,12 +48,14 @@ def setup_custom_db(db_filename):
     print(f"  Using custom DB: {custom_db_path}")
 
 
-def initialize_p2p_network(port):
+def initialize_p2p_network(host, port, public_key=""):
     """
     Initialize P2P network: NTP sync, bootstrap peers, health check
     
     Args:
+        host: The host this node is running on
         port: The port this node is running on (for self-registration)
+        public_key: This node's public key (for reverse registration to seed nodes)
     """
     from app.services.NetworkService import get_network_service, initialize_network
     from network.config_loader import get_config
@@ -63,9 +65,13 @@ def initialize_p2p_network(port):
     network_config = config.get_network_config()
     network_config['listen_port'] = port
     
+    # Determine actual IP for self-registration
+    # Use 127.0.0.1 if not explicitly set to avoid network issues in local testing
+    node_ip = "127.0.0.1" if host == "0.0.0.0" else host
+    
     # Initialize network (NTP sync + bootstrap + health check)
     try:
-        success = initialize_network()
+        success = initialize_network(node_ip=node_ip, node_port=port, public_key=public_key)
         if success:
             print("✅ P2P Network initialized successfully")
         else:
@@ -154,7 +160,7 @@ if __name__ == "__main__":
         # Step 3: Initialize P2P network
         step += 1
         print(f"\n[{step}/{total_steps}] Initializing P2P network...")
-        initialize_p2p_network(args.port)
+        initialize_p2p_network(args.host, args.port, public_key)
         
         # Step 4: Sync chain from peers
         step += 1

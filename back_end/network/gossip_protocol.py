@@ -157,6 +157,7 @@ class GossipProtocol:
     def propagate_transaction(self, tx_data: Dict, exclude_peers: List[str] = None) -> int:
         """
         Propagate transaction using fan-out gossip
+        First attempts to activate INACTIVE peers if needed
         Returns number of peers successfully notified
         """
         # Create gossip message
@@ -174,8 +175,24 @@ class GossipProtocol:
         
         self.mark_message_seen(message.msg_id, message)
         
-        # Calculate fan-out
+        # Try to activate INACTIVE peers if we have few active peers
         active_peers = self.peer_manager.get_active_peers()
+        
+        if len(active_peers) < 3:
+            # Not enough active peers, try to activate INACTIVE ones
+            all_peers = self.peer_manager.get_known_peers(include_inactive=True)
+            inactive_peers = [p for p in all_peers if p.status == "INACTIVE"]
+            
+            if inactive_peers:
+                print(f"→ Attempting to activate {len(inactive_peers)} INACTIVE peers for gossip...")
+                for peer in inactive_peers[:5]:  # Try up to 5 inactive peers
+                    if self.peer_manager.ping_peer(peer):
+                        print(f"  ✓ Reactivated peer {peer.ip_address}:{peer.port}")
+            
+            # Refresh active peers list
+            active_peers = self.peer_manager.get_active_peers()
+        
+        # Calculate fan-out
         k = self.calculate_fan_out(len(active_peers))
         
         if k == 0:
@@ -320,11 +337,12 @@ class GossipProtocol:
         # Mark as known
         self.known_transactions.add(tx_hash)
         
-        # ✅ VALIDATE AND ADD TO MEMPOOL
+        # ✅ VALIDATE AND ADD TO MEMPOOL + DATABASE
         from app.models.Transaction import Transaction
         from app.services.TransactionService import TransactionService
         from app.services.BlockChainService import BlockChainService
         from app.blockchain_instance import get_blockchain_instance
+        from app.repositories.TransactionRepository import TransactionRepository
         
         try:
             # Parse transaction
@@ -342,9 +360,17 @@ class GossipProtocol:
             else:
                 print(f"✗ Failed to add transaction {tx_hash[:8]}... to mempool")
                 return False
+            
+            # Also save to database for persistence
+            if TransactionRepository.create_transaction(tx):
+                print(f"✓ Transaction {tx_hash[:8]}... saved to database")
+            else:
+                print(f"⚠ Warning: Failed to save transaction {tx_hash[:8]}... to database, but still in mempool")
         
         except Exception as e:
             print(f"✗ Error processing transaction: {e}")
+            import traceback
+            traceback.print_exc()
             return False
         
         # Continue gossip to other peers (exclude sender)

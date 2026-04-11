@@ -22,7 +22,7 @@ class Transaction:
         tx_id: str = "",
         tx_hash: str = "",
         sender_pubkey: str = "",
-        sender_address: str = "",
+        sender_address: Optional[str] = None,
         recipient_address: str = "",
         payload: Optional[Dict[str, Any]] = None,
         signature: str = "",
@@ -62,7 +62,7 @@ class Transaction:
             tx_id=data.get("tx_id", ""),
             tx_hash=data.get("tx_hash", ""),
             sender_pubkey=data.get("sender_pubkey", ""),
-            sender_address=data.get("sender_address", ""),
+            sender_address=data.get("sender_address"),  # Allow None for system transactions
             recipient_address=data.get("recipient_address", ""),
             payload=data.get("payload", {}),
             signature=data.get("signature", ""),

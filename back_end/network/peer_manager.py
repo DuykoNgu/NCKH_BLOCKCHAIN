@@ -253,19 +253,54 @@ class PeerManager:
         
         return discovered_peers
     
-    def bootstrap_network(self) -> int:
+    def announce_self_to_seed_node(self, seed_node: Dict, node_ip: str, node_port: int, public_key: str) -> bool:
+        """
+        Announce this node to a seed node so seed node knows about us
+        This enables bidirectional peer discovery
+        """
+        try:
+            url = f"http://{seed_node['ip']}:{seed_node['port']}/api/v1/network/peers/register"
+            payload = {
+                "ip_address": node_ip,
+                "port": node_port,
+                "public_key": public_key,
+                "node_type": "validator"
+            }
+            
+            response = requests.post(url, json=payload, timeout=5)
+            
+            if response.status_code == 200:
+                print(f"✓ Announced self to seed node {seed_node['name']}: {node_ip}:{node_port}")
+                return True
+            else:
+                print(f"✗ Failed to announce to seed node {seed_node['name']}: HTTP {response.status_code}")
+                return False
+        except requests.exceptions.RequestException as e:
+            print(f"✗ Error announcing to seed node {seed_node['name']}: {e}")
+            return False
+
+    def bootstrap_network(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> int:
         """
         Bootstrap network by connecting to seed nodes
-        Returns number of discovered peers
+        Also announces this node to seed nodes for bidirectional discovery
+        
+        Args:
+            node_ip: This node's IP address (for reverse registration)
+            node_port: This node's port (for reverse registration)  
+            public_key: This node's public key
+            
+        Returns:
+            Number of discovered peers
         """
         print("\n=== Starting Network Bootstrap ===")
         seed_nodes = self.config.get_seed_nodes()
         total_discovered = 0
+        announced_count = 0
         
         for seed_node in seed_nodes:
             print(f"\n→ Connecting to seed node: {seed_node['name']}")
             
-            # Add seed node itself as a peer
+            # Step 1: Add seed node itself as a peer
             seed_peer = self.add_peer(
                 ip_address=seed_node['ip'],
                 port=seed_node['port'],
@@ -274,11 +309,21 @@ class PeerManager:
             )
             
             if seed_peer:
-                # Discover peers from this seed node
+                # Step 2: Ping seed node to make it ACTIVE
+                if self.ping_peer(seed_peer):
+                    print(f"✓ Seed node {seed_node['name']} is alive")
+                else:
+                    print(f"✗ Seed node {seed_node['name']} is not responding")
+                
+                # Step 3: Discover peers from this seed node
                 discovered = self.discover_peers_from_seed(seed_node)
                 total_discovered += len(discovered)
+                
+                # Step 4: Announce this node to the seed node (reverse registration)
+                if node_ip and node_port and self.announce_self_to_seed_node(seed_node, node_ip, node_port, public_key):
+                    announced_count += 1
         
-        print(f"\n✓ Bootstrap complete: {total_discovered} peers discovered")
+        print(f"\n✓ Bootstrap complete: {total_discovered} peers discovered, {announced_count} seed nodes notified")
         print(f"✓ Total active peers: {len(self.get_active_peers())}")
         
         return total_discovered
@@ -382,8 +427,8 @@ class PeerManager:
         Returns:
             True if successful, False otherwise
         """
-        # Generate peer_id from IP:port
-        peer_id = f"{ip_address}:{port}"
+        # Generate peer_id from IP:port using hash (same as generate_peer_id method)
+        peer_id = self.generate_peer_id(ip_address, port)
         
         # Try to find peer in memory or load from database
         if peer_id not in self.peers:
@@ -479,9 +524,40 @@ class PeerManager:
             print(f"✗ Failed to update peer status in database")
             return False
     
+    def get_known_peers(self, include_inactive: bool = True) -> List[Peer]:
+        """
+        Get well-known peers for peer discovery (PEX)
+        
+        Args:
+            include_inactive: If True, include INACTIVE peers (recently seen)
+                             If False, only active peers
+        
+        Returns:
+            List of known peers for bootstrapping nodes
+        """
+        if not include_inactive:
+            return self.get_active_peers()
+        
+        # Return ACTIVE + INACTIVE peers (recently seen)
+        current_time = time.time()
+        peers = []
+        
+        for peer in self.peers.values():
+            # Include ACTIVE peers
+            if peer.status == "ACTIVE" and (current_time - peer.last_seen) < 120:
+                peers.append(peer)
+            # Also include INACTIVE peers that were recently seen
+            elif peer.status == "INACTIVE" and (current_time - peer.last_seen) < 300:
+                peers.append(peer)
+        
+        return peers
+    
     def get_peer_list_for_api(self) -> List[Dict]:
-        """Get peer list in format suitable for API response"""
-        return [peer.to_dict() for peer in self.get_active_peers()]
+        """
+        Get peer list for API response (used by /api/v1/network/peers endpoint)
+        Returns both ACTIVE and INACTIVE peers so bootstrapping nodes can discover all known peers
+        """
+        return [peer.to_dict() for peer in self.get_known_peers(include_inactive=True)]
 
 
 if __name__ == "__main__":

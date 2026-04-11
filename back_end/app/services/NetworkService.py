@@ -23,7 +23,7 @@ class NetworkService:
         
         self.is_initialized = False
     
-    def initialize(self) -> bool:
+    def initialize(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> bool:
         """Initialize network service"""
         print("\n" + "="*50)
         print("🚀 Initializing EduChain Network Service")
@@ -35,9 +35,9 @@ class NetworkService:
             print("✗ Time synchronization check failed")
             return False
         
-        # Step 2: Bootstrap network
+        # Step 2: Bootstrap network with optional node info for bidirectional discovery
         print("\n[2/3] Bootstrapping P2P network...")
-        discovered = self.bootstrap_network()
+        discovered = self.bootstrap_network(node_ip, node_port, public_key)
         print(f"✓ Network bootstrap complete: {discovered} peers discovered")
         
         # Step 3: Initial health check
@@ -53,9 +53,9 @@ class NetworkService:
         
         return True
     
-    def bootstrap_network(self) -> int:
-        """Bootstrap network by connecting to seed nodes"""
-        return self.peer_manager.bootstrap_network()
+    def bootstrap_network(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> int:
+        """Bootstrap network with optional bidirectional peer discovery"""
+        return self.peer_manager.bootstrap_network(node_ip, node_port, public_key)
     
     def sync_peers(self) -> int:
         """Synchronize peer list with network"""
@@ -234,10 +234,10 @@ def get_network_service() -> NetworkService:
     return _network_service
 
 
-def initialize_network() -> bool:
-    """Initialize global network service"""
+def initialize_network(node_ip: str = None, node_port: int = None, public_key: str = "") -> bool:
+    """Initialize global network service with optional node info for peer discovery"""
     service = get_network_service()
-    return service.initialize()
+    return service.initialize(node_ip, node_port, public_key)
 
 
 if __name__ == "__main__":
