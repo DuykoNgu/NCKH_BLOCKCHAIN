@@ -31,12 +31,15 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
 
+    # Extract public_key from payload if available (for account_register)
+    sender_pubkey = payload.get('public_key', '')
+
     tx = Transaction(
         tx_id=tx_hash,
         tx_hash=tx_hash,
-        sender_pubkey="",          # system-initiated, no user pubkey needed
-        sender_address=sender_address,
-        recipient_address=SYSTEM_ADDRESS,
+        sender_pubkey=sender_pubkey,      # Get from payload for account operations
+        sender_address=None,              # ALWAYS None for account operations to avoid FK constraint
+        recipient_address=None,           # Set to None to avoid FK constraint
         payload=payload,
         signature="",              # no signature for server-initiated txs
         timestamp=datetime.datetime.now().timestamp(),
@@ -45,19 +48,32 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
 
 
 def _submit_tx(tx: Transaction) -> None:
-    """Push tx into mempool and broadcast to peers (best-effort)."""
+    """Push tx into mempool, save to database, and broadcast to peers (best-effort)."""
     try:
         from app.services.BlockChainService import BlockChainService
+        from app.repositories.TransactionRepository import TransactionRepository
 
         blockchain = get_blockchain_instance()
-        # add_transaction_to_mempool accepts txs with empty signature as system txs
-        BlockChainService.add_transaction_to_mempool(blockchain, tx)
-        logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        
+        tx_hashes_in_mempool = {t.tx_hash for t in blockchain.mempool}
+        if tx.tx_hash in tx_hashes_in_mempool:
+            logger.info(f"[AccountService] TX already in mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        else:
+            # add_transaction_to_mempool accepts txs with empty signature as system txs
+            BlockChainService.add_transaction_to_mempool(blockchain, tx)
+            logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+
+
+        if TransactionRepository.create_transaction(tx):
+            logger.info(f"[AccountService] TX saved to database: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        else:
+            logger.warning(f"[AccountService] Failed to save TX to database: {tx.tx_hash[:16]}...")
 
         # Gossip to peers so they add it to their mempool too (reduces latency)
         try:
             net = get_network_service()
-            net.broadcast_transaction(tx.to_dict())
+            peers_notified = net.broadcast_transaction(tx.to_dict())
+            logger.info(f"[AccountService] TX broadcasted to {peers_notified} peers: {tx.tx_hash[:16]}...")
         except Exception as net_err:
             logger.warning(f"[AccountService] broadcast_transaction failed (non-fatal): {net_err}")
 

@@ -402,12 +402,27 @@ class GossipProtocol:
             
             # Validate transaction signature
             if not TransactionService.is_valid(tx):
+                payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+                
+                # Enhanced error logging
                 print(f"✗ Invalid transaction signature: {tx_hash[:8]}...")
-                print(f"  sender_address={tx.sender_address}, sender_pubkey={tx.sender_pubkey[:16] if tx.sender_pubkey else 'None'}..., signature={tx.signature[:16] if tx.signature else 'empty'}...")
+                print(f"  op={payload_op}, sender_address={tx.sender_address}, sender_pubkey={tx.sender_pubkey[:16] if tx.sender_pubkey else 'None'}..., signature={'empty' if not tx.signature else tx.signature[:16]}...")
+                
+                if payload_op in ["account_register", "account_update"]:
+                    pubkey_in_payload = tx.payload.get('public_key', 'MISSING')
+                    pubkey_display = pubkey_in_payload[:20] + '...' if isinstance(pubkey_in_payload, str) and len(pubkey_in_payload) > 20 else pubkey_in_payload
+                    print(f"  [account_op] payload.public_key={pubkey_display}")
+                    print(f"  [DEBUG] Payload keys: {list(tx.payload.keys()) if isinstance(tx.payload, dict) else 'NOT_A_DICT'}")
+                
                 return False
             
-            # ✨ Special handling for system transactions (validator activation)
-            if tx.sender_address == "system" and tx.payload.get("op") == "validator_activate":
+            # ✨ Transaction validated successfully
+            payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+            print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
+            
+            # Special handling for system transactions and account operations
+            is_system_tx = tx.sender_address is None or tx.sender_address == "system"
+            if is_system_tx and payload_op == "validator_activate":
                 print(f"→ Processing validator activation transaction: {tx_hash[:8]}...")
                 self._process_validator_activation(tx)
             

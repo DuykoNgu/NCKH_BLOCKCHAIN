@@ -100,6 +100,13 @@ def create_nft():
         if not BlockChainService.add_transaction_to_mempool(blockchain, tx):
             return jsonify({"error": "Failed to add transaction to mempool"}), 500
         
+        # 💾 SAVE TRANSACTION TO DATABASE FOR PERSISTENCE
+        from app.repositories.TransactionRepository import TransactionRepository
+        if TransactionRepository.create_transaction(tx):
+            print(f"✓ Transaction saved to database: {tx.tx_hash[:16]}...")
+        else:
+            print(f"⚠ Warning: Failed to save transaction to database, but still in mempool")
+        
         # Broadcast transaction to P2P network
         try:
             network_service = get_network_service()

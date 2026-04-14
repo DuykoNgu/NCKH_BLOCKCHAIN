@@ -30,6 +30,10 @@ class TransactionRepository:
                 # Handle NULL sender_address for system transactions
                 sender_addr = transaction.sender_address if transaction.sender_address != "system" else None
                 
+                # Convert empty string to None for FK constraints
+                block_id = transaction.block_id if transaction.block_id else None
+            
+                
                 cursor.execute('''
                     INSERT INTO transactions 
                     (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
@@ -42,7 +46,7 @@ class TransactionRepository:
                     dumps(transaction.payload), 
                     transaction.signature,
                     transaction.timestamp, 
-                    transaction.block_id
+                    block_id
                 ))
                 
                 conn.commit()   
@@ -56,7 +60,15 @@ class TransactionRepository:
                     time.sleep(retry_delay)
                     retry_delay *= 2
                     continue
+                
+                # Detailed FK constraint error logging
+                if "FOREIGN KEY" in str(e):
+                    logger.error(f"✗ FOREIGN KEY Constraint Error for TX {transaction.tx_hash[:16]}...")
+                    logger.error(f"  SQL Values: tx_id={transaction.tx_id[:16]}, sender_addr={sender_addr}, recipient_addr={transaction.recipient_address}, block_id={block_id}")
+                    logger.error(f"  Check: Does account '{sender_addr}' exist? Does block '{block_id}' exist?")
+                
                 logger.error(f"✗ Error creating transaction {transaction.tx_hash[:16]}...: {e}")
+                logger.error(f"[TX_DEBUG] Full error details: {str(e)}")
                 try:
                     conn.close()
                 except:

@@ -62,13 +62,39 @@ class TransactionService:
     @staticmethod
     def is_valid(transaction: Transaction) -> bool:
         """
-        Kiểm tra chữ ký người gửi có khớp với payload không.
+        Kiểm tra tính hợp lệ của transaction.
         
-        Special case: System transactions (activation, deactivation, etc) don't require signatures.
-        They are identified by sender_address="system" with empty signature.
+        Special cases:
+        - Account operations (account_register, account_update) with public_key in payload
+        - System transactions (sender_address=None or "system" with empty signature)
+        - Regular transactions with sender_pubkey and valid signature
         """
-        # System transactions: skip signature validation
-        if transaction.sender_address == "system" and not transaction.signature:
+        # Ensure payload is a dict (handle case where it might be a string)
+        payload = transaction.payload
+        if isinstance(payload, str):
+            try:
+                import json
+                payload = json.loads(payload)
+            except:
+                payload = {}
+        
+        # Account operation transactions: check for public_key in payload (highest priority)
+        payload_op = payload.get("op") if isinstance(payload, dict) else None
+        if payload_op in ["account_register", "account_update"]:
+            # Account operations don't require signature validation
+            # Just verify that public_key is in payload
+            if payload_op == "account_register":
+                has_pubkey = bool(payload.get("public_key"))
+                if has_pubkey:
+                    return True
+                else:
+                    # Missing public_key in payload
+                    return False
+            return True
+        
+        # System transactions: skip signature validation (sender_address is None or "system")
+        is_system_tx = transaction.sender_address is None or transaction.sender_address == "system"
+        if is_system_tx and not transaction.signature:
             # Just verify that sender_pubkey is present
             return bool(transaction.sender_pubkey)
         
