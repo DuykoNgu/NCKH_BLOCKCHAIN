@@ -60,9 +60,19 @@ class BlockChainService:
                 from app.models.Account import Account, Role
                 import datetime
 
+                # Validate payload structure
+                if not isinstance(payload, dict):
+                    print(f"[TX] account_register error: payload is not dict, got {type(payload)}")
+                    return False
+
                 address = payload.get("address", "").lower()
                 public_key = payload.get("public_key", "")
                 role_str = payload.get("role", "client")
+
+                if not address or not public_key:
+                    print(f"[TX] account_register error: missing address or public_key in payload")
+                    print(f"[TX] payload keys: {list(payload.keys())}")
+                    return False
 
                 role_map = {
                     "client": Role.CLIENT,
@@ -81,12 +91,27 @@ class BlockChainService:
                         datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                     ),
                 )
-                # INSERT OR IGNORE so applying the same block twice is safe
-                AccountRepository.create_account(account)
-                print(f"[TX] account_register applied: {address}")
-                return True
+                
+                # Create account in database (with INSERT OR IGNORE for idempotency)
+                success = AccountRepository.create_account(account)
+                
+                if success:
+                    print(f"✓ [TX] account_register applied: {address} (role={role_str})")
+                    return True
+                else:
+                    # Check if account already exists (this is OK for INSERT OR IGNORE)
+                    existing = AccountRepository.get_account_by_address(address)
+                    if existing:
+                        print(f"⚠ [TX] account_register skipped: {address} already exists (duplicate block or mempool reorg)")
+                        return True  # Still return True since account exists
+                    else:
+                        print(f"✗ [TX] account_register failed: unable to create {address} (check DB constraints)")
+                        return False
+                        
             except Exception as e:
-                print(f"[TX] account_register error: {e}")
+                print(f"✗ [TX] account_register error: {e}")
+                import traceback
+                traceback.print_exc()
                 return False
 
         # Account profile update transaction
@@ -197,7 +222,12 @@ class BlockChainService:
             raise ValueError("invalid block")
 
         # Execute transactions
+        print(f"→ Executing {len(block.transactions)} transactions from block {block.block_id[:8]}...")
         for tx in block.transactions:
+            payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+            if payload_op == "account_register":
+                address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                print(f"[EXEC_TX] account_register: {address}")
             BlockChainService.execute_transaction(blockchain, tx)
 
         # Remove only the transactions that were included in this block

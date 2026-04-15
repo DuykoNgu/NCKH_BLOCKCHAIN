@@ -418,7 +418,16 @@ class GossipProtocol:
             
             # ✨ Transaction validated successfully
             payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-            print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
+            payload_type_check = isinstance(tx.payload, dict)
+            
+            # Enhanced logging for account operations
+            if payload_op in ["account_register", "account_update"]:
+                print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
+                print(f"  [account_op] payload_type={type(tx.payload).__name__}, is_dict={payload_type_check}")
+                if payload_type_check:
+                    print(f"  [account_op] payload={json.dumps(tx.payload, default=str)[:100]}...")
+            else:
+                print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
             
             # Special handling for system transactions and account operations
             is_system_tx = tx.sender_address is None or tx.sender_address == "system"
@@ -436,9 +445,9 @@ class GossipProtocol:
             
             # Also save to database for persistence
             if TransactionRepository.create_transaction(tx):
-                print(f"✓ Transaction {tx_hash[:8]}... saved to database")
+                print(f"✓ Transaction {tx_hash[:8]}... saved to database (op={payload_op})")
             else:
-                print(f"⚠ Warning: Failed to save transaction {tx_hash[:8]}... to database, but still in mempool")
+                print(f"⚠ Warning: Failed to save transaction {tx_hash[:8]}... to database (op={payload_op}), but still in mempool")
         
         except Exception as e:
             print(f"✗ Error processing transaction: {e}")
@@ -513,7 +522,13 @@ class GossipProtocol:
             BlockRepository.create_block(block)
             for tx in block.transactions:
                 tx.block_id = block.block_id
+                payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
                 TransactionRepository.create_transaction(tx)
+                
+                # Log account operations
+                if payload_op == "account_register":
+                    address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                    print(f"[BLOCK] account_register tx saved to DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
             
             print(f"✓ Block {block_hash[:8]}... verified and committed (index={block.index})")
         
