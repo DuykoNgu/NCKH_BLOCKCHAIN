@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT,
     payload TEXT,
     block_id TEXT,
+    tx_status TEXT DEFAULT 'PENDING',  -- 'PENDING', 'COMMITTED', 'FAILED'
+    error_reason TEXT,  -- Error message if tx_status = 'FAILED'
     FOREIGN KEY (sender_address) REFERENCES account(address) ON DELETE SET NULL,
     FOREIGN KEY (block_id) REFERENCES block(block_id)
 );
@@ -163,6 +165,13 @@ def init_db():
      conn.commit()
      cursor.close()
      print(f"Database initialized successfully at {DB_PATH}")
+     
+     # Run database migrations (e.g., add new columns)
+     try:
+          from app.database.migrations import run_all_migrations
+          run_all_migrations()
+     except Exception as e:
+          print(f"⚠️  Migrations warning: {e}")
      
 if __name__ == "__main__":
      init_db()

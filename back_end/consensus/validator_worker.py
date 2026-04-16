@@ -68,22 +68,33 @@ class ValidatorWorker:
         Returns:
             True if activation successful, False otherwise
         """
+        logger.info(f"→ [activate()] Activating validator #{self.my_index}/{self.total_validators}")
+        print(f"→ [activate()] Activating validator #{self.my_index}/{self.total_validators}")
+        
         if self.is_active:
             logger.warning("⚠ Validator is already active")
             return True
         
         try:
             # Store private key in memory
+            logger.info("→ [activate()] Storing private key in memory")
             self.__private_key = raw_private_key
             self.is_active = True
             
             # Start mining worker
+            logger.info("→ [activate()] Calling start() to spawn background thread")
+            print(f"→ [activate()] Calling start() to spawn background thread")
             self.start()
             
-            logger.info("✓ Validator activated successfully")
+            logger.info(f"✓ Validator activated successfully (is_running={self.is_running}, thread={self.worker_thread})")
+            print(f"✓ Validator activated successfully")
             return True
         except Exception as e:
             logger.error(f"✗ Failed to activate validator: {e}")
+            print(f"✗ Failed to activate validator: {e}")
+            import traceback
+            traceback.print_exc()
+            logger.error(traceback.format_exc())
             self.__private_key = None
             self.is_active = False
             return False
@@ -109,18 +120,32 @@ class ValidatorWorker:
     
     def start(self) -> None:
         """Start the validator worker in a background thread"""
+        logger.info(f"→ [start()] Attempting to start validator worker (is_running={self.is_running})")
+        print(f"→ [start()] Attempting to start validator worker (is_running={self.is_running})")
+        
         if self.is_running:
             logger.warning("⚠ Validator worker is already running")
+            print("⚠ Validator worker is already running")
             return
         
+        logger.info(f"→ [start()] Setting is_running=True")
         self.is_running = True
-        self.worker_thread = threading.Thread(target=self._run, daemon=True)
+        
+        logger.info(f"→ [start()] Creating daemon thread...")
+        self.worker_thread = threading.Thread(target=self._run, daemon=True, name=f"ValidatorWorker-{self.my_index}")
+        
+        logger.info(f"→ [start()] Calling thread.start()...")
         self.worker_thread.start()
         
         logger.info(f"✓ Validator Worker started (index={self.my_index}/{self.total_validators})")
         logger.info(f"  Public Key: {self.public_key[:32]}...")
         logger.info(f"  Slot Duration: {self.slot_duration}s")
+        logger.info(f"  Thread Name: {self.worker_thread.name}")
+        logger.info(f"  Thread Alive: {self.worker_thread.is_alive()}")
         logger.info("→ Worker thread is now running in background, monitoring blockchain for mining opportunities")
+        
+        print(f"✓ Validator Worker started (index={self.my_index}/{self.total_validators})")
+        print(f"✓ Thread is now running in background (name={self.worker_thread.name})")
     
     def stop(self) -> None:
         """Stop the validator worker"""
@@ -146,7 +171,11 @@ class ValidatorWorker:
         Returns:
             bool: True if we should mine, False otherwise
         """
-        if len(self.blockchain.mempool) == 0:
+        mempool_size = len(self.blockchain.mempool)
+        
+        # Condition 1: Mempool not empty
+        if mempool_size == 0:
+            logger.debug(f"→ _should_mine_block(): SKIP - mempool is empty")
             return False
         
         try:
@@ -156,55 +185,72 @@ class ValidatorWorker:
             max_tx_per_block = consensus_config.get('max_transactions_per_block', 100)
             min_tx_to_mine = consensus_config.get('min_transactions_to_mine', 1)
             mining_timeout = consensus_config.get('mining_timeout_seconds', 30)
-        except:
+        except Exception as cfg_err:
+            logger.warning(f"⚠ Failed to load config: {cfg_err}, using defaults")
             max_tx_per_block = 100
             min_tx_to_mine = 1
             mining_timeout = 30
         
-        mempool_size = len(self.blockchain.mempool)
-        
-        # Condition 1: mempool has enough transactions
+        # Condition 2: Min transactions reached
         if mempool_size < min_tx_to_mine:
+            logger.debug(f"→ _should_mine_block(): SKIP - mempool_size={mempool_size} < min_tx_to_mine={min_tx_to_mine}")
             return False
         
-        # Condition 2a: mempool is full (>= max size) - ALWAYS mine
+        # Condition 3a: Mempool is full
         if mempool_size >= max_tx_per_block:
+            logger.info(f"✓ _should_mine_block(): YES - MEMPOOL_FULL (size={mempool_size} >= max={max_tx_per_block})")
             return True
         
-        # Condition 2b: timeout elapsed since last mine - MINE to prevent stuck transactions
+        # Condition 3b: Timeout elapsed since last mine
         time_since_last_mine = time.time() - self.last_mine_attempt_time
         if time_since_last_mine >= mining_timeout:
+            logger.info(f"✓ _should_mine_block(): YES - TIMEOUT_ELAPSED (time_since_last={time_since_last_mine:.1f}s >= timeout={mining_timeout}s)")
             return True
         
-        # Don't mine - wait for more transactions or timeout
+        # Don't mine yet - wait for more transactions or timeout
+        logger.debug(f"→ _should_mine_block(): SKIP - mempool_size={mempool_size} < max={max_tx_per_block} AND time_since_last={time_since_last_mine:.1f}s < timeout={mining_timeout}s (need to wait {mining_timeout - time_since_last_mine:.1f}s more)")
         return False
     
     def _run(self) -> None:
         """Main worker loop - runs in background thread"""
         print(f"🚀 Validator Worker running...")
+        logger.info(f"🚀 Validator Worker running... (validator #{self.my_index}/{self.total_validators})")
         
+        loop_count = 0
         while self.is_running:
             try:
+                loop_count += 1
+                
                 # Check if it's my turn to create a block
-                if self.consensus_timer.is_my_turn(self.my_index, self.total_validators):
+                is_my_turn = self.consensus_timer.is_my_turn(self.my_index, self.total_validators)
+                
+                if is_my_turn:
                     # Only mine if mempool has enough transactions OR timeout elapsed
                     if self._should_mine_block():
                         self.last_mine_attempt_time = time.time()  # Update attempt time
+                        logger.info(f"→ [Loop #{loop_count}] MY TURN! Starting to mine block...")
                         self._mine_and_broadcast_block()
                         
                         # Wait for next slot to avoid mining multiple blocks in same slot
                         self.consensus_timer.wait_for_next_slot()
                     else:
                         # Not ready to mine yet, check again soon
+                        logger.debug(f"→ [Loop #{loop_count}] MY TURN but mempool not ready, retrying in 1s")
                         time.sleep(1)
                 else:
                     # Not my turn, sleep briefly and check again
+                    # Only log every 20 loops to avoid spam
+                    if loop_count % 20 == 0:
+                        slot_info = self.consensus_timer.get_slot_info(self.total_validators)
+                        logger.debug(f"→ [Loop #{loop_count}] Not my turn (slot={slot_info['current_slot']}, leader={slot_info['leader_index']}, me={self.my_index})")
                     time.sleep(0.5)
             
             except Exception as e:
+                logger.error(f"✗ Validator worker error (Loop #{loop_count}): {e}")
                 print(f"✗ Validator worker error: {e}")
                 import traceback
                 traceback.print_exc()
+                logger.error(traceback.format_exc())
                 time.sleep(5)  # Wait before retrying
     
     def _mine_and_broadcast_block(self) -> None:

@@ -46,12 +46,25 @@ class BlockChainService:
 
     @staticmethod
     def execute_transaction(blockchain: BlockChain, tx: Transaction) -> bool:
+        """
+        Execute transaction and update blockchain state
+        Sets tx.tx_status and tx.error_reason on failure
+        
+        Returns: True if successful, False if failed (logged to tx status)
+        """
         payload = tx.payload
 
         # Generic key-value state update
         if payload.get("op") == "set":
-            blockchain.state_db[payload["key"]] = payload["value"]
-            return True
+            try:
+                blockchain.state_db[payload["key"]] = payload["value"]
+                tx.tx_status = "COMMITTED"
+                return True
+            except Exception as e:
+                tx.tx_status = "FAILED"
+                tx.error_reason = f"State update failed: {str(e)}"
+                print(f"✗ [TX] set operation failed: {tx.error_reason}")
+                return False
 
         # Account registration transaction
         if payload.get("op") == "account_register":
@@ -62,7 +75,9 @@ class BlockChainService:
 
                 # Validate payload structure
                 if not isinstance(payload, dict):
-                    print(f"[TX] account_register error: payload is not dict, got {type(payload)}")
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Invalid payload type: {type(payload).__name__}"
+                    print(f"✗ [TX] account_register error: {tx.error_reason}")
                     return False
 
                 address = payload.get("address", "").lower()
@@ -70,8 +85,9 @@ class BlockChainService:
                 role_str = payload.get("role", "client")
 
                 if not address or not public_key:
-                    print(f"[TX] account_register error: missing address or public_key in payload")
-                    print(f"[TX] payload keys: {list(payload.keys())}")
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Missing address or public_key. address={bool(address)}, public_key={bool(public_key)}"
+                    print(f"✗ [TX] account_register error: {tx.error_reason}")
                     return False
 
                 role_map = {
@@ -96,20 +112,26 @@ class BlockChainService:
                 success = AccountRepository.create_account(account)
                 
                 if success:
+                    tx.tx_status = "COMMITTED"
                     print(f"✓ [TX] account_register applied: {address} (role={role_str})")
                     return True
                 else:
                     # Check if account already exists (this is OK for INSERT OR IGNORE)
                     existing = AccountRepository.get_account_by_address(address)
                     if existing:
-                        print(f"⚠ [TX] account_register skipped: {address} already exists (duplicate block or mempool reorg)")
+                        tx.tx_status = "COMMITTED"  # Mark as committed even if skipped
+                        print(f"⚠ [TX] account_register skipped: {address} already exists")
                         return True  # Still return True since account exists
                     else:
-                        print(f"✗ [TX] account_register failed: unable to create {address} (check DB constraints)")
+                        tx.tx_status = "FAILED"
+                        tx.error_reason = "Failed to create account (DB constraint or unknown error)"
+                        print(f"✗ [TX] account_register failed: {tx.error_reason}")
                         return False
                         
             except Exception as e:
-                print(f"✗ [TX] account_register error: {e}")
+                tx.tx_status = "FAILED"
+                tx.error_reason = str(e)
+                print(f"✗ [TX] account_register error: {tx.error_reason}")
                 import traceback
                 traceback.print_exc()
                 return False
@@ -122,7 +144,9 @@ class BlockChainService:
                 address = payload.get("address", "").lower()
                 account = AccountRepository.get_account_by_address(address)
                 if not account:
-                    print(f"[TX] account_update skipped – address not found: {address}")
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Account not found: {address}"
+                    print(f"✗ [TX] account_update failed: {tx.error_reason}")
                     return False
 
                 if "full_name" in payload:
@@ -131,12 +155,18 @@ class BlockChainService:
                     account.avatar_url = payload["avatar_url"]
 
                 AccountRepository.update_account(account)
-                print(f"[TX] account_update applied: {address}")
+                tx.tx_status = "COMMITTED"
+                print(f"✓ [TX] account_update applied: {address}")
                 return True
             except Exception as e:
-                print(f"[TX] account_update error: {e}")
+                tx.tx_status = "FAILED"
+                tx.error_reason = str(e)
+                print(f"✗ [TX] account_update error: {tx.error_reason}")
                 return False
 
+        # Unknown operation
+        tx.tx_status = "FAILED"
+        tx.error_reason = f"Unknown operation: {payload.get('op', 'UNKNOWN')}"
         return False
 
     @staticmethod
@@ -223,17 +253,25 @@ class BlockChainService:
 
         # Execute transactions
         print(f"→ Executing {len(block.transactions)} transactions from block {block.block_id[:8]}...")
+        failed_count = 0
         for tx in block.transactions:
             payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
             if payload_op == "account_register":
                 address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
                 print(f"[EXEC_TX] account_register: {address}")
-            BlockChainService.execute_transaction(blockchain, tx)
+            
+            success = BlockChainService.execute_transaction(blockchain, tx)
+            if not success:
+                failed_count += 1
+                print(f"⚠ [BLOCK] Transaction {tx.tx_hash[:8]}... failed: {tx.error_reason}")
 
         # Remove only the transactions that were included in this block
         # This allows remaining transactions to stay in mempool for next block
         included_tx_hashes = {tx.tx_hash for tx in block.transactions}
         blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+        
+        if failed_count > 0:
+            print(f"⚠ [BLOCK] {failed_count}/{len(block.transactions)} transactions failed in block {block.block_id}")
         
         blockchain.chain.append(block)
         return True

@@ -18,7 +18,7 @@ class TransactionRepository:
     
     @staticmethod
     def create_transaction(transaction: Transaction) -> bool:
-        """Tạo transaction mới với retry logic"""
+        """Tạo transaction mới với retry logic, bao gồm status tracking"""
         max_retries = 3
         retry_delay = 0.5
         
@@ -36,8 +36,8 @@ class TransactionRepository:
                 
                 cursor.execute('''
                     INSERT INTO transactions 
-                    (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     transaction.tx_id,
                     transaction.tx_hash, 
@@ -46,7 +46,9 @@ class TransactionRepository:
                     dumps(transaction.payload), 
                     transaction.signature,
                     transaction.timestamp, 
-                    block_id
+                    block_id,
+                    transaction.tx_status,
+                    transaction.error_reason
                 ))
                 
                 conn.commit()   

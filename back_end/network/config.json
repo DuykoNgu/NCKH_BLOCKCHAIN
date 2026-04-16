@@ -50,5 +50,11 @@
         "algorithm": "AES-256-GCM",
         "kdf": "PBKDF2-HMAC-SHA256",
         "kdf_iterations": 100000
+    },
+    "monitor": {
+        "enabled": true,
+        "check_interval": 30,
+        "block_gap_threshold": 5,
+        "auto_sync_enabled": true
     }
 }

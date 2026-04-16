@@ -465,8 +465,10 @@ class GossipProtocol:
         """
         Handle received block from gossip
         Returns True if block is new and should be processed
+        Triggers sync if block gap > 1 is detected
         """
         block_hash = block_data.get('block_hash')
+        block_index = block_data.get('index', 0)
         
         if not block_hash:
             print("✗ Block hash missing")
@@ -492,6 +494,28 @@ class GossipProtocol:
             # Parse block
             block = Block.from_dict(block_data)
             blockchain = get_blockchain_instance()
+            
+            # ⚡ CHECK FOR BLOCK GAP AND TRIGGER SYNC
+            local_height = len(blockchain.chain) - 1
+            block_gap = block.index - local_height
+            
+            if block_gap > 1:
+                print(f"⚠️  [GOSSIP] Block gap detected: received block #{block.index} but local height is {local_height} (gap={block_gap})")
+                print(f"→ [GOSSIP] Triggering chain sync to fill gap...")
+                
+                # Try to trigger sync to fill missing blocks
+                try:
+                    from network.chain_sync import ChainSync
+                    chain_sync = ChainSync(
+                        peer_manager=self.peer_manager,
+                        blockchain=blockchain
+                    )
+                    synced = chain_sync.sync()
+                    if synced > 0:
+                        print(f"✅ [GOSSIP] Filled {synced} missing blocks via sync")
+                    # Continue processing this block after sync
+                except Exception as sync_err:
+                    print(f"⚠️  [GOSSIP] Sync error: {sync_err}, continuing with gossip block...")
             
             # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):

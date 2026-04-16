@@ -20,7 +20,7 @@ from app.utils.KeystoreManager import KeystoreManager
 from app.main import app, init_db
 from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
 from consensus.validator_worker import start_validator_worker
-
+from network.config_loader import get_config
 
 def parse_args():
     """Parse command line arguments"""
@@ -58,7 +58,7 @@ def initialize_p2p_network(host, port, public_key=""):
         public_key: This node's public key (for reverse registration to seed nodes)
     """
     from app.services.NetworkService import get_network_service, initialize_network
-    from network.config_loader import get_config
+    
     
     # Update node config with actual port
     config = get_config()
@@ -105,10 +105,79 @@ def sync_chain_from_peers():
         print("   Starting with local chain state")
 
 
+def start_periodic_sync_heartbeat(interval_seconds: int = 10):
+    """
+    Start background thread for periodic heartbeat check (5-10 seconds)
+    
+    This ensures that if node misses broadcast messages, it will periodically
+    check peers and sync missing blocks.
+    
+    Args:
+        interval_seconds: How often to check (default: 10 seconds)
+    """
+    import threading
+    import time
+    
+    def heartbeat_task():
+        """Background task to periodically check and sync blockchain"""
+        while True:
+            try:
+                time.sleep(interval_seconds)
+                
+                from app.services.NetworkService import get_network_service
+                from network.chain_sync import ChainSync
+                
+                service = get_network_service()
+                blockchain = get_blockchain_instance()
+                
+                # Check if we're behind peers
+                local_height = len(blockchain.chain) - 1
+                
+                # Query random peers for their height
+                active_peers = service.peer_manager.get_active_peers()
+                if not active_peers:
+                    continue
+                
+                # Sample a peer to check height
+                import random
+                peer = random.choice(active_peers)
+                
+                try:
+                    peer_height = service.peer_manager.query_peer_height(peer)
+                    if peer_height is None:
+                        continue
+                    
+                    # If we're behind, trigger sync
+                    if peer_height > local_height:
+                        lag = peer_height - local_height
+                        print(f"⚠️  [HEARTBEAT] Lag detected: local={local_height}, peer={peer_height} (lag={lag} blocks)")
+                        
+                        # Only trigger full sync if lag is significant (> 1 block)
+                        if lag > 1:
+                            print(f"→ [HEARTBEAT] Triggering sync (lag > 1 block)...")
+                            
+                            chain_sync = ChainSync(
+                                peer_manager=service.peer_manager,
+                                blockchain=blockchain
+                            )
+                            to_sync = chain_sync.find_best_peer()
+                            if to_sync:
+                                synced = chain_sync.sync()
+                                if synced > 0:
+                                    print(f"✅ [HEARTBEAT] Synced {synced} blocks")
+                except Exception as e:
+                    pass  # Silently continue on heartbeat errors
+            
+            except Exception as e:
+                # Log but don't crash heartbeat thread
+                pass
+
+
 def start_network_background_tasks():
     """Start background daemon for health checks and peer sync"""
     from app.services.NetworkService import get_network_service
     from network.network_daemon import start_network_daemon
+    
     
     service = get_network_service()
     daemon = start_network_daemon(
@@ -117,6 +186,45 @@ def start_network_background_tasks():
         sync_interval=60
     )
     print("✅ Network daemon started (health check: 30s, peer sync: 60s)")
+    
+    # Start chain monitor for periodic block sync
+    try:
+        config = get_config()
+        monitor_config = config.get_monitor_config()
+        monitor_enabled = monitor_config.get('enabled', True)
+        
+        if not monitor_enabled:
+            print("ℹ️  Chain monitor is DISABLED in config")
+            return daemon
+        
+        print("→ Initializing chain monitor...")
+        
+        from network.chain_monitor import init_chain_monitor, start_chain_monitoring
+        
+        blockchain = get_blockchain_instance()
+        check_interval = monitor_config.get('check_interval', 30)
+        
+        print(f"  Config: check_interval={check_interval}s, threshold={monitor_config.get('block_gap_threshold', 5)} blocks")
+        
+        monitor = init_chain_monitor(
+            peer_manager=service.peer_manager,
+            blockchain=blockchain,
+            check_interval=check_interval
+        )
+        
+        start_chain_monitoring()
+        
+        print(f"✅ Chain monitor started (check interval: {check_interval}s)")
+        print(f"   Monitor auto-sync: {'ENABLED' if monitor_config.get('auto_sync_enabled', True) else 'DISABLED'}")
+    
+    except ImportError as e:
+        print(f"⚠️  Chain monitor import error: {e}")
+        print("   Module chain_monitor not found - skipping")
+    except Exception as e:
+        print(f"⚠️  Chain monitor initialization error: {e}")
+        import traceback
+        traceback.print_exc()
+    
     return daemon
 
 
@@ -182,10 +290,11 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️  Validator worker warning: {e}")
     
-    # Start network background daemon
+    # Start network background daemon (includes chain monitor)
     if not args.no_network:
         try:
             start_network_background_tasks()
+            print("✅ All background services started")
         except Exception as e:
             print(f"⚠️  Network daemon warning: {e}")
     
