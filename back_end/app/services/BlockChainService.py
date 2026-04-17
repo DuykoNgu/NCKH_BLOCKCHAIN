@@ -6,7 +6,7 @@ from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
 from app.services.BlockService import BlockService
 from app.services.TransactionService import TransactionService
-
+from typing import List, Optional, Dict
 
 class BlockChainService:
     @staticmethod
@@ -27,7 +27,7 @@ class BlockChainService:
             block_header=header,
             transactions=[]
         )
-
+        
         blockchain.chain.append(genesis_block)
         return genesis_block
 
@@ -181,7 +181,9 @@ class BlockChainService:
             return False
 
         return True
-
+    # @staticmethod
+    # def add_transaction_in_block(transactions: Optional[Transaction])
+        
     @staticmethod
     def mine_block(blockchain: BlockChain, private_key: SigningKey, public_key_hex: str, 
                    max_transactions: int = None) -> Block:

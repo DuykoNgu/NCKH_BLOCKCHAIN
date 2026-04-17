@@ -165,50 +165,23 @@ class ValidatorWorker:
         Determine if we should attempt to mine a block.
         
         Mining happens when:
-        1. Mempool has at least min_transactions_to_mine transactions
-        2. AND (mempool is full OR mining_timeout has elapsed)
+        1. Mempool has at least 1 transaction (min_transactions_to_mine)
+        
+        The max_transactions_per_block is a SIZE LIMIT, not a mining condition.
+        We mine immediately when we have transactions, creating multiple blocks if needed.
         
         Returns:
             bool: True if we should mine, False otherwise
         """
         mempool_size = len(self.blockchain.mempool)
         
-        # Condition 1: Mempool not empty
-        if mempool_size == 0:
-            logger.debug(f"→ _should_mine_block(): SKIP - mempool is empty")
-            return False
-        
-        try:
-            from network.config_loader import get_config
-            config = get_config()
-            consensus_config = config.get_consensus_config()
-            max_tx_per_block = consensus_config.get('max_transactions_per_block', 100)
-            min_tx_to_mine = consensus_config.get('min_transactions_to_mine', 1)
-            mining_timeout = consensus_config.get('mining_timeout_seconds', 30)
-        except Exception as cfg_err:
-            logger.warning(f"⚠ Failed to load config: {cfg_err}, using defaults")
-            max_tx_per_block = 100
-            min_tx_to_mine = 1
-            mining_timeout = 30
-        
-        # Condition 2: Min transactions reached
-        if mempool_size < min_tx_to_mine:
-            logger.debug(f"→ _should_mine_block(): SKIP - mempool_size={mempool_size} < min_tx_to_mine={min_tx_to_mine}")
-            return False
-        
-        # Condition 3a: Mempool is full
-        if mempool_size >= max_tx_per_block:
-            logger.info(f"✓ _should_mine_block(): YES - MEMPOOL_FULL (size={mempool_size} >= max={max_tx_per_block})")
+        # Only condition: Mempool not empty
+        if mempool_size > 0:
+            logger.info(f"✓ _should_mine_block(): YES - mempool_size={mempool_size} >= 1 (MINE NOW!)")
             return True
         
-        # Condition 3b: Timeout elapsed since last mine
-        time_since_last_mine = time.time() - self.last_mine_attempt_time
-        if time_since_last_mine >= mining_timeout:
-            logger.info(f"✓ _should_mine_block(): YES - TIMEOUT_ELAPSED (time_since_last={time_since_last_mine:.1f}s >= timeout={mining_timeout}s)")
-            return True
-        
-        # Don't mine yet - wait for more transactions or timeout
-        logger.debug(f"→ _should_mine_block(): SKIP - mempool_size={mempool_size} < max={max_tx_per_block} AND time_since_last={time_since_last_mine:.1f}s < timeout={mining_timeout}s (need to wait {mining_timeout - time_since_last_mine:.1f}s more)")
+        # Mempool is empty - wait for transactions
+        logger.debug(f"→ _should_mine_block(): SKIP - mempool is empty, waiting for transactions")
         return False
     
     def _run(self) -> None:
@@ -225,7 +198,7 @@ class ValidatorWorker:
                 is_my_turn = self.consensus_timer.is_my_turn(self.my_index, self.total_validators)
                 
                 if is_my_turn:
-                    # Only mine if mempool has enough transactions OR timeout elapsed
+                    
                     if self._should_mine_block():
                         self.last_mine_attempt_time = time.time()  # Update attempt time
                         logger.info(f"→ [Loop #{loop_count}] MY TURN! Starting to mine block...")
@@ -271,19 +244,9 @@ class ValidatorWorker:
             slot_info = self.consensus_timer.get_slot_info(self.total_validators)
             
             mempool_size = len(self.blockchain.mempool)
-            time_since_last_mine = time.time() - self.last_mine_attempt_time
-            
-            # Determine reason for mining
-            mine_reason = ""
-            if mempool_size >= max_tx_per_block:
-                mine_reason = f"MEMPOOL_FULL ({mempool_size}/{max_tx_per_block})"
-            elif time_since_last_mine >= mining_timeout:
-                mine_reason = f"TIMEOUT ({time_since_last_mine:.0f}s >= {mining_timeout}s)"
-            else:
-                return  # Shouldn't reach here if _should_mine_block passed
             
             print(f"\n{'='*60}")
-            print(f"🟢 MY TURN! Mining block ({mine_reason})...")
+            print(f"🟢 MY TURN! Mining block...")
             print(f"  Slot: {slot_info['current_slot']}")
             print(f"  Leader Index: {slot_info['leader_index']}")
             print(f"  Mempool Size: {mempool_size} transactions")
@@ -303,7 +266,7 @@ class ValidatorWorker:
                 print(f"📦 Creating {blocks_needed} blocks to process all {total_transactions} transactions")
             
             blocks_created = 0
-            
+            last_block = BlockRepository.get_latest_block()
             # Create multiple blocks if needed
             while len(self.blockchain.mempool) > 0 and blocks_created < blocks_needed:
                 blocks_created += 1

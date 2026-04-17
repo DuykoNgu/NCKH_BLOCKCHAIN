@@ -6,7 +6,7 @@ from app.models.Block import Block
 from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
 from app.utils.logger import get_logger
-
+from network.config_loader import get_config
 logger = get_logger(__name__)
 
 
@@ -19,8 +19,17 @@ class BlockRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            
-            # Insert block header first
+            # config = get_config()
+            # consensus_config = config.get_consensus_config()
+            # last_block = BlockRepository.get_latest_block()
+            # max_transactions = consensus_config.get('max_transactions_per_block', 100)
+            # if len(block.transactions) < max_transactions:
+            #     for tx in block.transactions:
+            #      cursor.execute('''
+            #         INSERT INTO transactions(tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
+            #         VALUES (?, ?, ?, ?, ?, ?, ?)
+            #      ''', (tx.tx_hash, tx.sender_address, tx.recipient_address, tx.payload, tx.signature, tx.timestamp, block.block_id))
+            #     return True
             cursor.execute('''
                 INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                 VALUES (?, ?, ?, ?, ?)
@@ -38,6 +47,8 @@ class BlockRepository:
             
             # Update transactions to associate them with this block
             updated_tx_count = 0
+            if(block.block_id == "GENESIS"):
+                return True
             for tx in block.transactions:
                 cursor.execute('''
                     UPDATE transactions 
@@ -199,6 +210,7 @@ class BlockRepository:
             
             cursor.execute('SELECT block_id FROM block ORDER BY index DESC LIMIT 1')
             row = cursor.fetchone()
+
             conn.close()
             
             if row:

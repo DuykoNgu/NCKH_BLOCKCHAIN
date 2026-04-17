@@ -29,6 +29,7 @@ def get_blockchain_instance() -> BlockChain:
 def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
     """
     Initialize the global blockchain instance with genesis block
+    Creates genesis block, saves to DB, and broadcasts to peers
     
     Args:
         super_validator_pubkey: Public key of the super validator
@@ -37,13 +38,103 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
         BlockChain: The initialized blockchain instance
     """
     from app.services.BlockChainService import BlockChainService
+    from app.repositories.BlockRepository import BlockRepository
+    from app.repositories.TransactionRepository import TransactionRepository
+    from app.models.Transaction import Transaction
+    import datetime
     
     blockchain = get_blockchain_instance()
     
     # Only create genesis if chain is empty
     if len(blockchain.chain) == 0 and super_validator_pubkey:
-        BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
-        print(f"✓ Genesis block created with validator: {super_validator_pubkey[:16]}...")
+        # Step 0: Check if genesis block already exists in database
+        print("→ Checking if genesis block already exists in database...")
+        existing_genesis = BlockRepository.get_block_by_id("GENESIS")
+        
+        if existing_genesis:
+            print(f"✓ Genesis block already exists in database (index={existing_genesis.index})")
+            blockchain.chain.append(existing_genesis)
+            blockchain.super_validator_pubkey = super_validator_pubkey
+            blockchain.authority_set.add(super_validator_pubkey)
+            return blockchain
+        
+        # Step 1: Create genesis block in memory
+        genesis_block = BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
+        
+
+        print("→ Saving genesis block to database...")
+        try:
+            from app.database.connection import get_connection
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            # Insert block header
+            cursor.execute('''
+                INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
+                  genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
+                  genesis_block.block_header.timestamp))
+            
+            header_id = cursor.lastrowid
+            
+            # Insert block (genesis block)
+            cursor.execute('''
+                INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (genesis_block.block_id, genesis_block.index, header_id, 
+                  genesis_block.block_hash, genesis_block.validator_signature))
+            
+            conn.commit()
+            conn.close()
+            print(f"✓ Genesis block saved to database")
+        except Exception as e:
+            print(f"⚠ Failed to save genesis block to database: {e}")
+        
+        # Step 3: Create system transaction to broadcast genesis block to other nodes
+        print("→ Creating genesis block transaction for broadcast...")
+        try:
+            genesis_tx = Transaction(
+                tx_hash="",  # Will be calculated
+                sender_pubkey=super_validator_pubkey,
+                sender_address="system",
+                signature="",  # System transaction, no signature
+                payload={
+                    "op": "genesis_block",
+                    "block_hash": genesis_block.block_hash,
+                    "block_index": genesis_block.index,
+                    "validator_pubkey": super_validator_pubkey,
+                    "timestamp": datetime.datetime.now().isoformat()
+                },
+                tx_status="COMMITTED"
+            )
+            
+            # Calculate tx hash
+            from app.services.TransactionService import TransactionService
+            genesis_tx.tx_hash = TransactionService.calculate_hash(genesis_tx)
+            
+            # Add to mempool
+            BlockChainService.add_transaction_to_mempool(blockchain, genesis_tx)
+            print(f"✓ Genesis transaction created and added to mempool (tx_hash={genesis_tx.tx_hash[:16]}...)")
+            
+            # Save to database
+            TransactionRepository.create_transaction(genesis_tx)
+            print(f"✓ Genesis transaction saved to database")
+            
+            # Step 4: Broadcast genesis transaction to peers
+            print("→ Broadcasting genesis block to peers...")
+            try:
+                from app.services.NetworkService import get_network_service
+                network_service = get_network_service()
+                propagated = network_service.broadcast_transaction(genesis_tx.to_dict())
+                print(f"✓ Genesis block broadcast to {propagated} peers")
+            except Exception as bcast_err:
+                print(f"⚠ Failed to broadcast genesis block: {bcast_err}")
+        
+        except Exception as tx_err:
+            print(f"⚠ Failed to create genesis transaction: {tx_err}")
+            import traceback
+            traceback.print_exc()
     
     return blockchain
 

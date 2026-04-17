@@ -255,7 +255,10 @@ if __name__ == "__main__":
     step += 1
     print(f"\n[{step}/{total_steps}] Initializing blockchain...")
     try:
-        keystore_data = KeystoreManager.load_keystore('node.keystore')
+        # Use absolute path to keystore file (relative to this script)
+        keystore_path = os.path.join(current_dir, 'node.keystore')
+        print(f"  Loading keystore from: {keystore_path}")
+        keystore_data = KeystoreManager.load_keystore(keystore_path)
         public_key = keystore_data['public_key']
         
         initialize_blockchain(public_key)
