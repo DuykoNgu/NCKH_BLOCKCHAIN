@@ -177,32 +177,39 @@ class GossipProtocol:
         
         # Try to activate INACTIVE peers if we have few active peers
         active_peers = self.peer_manager.get_active_peers()
+        all_peers = self.peer_manager.get_known_peers(include_inactive=True)
+        inactive_peers = [p for p in all_peers if p.status == "INACTIVE"]
+        
+        print(f"📊 [TX Propagation] Active: {len(active_peers)}, Inactive: {len(inactive_peers)}, Total: {len(all_peers)}")
         
         if len(active_peers) < 3:
             # Not enough active peers, try to activate INACTIVE ones
-            all_peers = self.peer_manager.get_known_peers(include_inactive=True)
-            inactive_peers = [p for p in all_peers if p.status == "INACTIVE"]
-            
             if inactive_peers:
-                print(f"→ Attempting to activate {len(inactive_peers)} INACTIVE peers for gossip...")
+                print(f"→ Low peers ({len(active_peers)} active). Attempting to activate {len(inactive_peers)} INACTIVE peers for gossip...")
                 for peer in inactive_peers[:5]:  # Try up to 5 inactive peers
                     if self.peer_manager.ping_peer(peer):
                         print(f"  ✓ Reactivated peer {peer.ip_address}:{peer.port}")
             
             # Refresh active peers list
             active_peers = self.peer_manager.get_active_peers()
+            print(f"📊 [After Activation] Active peers: {len(active_peers)}")
         
         # Calculate fan-out
         k = self.calculate_fan_out(len(active_peers))
         
         if k == 0:
-            print("⚠ No peers available for gossip")
+            print(f"❌ [TX Propagation FAILED] No peers available for gossip")
+            print(f"   Details: active_peers={len(active_peers)}, all_peers={len(all_peers)}")
+            if all_peers:
+                print(f"   Known peers: {[(p.ip_address, p.port, p.status) for p in all_peers]}")
             return 0
         
         # Select random peers
         selected_peers = self.select_random_peers(k, exclude_peers)
         
-        print(f"→ Gossiping transaction to {len(selected_peers)} peers (fan-out={k})")
+        print(f"→ Gossiping transaction {tx_hash[:8] if tx_hash else 'UNKNOWN'}... to {len(selected_peers)} peers (fan-out={k})")
+        for peer in selected_peers:
+            print(f"  • {peer.ip_address}:{peer.port} ({peer.status})")
         
         # Send to selected peers
         success_count = 0
@@ -220,6 +227,7 @@ class GossipProtocol:
         Returns number of peers successfully notified
         """
         block_hash = block_data.get('block_hash')
+        block_index = block_data.get('index', 0)
         
         if not block_hash:
             print("✗ Block hash missing, cannot propagate")
@@ -235,9 +243,13 @@ class GossipProtocol:
         
         # Get all active peers (high priority - send to all)
         active_peers = self.peer_manager.get_active_peers()
+        all_peers = self.peer_manager.get_known_peers(include_inactive=True)
+        
+        print(f"📊 [Block Propagation] Block #{block_index}, Active: {len(active_peers)}, Total: {len(all_peers)}")
         
         if not active_peers:
-            print("⚠ No peers available for block propagation")
+            print(f"❌ [Block Propagation FAILED] No active peers available")
+            print(f"   Known peers: {[(p.ip_address, p.port, p.status) for p in all_peers]}")
             return 0
         
         success_count = 0
@@ -246,7 +258,7 @@ class GossipProtocol:
             # Send INV message first (lightweight)
             inv_message = GossipMessage('inv', {
                 'block_hash': block_hash,
-                'block_index': block_data.get('index', 0),
+                'block_index': block_index,
                 'has_block': True
             })
             
@@ -499,9 +511,9 @@ class GossipProtocol:
             local_height = len(blockchain.chain) - 1
             block_gap = block.index - local_height
             
-            if block_gap > 1:
+            if block_gap > 0:
                 print(f"⚠️  [GOSSIP] Block gap detected: received block #{block.index} but local height is {local_height} (gap={block_gap})")
-                print(f"→ [GOSSIP] Triggering chain sync to fill gap...")
+                print(f"→ [GOSSIP] Triggering chain sync to fill {block_gap} missing block(s)...")
                 
                 # Try to trigger sync to fill missing blocks
                 try:

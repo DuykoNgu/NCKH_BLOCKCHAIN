@@ -9,7 +9,7 @@
         "peer_timeout": 120
     },
     "seed_nodes": [
-        {
+              {
             "name": "Node A (Local)",
             "ip": "127.0.0.1",
             "port": 5001,
@@ -54,7 +54,7 @@
     "monitor": {
         "enabled": true,
         "check_interval": 30,
-        "block_gap_threshold": 5,
+        "block_gap_threshold": 1,
         "auto_sync_enabled": true
     }
 }

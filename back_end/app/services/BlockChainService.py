@@ -186,6 +186,49 @@ class BlockChainService:
                 print(f"✗ [TX] account_update error: {tx.error_reason}")
                 return False
 
+        # Validator activation transaction
+        if payload.get("op") == "validator_activate":
+            try:
+                ip_address = payload.get("ip_address")
+                port = payload.get("port")
+                public_key = payload.get("public_key")
+                node_type = payload.get("node_type", "validator")
+                
+                if not ip_address or not port or not public_key:
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Missing validator activation fields. ip={bool(ip_address)}, port={bool(port)}, pubkey={bool(public_key)}"
+                    print(f"✗ [TX] validator_activate error: {tx.error_reason}")
+                    return False
+                
+                # Update peer activation via network service
+                from app.services.NetworkService import get_network_service
+                network_service = get_network_service()
+                
+                success = network_service.peer_manager.update_peer_activation_by_ip_port(
+                    ip_address=ip_address,
+                    port=int(port),
+                    public_key=public_key,
+                    node_type=node_type
+                )
+                
+                if success:
+                    tx.tx_status = "COMMITTED"
+                    print(f"✓ [TX] validator_activate applied: {ip_address}:{port}")
+                    return True
+                else:
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Failed to activate peer: {ip_address}:{port}"
+                    print(f"✗ [TX] validator_activate failed: {tx.error_reason}")
+                    return False
+                    
+            except Exception as e:
+                tx.tx_status = "FAILED"
+                tx.error_reason = str(e)
+                print(f"✗ [TX] validator_activate error: {tx.error_reason}")
+                import traceback
+                traceback.print_exc()
+                return False
+
         # Unknown operation
         tx.tx_status = "FAILED"
         tx.error_reason = f"Unknown operation: {payload.get('op', 'UNKNOWN')}"

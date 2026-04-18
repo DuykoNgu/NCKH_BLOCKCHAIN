@@ -2,6 +2,7 @@
 import logging
 import sys
 import os
+import time
 from pathlib import Path
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional
@@ -22,6 +23,46 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG").upper()
 LOG_TO_CONSOLE = os.getenv("LOG_TO_CONSOLE", "True").lower() == "true"
 LOG_TO_FILE = os.getenv("LOG_TO_FILE", "True").lower() == "true"
 LOG_JSON_FORMAT = os.getenv("LOG_JSON_FORMAT", "False").lower() == "true"
+
+
+# ==================== WINDOWS FILE ROTATION FIX ====================
+def _safe_rotate(source: str, dest: str) -> None:
+    """
+    Safe file rotation that handles Windows file locking issues.
+    Retries up to 3 times before giving up.
+    """
+    max_retries = 3
+    retry_delay = 0.1  # Start with 100ms
+    
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(dest):
+                os.remove(dest)
+            os.rename(source, dest)
+            return  # Success
+        except PermissionError as e:
+            if attempt < max_retries - 1:
+                # Retry with exponential backoff
+                time.sleep(retry_delay)
+                retry_delay *= 2
+            else:
+                # Last attempt failed - log but don't crash
+                print(f"⚠ Warning: Failed to rotate log file after {max_retries} attempts: {e}")
+        except Exception as e:
+            print(f"⚠ Warning: Unexpected error during log rotation: {e}")
+            return
+
+
+def _safe_namer(name: str) -> str:
+    """
+    Safely generate backup log filename.
+    Input: "/path/to/app.log"
+    Output: "/path/to/app.2026-04-18.log"
+    """
+    if name.endswith('.log'):
+        return name  # Return as-is, the suffix will be added by TimedRotatingFileHandler
+    return name
+
 
 
 def _get_console_formatter(json_format: bool = False) -> logging.Formatter:
@@ -96,9 +137,15 @@ def get_logger(
         )
         daily_handler.setLevel(logging.DEBUG)
         daily_handler.setFormatter(_get_file_formatter(LOG_JSON_FORMAT))
-        daily_handler.suffix = "%Y-%m-%d.log"   # Tự động đổi tên: app.2025-11-27.log
-        daily_handler.namer = lambda name: name.replace(".log", "") + ".log"  # Fix tên file khi rotate
+        
+        # ✅ FIX: Use proper suffix and safe rotation for Windows
+        daily_handler.suffix = "%Y-%m-%d"  # Will create: app.2026-04-18
+        daily_handler.extMatch = r"^\d{4}-\d{2}-\d{2}$"  # Match date pattern
+        daily_handler.namer = _safe_namer
+        daily_handler.rotator = _safe_rotate  # Use safe rotation function
+        
         logger.addHandler(daily_handler)
+
 
     # ==================== 4. Error-only File ====================
     error_handler = RotatingFileHandler(

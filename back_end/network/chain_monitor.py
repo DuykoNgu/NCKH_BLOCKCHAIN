@@ -269,8 +269,9 @@ class ChainMonitor:
         print("\n".join(status_lines))
         
         # ✅ AUTO-TRIGGER SYNC IF NEEDED
-        if self.sync_check_enabled and block_gap > self.block_gap_threshold:
-            print(f"\n🔴 [ChainMonitor] Block gap ({block_gap}) exceeds threshold ({self.block_gap_threshold})")
+        if self.sync_check_enabled and block_gap > 0:
+            print(f"\n🔴 [ChainMonitor] Block gap detected: local={self.local_height}, remote={self.max_height} (gap={block_gap})")
+            print(f"   Threshold: {self.block_gap_threshold}, Auto-sync enabled: {self.sync_check_enabled}")
             self._trigger_auto_sync()
         elif block_gap <= 0:
             print(f"   ✓ Chain is synced with network")
