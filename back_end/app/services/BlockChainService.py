@@ -18,8 +18,8 @@ class BlockChainService:
         genesis_tx = Transaction(
             tx_id="GENESIS_TX",
             sender_pubkey=pubkey_hex,
-            sender_address="SYSTEM",
-            recipient_address="SYSTEM",
+            sender_address="system",  # lowercase for FK constraint compatibility
+            recipient_address="system",  # lowercase for FK constraint compatibility
             payload={"op": "genesis", "message": "System Genesis Block"},
             signature="GENESIS"
         )

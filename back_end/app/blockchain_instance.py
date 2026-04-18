@@ -26,13 +26,20 @@ def get_blockchain_instance() -> BlockChain:
     return _blockchain_instance
 
 
-def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
+def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int = 5000, seed_nodes: list = None) -> BlockChain:
     """
     Initialize the global blockchain instance with genesis block
-    Creates genesis block, saves to DB, and broadcasts to peers
+    
+    Logic:
+    - If genesis exists in DB: Load it (shared genesis)
+    - If genesis doesn't exist:
+      - If this node IS a seed node: Create genesis (only seed node creates)
+      - If this node is NOT a seed node: Fetch genesis from seed node
     
     Args:
         super_validator_pubkey: Public key of the super validator
+        listen_port: Port this node is listening on (to identify if it's a seed node)
+        seed_nodes: List of seed nodes from config
         
     Returns:
         BlockChain: The initialized blockchain instance
@@ -45,23 +52,80 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
     
     blockchain = get_blockchain_instance()
     
-    # Only create genesis if chain is empty
+    # Only process if chain is empty
     if len(blockchain.chain) == 0 and super_validator_pubkey:
-        # Step 0: Check if genesis block already exists in database
+        # Step 0: Check if genesis block already exists in database (shared genesis)
         print("→ Checking if genesis block already exists in database...")
         existing_genesis = BlockRepository.get_block_by_id("GENESIS")
         
         if existing_genesis:
             print(f"✓ Genesis block already exists in database (index={existing_genesis.index})")
+            # Load genesis block with all its transactions
             blockchain.chain.append(existing_genesis)
             blockchain.super_validator_pubkey = super_validator_pubkey
             blockchain.authority_set.add(super_validator_pubkey)
+            
+            # Load genesis transactions if available
+            try:
+                from app.database.connection import get_connection
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason
+                    FROM transactions
+                    WHERE block_id = ?
+                ''', ("GENESIS",))
+                tx_rows = cursor.fetchall()
+                conn.close()
+                
+                if tx_rows:
+                    import json
+                    from app.models.Transaction import Transaction
+                    for row in tx_rows:
+                        tx = Transaction(
+                            tx_id=row[0],
+                            tx_hash=row[1],
+                            sender_address=row[2],
+                            recipient_address=row[3],
+                            payload=json.loads(row[4]) if row[4] else {},
+                            signature=row[5],
+                            timestamp=row[6],
+                            block_id=row[7],
+                            tx_status=row[8],
+                            error_reason=row[9]
+                        )
+                        # Add to genesis block transactions if not already there
+                        if not any(t.tx_hash == tx.tx_hash for t in existing_genesis.transactions):
+                            existing_genesis.transactions.append(tx)
+                    print(f"✓ Loaded {len(tx_rows)} genesis transaction(s) from database")
+            except Exception as e:
+                print(f"⚠ Warning: Could not load genesis transactions: {e}")
+            
             return blockchain
         
-        # Step 1: Create genesis block in memory
+        # Step 1: Determine if this node is a seed node
+        is_seed_node = False
+        if seed_nodes:
+            for seed in seed_nodes:
+                if seed.get('port') == listen_port:
+                    is_seed_node = True
+                    print(f"✓ This node is a SEED NODE (port {listen_port})")
+                    break
+        
+        if not is_seed_node and seed_nodes:
+            # This is not a seed node - try to fetch genesis from seed nodes
+            print(f"→ This is a non-seed node. Attempting to fetch genesis block from seed node...")
+            genesis_fetched = _fetch_genesis_from_seed_node(blockchain, super_validator_pubkey, seed_nodes)
+            if genesis_fetched:
+                print(f"✓ Genesis block fetched and initialized from seed node")
+                return blockchain
+            else:
+                print(f"⚠ Could not fetch genesis from seed nodes. Proceeding to create local genesis...")
+        
+        # Step 2: Create genesis block (seed node or if no seed nodes configured)
+        print("→ Creating genesis block...")
         genesis_block = BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
         
-
         print("→ Saving genesis block to database...")
         try:
             from app.database.connection import get_connection
@@ -91,7 +155,7 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
         except Exception as e:
             print(f"⚠ Failed to save genesis block to database: {e}")
         
-        # Step 2: Save genesis transaction (inside genesis block) to database
+        # Step 3: Save genesis transaction (inside genesis block) to database
         print("→ Saving genesis block transaction to database...")
         try:
             # Get the genesis transaction from the genesis block
@@ -99,12 +163,13 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
             
             TransactionRepository.create_transaction(genesis_tx)
             print(f"✓ Genesis transaction saved to database (tx_hash={genesis_tx.tx_hash[:16]}...)")
+            
+            # Broadcast genesis to peers
             try:
                 from app.services.NetworkService import get_network_service
                 network_service = get_network_service()
                 propagated = network_service.broadcast_transaction(genesis_tx.to_dict())
                 print(f"✓ Genesis block broadcast to {propagated} peers")
-               
             except Exception as bcast_err:
                 print(f"⚠ Failed to broadcast genesis block: {bcast_err}")
         except Exception as tx_err:
@@ -113,6 +178,143 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
             traceback.print_exc()
     
     return blockchain
+
+
+def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey: str, seed_nodes: list) -> bool:
+    """
+    Fetch genesis block and transactions from a seed node
+    
+    Args:
+        blockchain: The blockchain instance to populate
+        super_validator_pubkey: Public key of validator
+        seed_nodes: List of seed nodes to try
+        
+    Returns:
+        bool: True if genesis was successfully fetched, False otherwise
+    """
+    from app.services.BlockChainService import BlockChainService
+    from app.repositories.BlockRepository import BlockRepository
+    from app.repositories.TransactionRepository import TransactionRepository
+    import requests
+    
+    for seed in seed_nodes:
+        try:
+            seed_ip = seed.get('ip', '127.0.0.1')
+            seed_port = seed.get('port', 5001)
+            seed_name = seed.get('name', f'{seed_ip}:{seed_port}')
+            
+            print(f"  → Trying seed node: {seed_name}")
+            
+            # Request genesis block from seed node
+            url = f"http://{seed_ip}:{seed_port}/api/v1/blockchain/genesis"
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                genesis_data = response.json()
+                
+                # Create block from received data
+                genesis_block = _create_genesis_from_dict(genesis_data, super_validator_pubkey)
+                
+                if genesis_block:
+                    # Save to database
+                    try:
+                        from app.database.connection import get_connection
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        
+                        # Insert block header
+                        cursor.execute('''
+                            INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
+                              genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
+                              genesis_block.block_header.timestamp))
+                        
+                        header_id = cursor.lastrowid
+                        
+                        # Insert block
+                        cursor.execute('''
+                            INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (genesis_block.block_id, genesis_block.index, header_id, 
+                              genesis_block.block_hash, genesis_block.validator_signature))
+                        
+                        # Insert transactions
+                        for tx in genesis_block.transactions:
+                            TransactionRepository.create_transaction(tx)
+                        
+                        conn.commit()
+                        conn.close()
+                        
+                        # Add to blockchain
+                        blockchain.chain.append(genesis_block)
+                        blockchain.super_validator_pubkey = super_validator_pubkey
+                        blockchain.authority_set.add(super_validator_pubkey)
+                        
+                        print(f"    ✓ Genesis block fetched and saved from {seed_name}")
+                        return True
+                    except Exception as e:
+                        print(f"    ✗ Failed to save genesis from {seed_name}: {e}")
+                        continue
+            else:
+                print(f"    ✗ Seed node {seed_name} returned status {response.status_code}")
+        except Exception as e:
+            print(f"    ✗ Could not connect to seed node {seed_name}: {e}")
+            continue
+    
+    return False
+
+
+def _create_genesis_from_dict(data: dict, validator_pubkey: str):
+    """Reconstruct Genesis block from dict received from seed node"""
+    from app.models.Block import Block
+    from app.models.BlockHeader import BlockHeader
+    from app.models.Transaction import Transaction
+    import json
+    
+    try:
+        # Reconstruct block header
+        header_data = data.get('block_header', {})
+        header = BlockHeader(
+            index=header_data.get('index', 0),
+            pre_hash=header_data.get('pre_hash', ''),
+            merkle_root=header_data.get('merkle_root', ''),
+            validator_pubkey=header_data.get('validator_pubkey', validator_pubkey),
+            timestamp=header_data.get('timestamp', 0)
+        )
+        
+        # Reconstruct transactions
+        transactions = []
+        for tx_data in data.get('transactions', []):
+            tx = Transaction(
+                tx_id=tx_data.get('tx_id', ''),
+                tx_hash=tx_data.get('tx_hash', ''),
+                sender_pubkey=tx_data.get('sender_pubkey', ''),
+                sender_address=tx_data.get('sender_address'),
+                recipient_address=tx_data.get('recipient_address', ''),
+                payload=tx_data.get('payload', {}),
+                signature=tx_data.get('signature', ''),
+                timestamp=tx_data.get('timestamp', 0),
+                block_id=tx_data.get('block_id', 'GENESIS'),
+                tx_status=tx_data.get('tx_status', 'COMMITTED'),
+                error_reason=tx_data.get('error_reason', '')
+            )
+            transactions.append(tx)
+        
+        # Create block
+        block = Block(
+            block_id=data.get('block_id', 'GENESIS'),
+            index=data.get('index', 0),
+            block_header=header,
+            transactions=transactions
+        )
+        block.block_hash = data.get('block_hash', '')
+        block.validator_signature = data.get('validator_signature', '')
+        
+        return block
+    except Exception as e:
+        print(f"  ✗ Failed to create genesis from data: {e}")
+        return None
 
 
 def reset_blockchain() -> None:

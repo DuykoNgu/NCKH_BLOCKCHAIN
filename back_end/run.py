@@ -261,7 +261,11 @@ if __name__ == "__main__":
         keystore_data = KeystoreManager.load_keystore(keystore_path)
         public_key = keystore_data['public_key']
         
-        initialize_blockchain(public_key)
+        # Get seed nodes from config
+        config = get_config()
+        seed_nodes = config.get_seed_nodes()
+        
+        initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
         print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
     except Exception as e:
         print(f"⚠️  Blockchain initialization warning: {e}")

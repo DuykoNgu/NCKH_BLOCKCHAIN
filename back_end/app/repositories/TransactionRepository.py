@@ -27,8 +27,8 @@ class TransactionRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Handle NULL sender_address for system transactions
-                sender_addr = transaction.sender_address if transaction.sender_address != "system" else None
+                # Handle NULL sender_address for system transactions (both lowercase and uppercase)
+                sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
                 
                 # Convert empty string to None for FK constraints
                 block_id = transaction.block_id if transaction.block_id else None
