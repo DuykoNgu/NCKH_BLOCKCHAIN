@@ -266,7 +266,7 @@ class ValidatorWorker:
                 print(f"📦 Creating {blocks_needed} blocks to process all {total_transactions} transactions")
             
             blocks_created = 0
-            last_block = BlockRepository.get_latest_block()
+            
             # Create multiple blocks if needed
             while len(self.blockchain.mempool) > 0 and blocks_created < blocks_needed:
                 blocks_created += 1
@@ -274,7 +274,7 @@ class ValidatorWorker:
                 print(f"\n--- Block {blocks_created}/{blocks_needed} ---")
                 
                 # Mine the block with size limit using private key from memory
-                block = BlockChainService.mine_block(
+                block, is_new_block = BlockChainService.mine_block(
                     self.blockchain,
                     self.__private_key,
                     self.public_key,
@@ -286,25 +286,46 @@ class ValidatorWorker:
                 print(f"  Block Index: {block.index}")
                 print(f"  Block Size: {block.block_size} transactions")
                 print(f"  Merkle Root: {block.block_header.merkle_root[:32]}...")
+                print(f"  New Block: {is_new_block}")
                 
-                # Add block to local blockchain (this removes included transactions from mempool)
-                BlockChainService.add_block(self.blockchain, block)
+                # Only add block if it's a NEW block (not already in chain)
+                if is_new_block:
+                    # Add block to local blockchain (this removes included transactions from mempool)
+                    BlockChainService.add_block(self.blockchain, block)
+                    
+                    # Save to database
+                    from app.repositories.BlockRepository import BlockRepository
+                    from app.repositories.TransactionRepository import TransactionRepository
+                    
+                    BlockRepository.create_block(block)
+                    for tx in block.transactions:
+                        tx.block_id = block.block_id
+                        tx.tx_status = "COMMITTED"
+                        TransactionRepository.create_transaction(tx)
+                    
+                    print(f"✓ Block saved to database")
+                    
+                    # Broadcast block to P2P network
+                    propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=True)
+                    
+                    print(f"✓ Block propagated to {propagated} peers")
+                else:
+                    # Block was updated (not new), save only newly appended transactions
+                    # Transactions that were already in the block (like genesis tx) already have block_id set
+                    from app.repositories.TransactionRepository import TransactionRepository
+                    
+                    # Only save transactions that don't have block_id set yet
+                    appended_tx_count = 0
+                    for tx in block.transactions:
+                        # Skip if transaction already has block_id (genesis tx)
+                        if not tx.block_id or tx.block_id == "":
+                            tx.block_id = block.block_id
+                            tx.tx_status = "COMMITTED"
+                            TransactionRepository.create_transaction(tx)
+                            appended_tx_count += 1
+                    
+                    print(f"✓ Block updated ({appended_tx_count} new transaction(s) saved)")
                 
-                # Save to database
-                from app.repositories.BlockRepository import BlockRepository
-                from app.repositories.TransactionRepository import TransactionRepository
-                
-                BlockRepository.create_block(block)
-                for tx in block.transactions:
-                    tx.block_id = block.block_id
-                    TransactionRepository.create_transaction(tx)
-                
-                print(f"✓ Block saved to database")
-                
-                # Broadcast block to P2P network
-                propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=True)
-                
-                print(f"✓ Block propagated to {propagated} peers")
                 print(f"✓ Remaining in mempool: {len(self.blockchain.mempool)} transactions")
                 
                 # Update statistics

@@ -91,48 +91,24 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
         except Exception as e:
             print(f"⚠ Failed to save genesis block to database: {e}")
         
-        # Step 3: Create system transaction to broadcast genesis block to other nodes
-        print("→ Creating genesis block transaction for broadcast...")
+        # Step 2: Save genesis transaction (inside genesis block) to database
+        print("→ Saving genesis block transaction to database...")
         try:
-            genesis_tx = Transaction(
-                tx_hash="",  # Will be calculated
-                sender_pubkey=super_validator_pubkey,
-                sender_address="system",
-                signature="",  # System transaction, no signature
-                payload={
-                    "op": "genesis_block",
-                    "block_hash": genesis_block.block_hash,
-                    "block_index": genesis_block.index,
-                    "validator_pubkey": super_validator_pubkey,
-                    "timestamp": datetime.datetime.now().isoformat()
-                },
-                tx_status="COMMITTED"
-            )
+            # Get the genesis transaction from the genesis block
+            genesis_tx = genesis_block.transactions[0]  # The one created in create_genesis_block
             
-            # Calculate tx hash
-            from app.services.TransactionService import TransactionService
-            genesis_tx.tx_hash = TransactionService.calculate_hash(genesis_tx)
-            
-            # Add to mempool
-            BlockChainService.add_transaction_to_mempool(blockchain, genesis_tx)
-            print(f"✓ Genesis transaction created and added to mempool (tx_hash={genesis_tx.tx_hash[:16]}...)")
-            
-            # Save to database
             TransactionRepository.create_transaction(genesis_tx)
-            print(f"✓ Genesis transaction saved to database")
-            
-            # Step 4: Broadcast genesis transaction to peers
-            print("→ Broadcasting genesis block to peers...")
+            print(f"✓ Genesis transaction saved to database (tx_hash={genesis_tx.tx_hash[:16]}...)")
             try:
                 from app.services.NetworkService import get_network_service
                 network_service = get_network_service()
                 propagated = network_service.broadcast_transaction(genesis_tx.to_dict())
                 print(f"✓ Genesis block broadcast to {propagated} peers")
+               
             except Exception as bcast_err:
                 print(f"⚠ Failed to broadcast genesis block: {bcast_err}")
-        
         except Exception as tx_err:
-            print(f"⚠ Failed to create genesis transaction: {tx_err}")
+            print(f"⚠ Failed to save genesis transaction: {tx_err}")
             import traceback
             traceback.print_exc()
     

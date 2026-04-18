@@ -35,7 +35,7 @@ class TransactionRepository:
             
                 
                 cursor.execute('''
-                    INSERT INTO transactions 
+                    INSERT OR IGNORE INTO transactions 
                     (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
