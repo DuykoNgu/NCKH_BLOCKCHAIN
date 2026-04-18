@@ -265,10 +265,17 @@ if __name__ == "__main__":
         config = get_config()
         seed_nodes = config.get_seed_nodes()
         
+        print(f"\n[DEBUG run.py] Before initialize_blockchain:")
+        print(f"  args.port: {args.port}")
+        print(f"  seed_nodes: {seed_nodes}")
+        print(f"  seed_nodes type: {type(seed_nodes)}")
+        
         initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
         print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
     except Exception as e:
         print(f"⚠️  Blockchain initialization warning: {e}")
+        import traceback
+        traceback.print_exc()
         public_key = ""
     
     if not args.no_network:

@@ -50,6 +50,19 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
     from app.models.Transaction import Transaction
     import datetime
     
+    # DEBUG LOGGING
+    print(f"\n=== GENESIS BLOCK INITIALIZATION DEBUG ===")
+    print(f"listen_port: {listen_port}")
+    print(f"seed_nodes: {seed_nodes}")
+    print(f"seed_nodes type: {type(seed_nodes)}")
+    if seed_nodes:
+        print(f"seed_nodes count: {len(seed_nodes)}")
+        for i, seed in enumerate(seed_nodes):
+            print(f"  seed[{i}]: port={seed.get('port')}, ip={seed.get('ip')}")
+    else:
+        print(f"seed_nodes is EMPTY or None!")
+    print(f"========================================\n")
+    
     blockchain = get_blockchain_instance()
     
     # Only process if chain is empty
@@ -105,12 +118,25 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
         
         # Step 1: Determine if this node is a seed node
         is_seed_node = False
+        print(f"→ [DEBUG] Determining if node is seed node...")
+        print(f"  listen_port={listen_port}, seed_nodes={seed_nodes}")
+        
         if seed_nodes:
+            print(f"  Checking {len(seed_nodes)} seed nodes...")
             for seed in seed_nodes:
-                if seed.get('port') == listen_port:
+                seed_port = seed.get('port')
+                print(f"    Comparing: listen_port={listen_port} vs seed_port={seed_port}")
+                if seed_port == listen_port:
                     is_seed_node = True
-                    print(f"✓ This node is a SEED NODE (port {listen_port})")
+                    print(f"    ✓ MATCH! This node is a SEED NODE (port {listen_port})")
                     break
+        else:
+            print(f"  seed_nodes is empty/None - cannot determine seed node")
+        
+        print(f"  Final: is_seed_node={is_seed_node}")
+        
+        if is_seed_node:
+            print(f"✓ This node is a SEED NODE (port {listen_port})")
         
         if not is_seed_node and seed_nodes:
             # This is not a seed node - try to fetch genesis from seed nodes
@@ -206,11 +232,14 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
             print(f"  → Trying seed node: {seed_name}")
             
             # Request genesis block from seed node
-            url = f"http://{seed_ip}:{seed_port}/api/v1/blockchain/genesis"
+            url = f"http://{seed_ip}:{seed_port}/api/v1/block/genesis"
+            print(f"    → GET {url}")
             response = requests.get(url, timeout=5)
             
             if response.status_code == 200:
+                print(f"    ✓ Response status 200")
                 genesis_data = response.json()
+                print(f"    → Genesis data received, block_id: {genesis_data.get('block_id')}")
                 
                 # Create block from received data
                 genesis_block = _create_genesis_from_dict(genesis_data, super_validator_pubkey)
@@ -258,8 +287,11 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                         continue
             else:
                 print(f"    ✗ Seed node {seed_name} returned status {response.status_code}")
+                print(f"      Response text: {response.text[:200]}")
         except Exception as e:
             print(f"    ✗ Could not connect to seed node {seed_name}: {e}")
+            import traceback
+            traceback.print_exc()
             continue
     
     return False
