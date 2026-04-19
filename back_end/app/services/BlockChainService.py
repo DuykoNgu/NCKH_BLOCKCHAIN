@@ -10,6 +10,119 @@ from typing import List, Optional, Dict
 
 class BlockChainService:
     @staticmethod
+    def cleanup_mempool_from_chain(blockchain: BlockChain) -> int:
+        """
+        ✅ CRITICAL FIX: Remove all transactions that are already committed in blockchain
+        
+        Vấn đề: Khi receive block từ gossip, các node khác vẫn có transactions đó trong mempool
+        Nếu những transactions đó được include trong block của peer, thì node này không nên mine lại
+        
+        This function:
+        1. Scans all blocks in the chain
+        2. Collects all tx_hash from committed transactions
+        3. Removes them from mempool
+        4. Returns count of removed transactions
+        
+        Args:
+            blockchain: The blockchain instance
+            
+        Returns:
+            int: Number of transactions removed from mempool
+        """
+        # Collect all tx_hashes that are already in blocks
+        committed_tx_hashes = set()
+        
+        for block in blockchain.chain:
+            for tx in block.transactions:
+                if tx.tx_hash and tx.tx_hash != "":
+                    committed_tx_hashes.add(tx.tx_hash)
+        
+        # Filter mempool to remove committed transactions
+        original_size = len(blockchain.mempool)
+        blockchain.mempool = [
+            tx for tx in blockchain.mempool 
+            if tx.tx_hash not in committed_tx_hashes
+        ]
+        
+        removed = original_size - len(blockchain.mempool)
+        if removed > 0:
+            print(f"🧹 [MEMPOOL] Cleaned {removed} committed transactions from mempool")
+        
+        return removed
+    
+    @staticmethod
+    def deduplicate_mempool(blockchain: BlockChain) -> int:
+        """
+        Remove duplicate transactions from mempool
+        Keeps first occurrence, removes duplicates
+        """
+        seen_hashes = set()
+        deduplicated = []
+        duplicates = 0
+        
+        for tx in blockchain.mempool:
+            if tx.tx_hash not in seen_hashes:
+                seen_hashes.add(tx.tx_hash)
+                deduplicated.append(tx)
+            else:
+                duplicates += 1
+        
+        blockchain.mempool = deduplicated
+        
+        if duplicates > 0:
+            print(f"🧹 [MEMPOOL] Removed {duplicates} duplicate transactions from mempool")
+        
+        return duplicates
+    
+    @staticmethod
+    def validate_mempool_transactions(blockchain: BlockChain) -> int:
+        """
+        Re-validate all mempool transactions
+        Remove invalid ones (e.g., invalid signatures, sender not authorized)
+        """
+        valid_tx = []
+        invalid_count = 0
+        
+        for tx in blockchain.mempool:
+            if TransactionService.is_valid(tx):
+                valid_tx.append(tx)
+            else:
+                invalid_count += 1
+                print(f"⚠️ [MEMPOOL] Removed invalid transaction {tx.tx_hash[:8]}...")
+        
+        blockchain.mempool = valid_tx
+        
+        if invalid_count > 0:
+            print(f"🧹 [MEMPOOL] Removed {invalid_count} invalid transactions")
+        
+        return invalid_count
+    
+    @staticmethod
+    def rebuild_mempool(blockchain: BlockChain) -> None:
+        """
+        🔧 COMPREHENSIVE MEMPOOL REBUILD
+        Called when receiving new blocks to ensure mempool consistency across network
+        
+        Steps:
+        1. Remove transactions already in blockchain
+        2. Deduplicate remaining transactions
+        3. Validate all remaining transactions
+        4. Log results
+        """
+        print(f"\n📋 [MEMPOOL REBUILD] Before: {len(blockchain.mempool)} transactions")
+        
+        # Step 1: Clean committed transactions
+        BlockChainService.cleanup_mempool_from_chain(blockchain)
+        
+        # Step 2: Deduplicate
+        BlockChainService.deduplicate_mempool(blockchain)
+        
+        # Step 3: Validate
+        BlockChainService.validate_mempool_transactions(blockchain)
+        
+        print(f"📋 [MEMPOOL REBUILD] After: {len(blockchain.mempool)} transactions\n")
+    
+    @staticmethod
     def create_genesis_block(blockchain: BlockChain, pubkey_hex: str) -> Block:
         blockchain.super_validator_pubkey = pubkey_hex
         blockchain.authority_set.add(pubkey_hex)

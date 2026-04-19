@@ -16,12 +16,6 @@ import argparse
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-from app.utils.KeystoreManager import KeystoreManager
-from app.main import app, init_db
-from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
-from consensus.validator_worker import start_validator_worker
-from network.config_loader import get_config
-
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='EduChain Backend Server')
@@ -236,9 +230,16 @@ if __name__ == "__main__":
     print(f"   Host: {args.host}:{args.port}")
     print("=" * 60)
     
-    # Step 0: Custom DB if specified (for multi-node testing)
+    # Step 0: Custom DB if specified (for multi-node testing) - MUST be done before app imports
     if args.db:
         setup_custom_db(args.db)
+    
+    # NOW import app modules after DB path is set
+    from app.utils.KeystoreManager import KeystoreManager
+    from app.main import app, init_db
+    from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
+    from consensus.validator_worker import start_validator_worker
+    from network.config_loader import get_config
     
     # Step 1: Initialize database
     total_steps = 5 if not args.no_network else 3

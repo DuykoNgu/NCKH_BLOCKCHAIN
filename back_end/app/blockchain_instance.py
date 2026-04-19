@@ -144,11 +144,16 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
             genesis_fetched = _fetch_genesis_from_seed_node(blockchain, super_validator_pubkey, seed_nodes)
             if genesis_fetched:
                 print(f"✓ Genesis block fetched and initialized from seed node")
+                print(f"✓ Chain now has {len(blockchain.chain)} block(s)")
                 return blockchain
             else:
-                print(f"⚠ Could not fetch genesis from seed nodes. Proceeding to create local genesis...")
+                print(f"⚠ ERROR: Could not fetch genesis from any seed node!")
+                print(f"⚠ This node cannot continue without genesis from seed node.")
+                print(f"⚠ Make sure seed node is running and accessible.")
+ # Exit with error - cannot proceed without genesis
         
-        # Step 2: Create genesis block (seed node or if no seed nodes configured)
+        # At this point: either is_seed_node=True OR seed_nodes is empty
+        # Step 2: Create genesis block (only seed node or standalone mode)
         print("→ Creating genesis block...")
         genesis_block = BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
         
@@ -244,47 +249,52 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                 # Create block from received data
                 genesis_block = _create_genesis_from_dict(genesis_data, super_validator_pubkey)
                 
-                if genesis_block:
-                    # Save to database
-                    try:
-                        from app.database.connection import get_connection
-                        conn = get_connection()
-                        cursor = conn.cursor()
-                        
-                        # Insert block header
-                        cursor.execute('''
-                            INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
-                              genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
-                              genesis_block.block_header.timestamp))
-                        
-                        header_id = cursor.lastrowid
-                        
-                        # Insert block
-                        cursor.execute('''
-                            INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (genesis_block.block_id, genesis_block.index, header_id, 
-                              genesis_block.block_hash, genesis_block.validator_signature))
-                        
-                        # Insert transactions
-                        for tx in genesis_block.transactions:
-                            TransactionRepository.create_transaction(tx)
-                        
-                        conn.commit()
-                        conn.close()
-                        
-                        # Add to blockchain
-                        blockchain.chain.append(genesis_block)
-                        blockchain.super_validator_pubkey = super_validator_pubkey
-                        blockchain.authority_set.add(super_validator_pubkey)
-                        
-                        print(f"    ✓ Genesis block fetched and saved from {seed_name}")
-                        return True
-                    except Exception as e:
-                        print(f"    ✗ Failed to save genesis from {seed_name}: {e}")
-                        continue
+                if genesis_block is None:
+                    print(f"    ✗ Failed to create genesis block object from seed data")
+                    continue
+                
+                # Save to database
+                try:
+                    from app.database.connection import get_connection
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Insert block header
+                    cursor.execute('''
+                        INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
+                          genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
+                          genesis_block.block_header.timestamp))
+                    
+                    header_id = cursor.lastrowid
+                    
+                    # Insert block
+                    cursor.execute('''
+                        INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (genesis_block.block_id, genesis_block.index, header_id, 
+                          genesis_block.block_hash, genesis_block.validator_signature))
+                    
+                    # Insert transactions
+                    for tx in genesis_block.transactions:
+                        TransactionRepository.create_transaction(tx)
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    # Add to blockchain
+                    blockchain.chain.append(genesis_block)
+                    blockchain.super_validator_pubkey = super_validator_pubkey
+                    blockchain.authority_set.add(super_validator_pubkey)
+                    
+                    print(f"    ✓ Genesis block fetched and saved from {seed_name}")
+                    return True
+                except Exception as e:
+                    print(f"    ✗ Failed to save genesis from {seed_name}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
             else:
                 print(f"    ✗ Seed node {seed_name} returned status {response.status_code}")
                 print(f"      Response text: {response.text[:200]}")
@@ -307,6 +317,7 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
     try:
         # Reconstruct block header
         header_data = data.get('block_header', {})
+        print(f"    → Reconstructing block header from seed node data...")
         header = BlockHeader(
             index=header_data.get('index', 0),
             pre_hash=header_data.get('pre_hash', ''),
@@ -314,9 +325,12 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
             validator_pubkey=header_data.get('validator_pubkey', validator_pubkey),
             timestamp=header_data.get('timestamp', 0)
         )
+        print(f"    ✓ Block header reconstructed")
         
         # Reconstruct transactions
         transactions = []
+        tx_count = len(data.get('transactions', []))
+        print(f"    → Reconstructing {tx_count} transaction(s)...")
         for tx_data in data.get('transactions', []):
             tx = Transaction(
                 tx_id=tx_data.get('tx_id', ''),
@@ -332,8 +346,10 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
                 error_reason=tx_data.get('error_reason', '')
             )
             transactions.append(tx)
+        print(f"    ✓ All {tx_count} transaction(s) reconstructed")
         
         # Create block
+        print(f"    → Creating block object...")
         block = Block(
             block_id=data.get('block_id', 'GENESIS'),
             index=data.get('index', 0),
@@ -342,10 +358,13 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
         )
         block.block_hash = data.get('block_hash', '')
         block.validator_signature = data.get('validator_signature', '')
+        print(f"    ✓ Block object created successfully (id={block.block_id}, index={block.index})")
         
         return block
     except Exception as e:
         print(f"  ✗ Failed to create genesis from data: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

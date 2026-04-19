@@ -558,6 +558,29 @@ class PeerManager:
         Returns both ACTIVE and INACTIVE peers so bootstrapping nodes can discover all known peers
         """
         return [peer.to_dict() for peer in self.get_known_peers(include_inactive=True)]
+    
+    def query_peer_height(self, peer: Peer, timeout: int = 5) -> Optional[int]:
+        """
+        Query a peer for its blockchain height
+        
+        Args:
+            peer: Peer to query
+            timeout: Request timeout in seconds
+            
+        Returns:
+            Chain height or None if query failed
+        """
+        try:
+            url = f"{peer.get_url()}/api/v1/network/blocks/height"
+            response = requests.get(url, timeout=timeout)
+            
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('height', 0)
+            else:
+                return None
+        except requests.exceptions.RequestException:
+            return None
 
 
 if __name__ == "__main__":

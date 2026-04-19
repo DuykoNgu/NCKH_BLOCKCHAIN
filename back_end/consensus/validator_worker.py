@@ -243,6 +243,51 @@ class ValidatorWorker:
             
             slot_info = self.consensus_timer.get_slot_info(self.total_validators)
             
+            # 🔥 CRITICAL FIX #1: Wait for gossip propagation
+            # When it's my turn, other nodes might have just broadcast their blocks
+            # Give them time to reach us (typically 500ms-2s)
+            print(f"\n⏳ Waiting 1.5s for gossip propagation of recent blocks...")
+            time.sleep(1.5)
+            
+            # 🔥 CRITICAL FIX #2: Rebuild mempool before mining
+            # This removes transactions that were already committed in gossip blocks
+            print(f"🔧 Rebuilding mempool to ensure consistency...")
+            from app.services.BlockChainService import BlockChainService
+            BlockChainService.rebuild_mempool(self.blockchain)
+            
+            # 🔥 CRITICAL FIX #3: Verify chain is not too far behind
+            # If there's a big gap, sync first before mining
+            from network.chain_sync import ChainSync
+            local_height = len(self.blockchain.chain) - 1
+            
+            # Query random peers for height
+            active_peers = self.network_service.peer_manager.get_active_peers()
+            if active_peers:
+                import random
+                sample_peers = random.sample(active_peers, min(3, len(active_peers)))
+                max_peer_height = 0
+                
+                for peer in sample_peers:
+                    try:
+                        peer_height = self.network_service.peer_manager.query_peer_height(peer)
+                        if peer_height and peer_height > max_peer_height:
+                            max_peer_height = peer_height
+                    except:
+                        pass
+                
+                if max_peer_height > local_height + 2:
+                    print(f"⚠️  Chain gap detected: me={local_height}, peers={max_peer_height}")
+                    print(f"→ Syncing chain before mining...")
+                    chain_sync = ChainSync(
+                        peer_manager=self.network_service.peer_manager,
+                        blockchain=self.blockchain
+                    )
+                    synced = chain_sync.sync()
+                    if synced > 0:
+                        print(f"✅ Synced {synced} blocks before mining")
+                        # Rebuild mempool again after sync
+                        BlockChainService.rebuild_mempool(self.blockchain)
+            
             mempool_size = len(self.blockchain.mempool)
             
             print(f"\n{'='*60}")

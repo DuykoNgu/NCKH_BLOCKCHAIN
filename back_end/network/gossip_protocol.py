@@ -554,6 +554,10 @@ class GossipProtocol:
             # 5. Commit to blockchain
             BlockChainService.add_block(blockchain, block)
             
+            # 🔧 CRITICAL FIX: Rebuild mempool to remove now-committed transactions
+            # This ensures all nodes have consistent mempool state
+            BlockChainService.rebuild_mempool(blockchain)
+            
             # 6. Save to database
             BlockRepository.create_block(block)
             for tx in block.transactions:
