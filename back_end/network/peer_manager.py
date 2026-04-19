@@ -74,6 +74,7 @@ class PeerManager:
     def __init__(self):
         self.config = get_config()
         self.peers: Dict[str, Peer] = {}
+        self.local_peer_id: Optional[str] = None  # Set during network initialization
         self.load_peers_from_db()
     
     def load_peers_from_db(self) -> None:
@@ -418,6 +419,9 @@ class PeerManager:
         Update peer activation by IP:port (called when node activates and sends public_key)
         Stage 3 of peer lifecycle: INACTIVE -> ACTIVE with public_key saved
         
+        ENHANCED: Now handles peers in any status (not just INACTIVE) to be more resilient
+        If peer exists, update it regardless of current status
+        
         Args:
             ip_address: IP address of peer
             port: Port of peer
@@ -453,12 +457,13 @@ class PeerManager:
                     )
                     peer.last_seen = row['last_seen'] or time.time()
                     self.peers[peer_id] = peer
+                    print(f"✓ Loaded peer {peer_id} from database (status: {peer.status})")
                 else:
-                    print(f"✗ Peer {ip_address}:{port} not found")
+                    print(f"✗ [ACTIVATION] Peer {ip_address}:{port} not found in database")
                     conn.close()
                     return False
             except sqlite3.Error as e:
-                print(f"✗ Error loading peer: {e}")
+                print(f"✗ [ACTIVATION] Error loading peer from database: {e}")
                 conn.close()
                 return False
             finally:
@@ -466,12 +471,12 @@ class PeerManager:
         
         peer = self.peers.get(peer_id)
         if not peer:
-            print(f"✗ Peer {peer_id} not found in memory")
+            print(f"✗ [ACTIVATION] Peer {peer_id} not found in memory")
             return False
         
-        if peer.status != "INACTIVE":
-            print(f"⚠ Peer {peer_id} is not in INACTIVE state (current: {peer.status}), cannot activate")
-            return False
+        # Enhanced: Log current status and allow update from any status
+        old_status = peer.status
+        print(f"→ [ACTIVATION] Updating peer {peer_id} from status: {old_status} to ACTIVE")
         
         # Update peer with public_key and node_type from activation request
         peer.public_key = public_key
@@ -481,10 +486,10 @@ class PeerManager:
         
         # Save to database
         if self.save_peer_to_db(peer):
-            print(f"✓ Peer {peer_id} activated: public_key saved, status set to ACTIVE")
+            print(f"✓ [ACTIVATION] Peer {peer_id} activated: {old_status} → ACTIVE, public_key saved")
             return True
         else:
-            print(f"✗ Failed to save activated peer {peer_id}")
+            print(f"✗ [ACTIVATION] Failed to save activated peer {peer_id} to database")
             return False
     
     def update_peer_status_by_public_key(self, public_key: str, status: str, node_type: str = "validator") -> bool:
@@ -523,6 +528,22 @@ class PeerManager:
         else:
             print(f"✗ Failed to update peer status in database")
             return False
+    
+    def set_local_peer_id(self, ip_address: str, port: int) -> str:
+        """
+        Set this node's peer ID for message identification
+        Called during network initialization
+        
+        Args:
+            ip_address: This node's IP address
+            port: This node's port
+            
+        Returns:
+            Generated peer_id
+        """
+        self.local_peer_id = self.generate_peer_id(ip_address, port)
+        print(f"✓ Local peer ID set: {self.local_peer_id}")
+        return self.local_peer_id
     
     def get_known_peers(self, include_inactive: bool = True) -> List[Peer]:
         """

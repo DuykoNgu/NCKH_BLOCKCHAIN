@@ -29,6 +29,10 @@ class NetworkService:
         print("🚀 Initializing EduChain Network Service")
         print("="*50)
         
+        # Step 0: Set local peer ID for message identification
+        if node_ip and node_port:
+            self.peer_manager.set_local_peer_id(node_ip, node_port)
+        
         # Step 1: Verify time synchronization
         print("\n[1/3] Verifying time synchronization...")
         if not verify_time_synchronization():

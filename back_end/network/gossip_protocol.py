@@ -139,10 +139,17 @@ class GossipProtocol:
     
     def send_message_to_peer(self, peer: Peer, endpoint: str, message: Dict, 
                             timeout: int = 5) -> bool:
-        """Send message to a specific peer"""
+        """Send message to a specific peer with sender identification"""
         try:
             url = f"{peer.get_url()}/api/v1/network{endpoint}"
-            response = requests.post(url, json=message, timeout=timeout)
+            
+            # Include sender's peer_id in headers for message tracing
+            headers = {
+                'X-Peer-ID': self.peer_manager.local_peer_id or 'UNKNOWN',
+                'Content-Type': 'application/json'
+            }
+            
+            response = requests.post(url, json=message, headers=headers, timeout=timeout)
             
             if response.status_code == 200:
                 return True
@@ -298,14 +305,15 @@ class GossipProtocol:
             print(f"✗ Error requesting block from {peer.ip_address}: {e}")
             return None
     
-    def handle_inv_message(self, inv_data: Dict, sender_peer_id: str) -> Optional[Dict]:
+    def handle_inv_message(self, inv_data: Dict, sender_peer_id: str = None) -> Optional[Dict]:
         """
         Handle incoming INV message
-        If we don't have the block, request it
+        If we don't have the block, request it from sender (if provided)
         """
         block_hash = inv_data.get('block_hash')
         
         if not block_hash:
+            print(f"✗ [INV] No block_hash in inventory message")
             return None
         
         # Check if we already have this block
@@ -313,13 +321,18 @@ class GossipProtocol:
             print(f"⚠ Already have block {block_hash[:8]}...")
             return None
         
+        # Validate sender_peer_id
+        if not sender_peer_id:
+            print(f"⚠ [INV] Block {block_hash[:8]}... received but sender_peer_id is missing, cannot request full block")
+            return None
+        
         # We don't have it, request from sender
-        print(f"→ Requesting block {block_hash[:8]}... from peer {sender_peer_id[:8]}...")
+        print(f"→ [INV] Requesting block {block_hash[:8]}... from peer {sender_peer_id[:8]}...")
         
         # Find sender peer
         sender_peer = self.peer_manager.peers.get(sender_peer_id)
         if not sender_peer:
-            print(f"✗ Sender peer {sender_peer_id[:8]}... not found")
+            print(f"✗ [INV] Sender peer {sender_peer_id[:8] if sender_peer_id else 'UNKNOWN'}... not found in peer list")
             return None
         
         # Request block
@@ -327,6 +340,7 @@ class GossipProtocol:
         
         if block_data:
             self.known_blocks.add(block_hash)
+            print(f"✓ [INV] Block {block_hash[:8]}... received successfully")
         
         return block_data
     
