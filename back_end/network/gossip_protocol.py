@@ -551,24 +551,42 @@ class GossipProtocol:
                     print(f"✗ Block {block_hash[:8]}... validation failed")
                     return False
             
-            # 5. Commit to blockchain
-            BlockChainService.add_block(blockchain, block)
+            # 5. Add to blockchain WITHOUT executing transactions
+            # (transactions are already committed on the originating validator)
+            print(f"→ Adding block {block_hash[:8]}... to chain (skipping transaction execution)")
+            blockchain.chain.append(block)
             
-            # 🔧 CRITICAL FIX: Rebuild mempool to remove now-committed transactions
+            # 6. Remove committed transactions from mempool
             # This ensures all nodes have consistent mempool state
-            BlockChainService.rebuild_mempool(blockchain)
+            included_tx_hashes = {tx.tx_hash for tx in block.transactions}
+            blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
             
-            # 6. Save to database
+            # 7. Persist block and transactions to database
+            # Blocks received via gossip are already validated and committed on network
             BlockRepository.create_block(block)
             for tx in block.transactions:
-                tx.block_id = block.block_id
-                payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-                TransactionRepository.create_transaction(tx)
+                # Update transaction with block_id if not already set
+                if not tx.block_id:
+                    tx.block_id = block.block_id
+                    tx.tx_status = "COMMITTED"
                 
-                # Log account operations
-                if payload_op == "account_register":
-                    address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
-                    print(f"[BLOCK] account_register tx saved to DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
+                # Check if transaction already exists in DB (idempotent)
+                existing_tx = TransactionRepository.get_transaction_by_hash(tx.tx_hash)
+                if existing_tx:
+                    # Transaction already saved, just ensure block_id is set
+                    if not existing_tx.block_id:
+                        TransactionRepository.update_transaction_block_id(tx.tx_hash, block.block_id)
+                    payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+                    if payload_op == "account_register":
+                        address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                        print(f"⚠ [BLOCK] account_register tx already in DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
+                else:
+                    # New transaction, save it
+                    TransactionRepository.create_transaction(tx)
+                    payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+                    if payload_op == "account_register":
+                        address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                        print(f"[BLOCK] account_register tx saved to DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
             
             print(f"✓ Block {block_hash[:8]}... verified and committed (index={block.index})")
         

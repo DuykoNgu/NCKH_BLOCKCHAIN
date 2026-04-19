@@ -165,15 +165,29 @@ class ChainSync:
                 print(f"✗ Block #{block.index}: merkle root mismatch")
                 return False
             
-            # 4. Add to blockchain
-            BlockChainService.add_block(self.blockchain, block)
+            # 4. Add to blockchain WITHOUT executing transactions
+            # (synced blocks are already committed on network)
+            print(f"→ Adding block #{block.index} to chain (skipping transaction execution)")
+            self.blockchain.chain.append(block)
             
-            # 5. Save to database
+            # 5. Remove synced transactions from mempool
+            included_tx_hashes = {tx.tx_hash for tx in block.transactions}
+            self.blockchain.mempool = [tx for tx in self.blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+            
+            # 6. Save to database
             try:
                 BlockRepository.create_block(block)
                 for tx in block.transactions:
-                    tx.block_id = block.block_id
-                    TransactionRepository.create_transaction(tx)
+                    if not tx.block_id:
+                        tx.block_id = block.block_id
+                        tx.tx_status = "COMMITTED"
+                    
+                    # Check if tx already exists (idempotent)
+                    existing_tx = TransactionRepository.get_transaction_by_hash(tx.tx_hash)
+                    if not existing_tx:
+                        TransactionRepository.create_transaction(tx)
+                    elif not existing_tx.block_id:
+                        TransactionRepository.update_transaction_block_id(tx.tx_hash, block.block_id)
             except Exception as db_err:
                 print(f"⚠ Block #{block.index}: saved to chain but DB error: {db_err}")
             

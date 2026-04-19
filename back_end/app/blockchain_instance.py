@@ -276,9 +276,9 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                     ''', (genesis_block.block_id, genesis_block.index, header_id, 
                           genesis_block.block_hash, genesis_block.validator_signature))
                     
-                    # Insert transactions
+                    # Insert transactions using same connection to avoid lock
                     for tx in genesis_block.transactions:
-                        TransactionRepository.create_transaction(tx)
+                        TransactionRepository.create_transaction(tx, conn=conn)
                     
                     conn.commit()
                     conn.close()
