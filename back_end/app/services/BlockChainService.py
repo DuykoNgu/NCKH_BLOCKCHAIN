@@ -480,6 +480,14 @@ class BlockChainService:
         """
         Add block to blockchain and remove included transactions from mempool
         
+        ⚠️  IMPORTANT: This is called ONLY after mine_block(), which already executed transactions.
+        So we DO NOT execute transactions again here (to avoid double-execution).
+        
+        For blocks received via gossip (receive_block), transactions ARE executed there.
+        This ensures single execution per node:
+        - Validator node: mine_block() executes, add_block() skips
+        - Non-validator node: receive_block() executes
+        
         Args:
             blockchain: The blockchain instance
             block: The block to add
@@ -490,27 +498,18 @@ class BlockChainService:
         if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
             raise ValueError("invalid block")
 
-        # Execute transactions
-        print(f"→ Executing {len(block.transactions)} transactions from block {block.block_id[:8]}...")
-        failed_count = 0
-        for tx in block.transactions:
-            payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-            if payload_op == "account_register":
-                address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
-                print(f"[EXEC_TX] account_register: {address}")
-            
-            success = BlockChainService.execute_transaction(blockchain, tx)
-            if not success:
-                failed_count += 1
-                print(f"⚠ [BLOCK] Transaction {tx.tx_hash[:8]}... failed: {tx.error_reason}")
-
+        # ⚠️  SKIP transaction execution - already done by mine_block()
+        # This is called by ValidatorWorker AFTER mine_block(), so transactions are already executed
+        # Only remove them from mempool
+        print(f"→ Adding {len(block.transactions)} transactions to blockchain (already executed by mine_block)")
+        
         # Remove only the transactions that were included in this block
         # This allows remaining transactions to stay in mempool for next block
         included_tx_hashes = {tx.tx_hash for tx in block.transactions}
         blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
         
-        if failed_count > 0:
-            print(f"⚠ [BLOCK] {failed_count}/{len(block.transactions)} transactions failed in block {block.block_id}")
+        # if failed_count > 0:
+        #     print(f"⚠ [BLOCK] {failed_count}/{len(block.transactions)} transactions failed in block {block.block_id}")
         
         blockchain.chain.append(block)
         return True

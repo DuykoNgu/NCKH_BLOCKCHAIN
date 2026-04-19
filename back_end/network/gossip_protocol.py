@@ -565,12 +565,33 @@ class GossipProtocol:
                     print(f"✗ Block {block_hash[:8]}... validation failed")
                     return False
             
-            # 5. Add to blockchain WITHOUT executing transactions
-            # (transactions are already committed on the originating validator)
-            print(f"→ Adding block {block_hash[:8]}... to chain (skipping transaction execution)")
+            # 5. 🔥 CRITICAL FIX: EXECUTE transactions to update blockchain state
+            # This is ESSENTIAL for data sync! All nodes MUST execute transactions
+            # when receiving blocks to ensure consistent state across the network
+            print(f"→ [SYNC] Executing {len(block.transactions)} transactions from block {block_hash[:8]}...")
+            execution_errors = 0
+            for tx in block.transactions:
+                success = BlockChainService.execute_transaction(blockchain, tx)
+                if not success:
+                    print(f"  ⚠ Transaction execution failed: {tx.tx_hash[:8]}... (op={tx.payload.get('op') if isinstance(tx.payload, dict) else 'UNKNOWN'})")
+                    execution_errors += 1
+                else:
+                    payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
+                    if payload_op == "account_register":
+                        address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                        print(f"  ✓ account_register executed: {address}")
+                    elif payload_op == "validator_activate":
+                        ip_address = tx.payload.get("ip_address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
+                        print(f"  ✓ validator_activate executed: {ip_address}")
+            
+            if execution_errors > 0:
+                print(f"⚠️  [SYNC] {execution_errors}/{len(block.transactions)} transaction executions failed")
+            
+            # 6. Add block to blockchain
+            print(f"→ Adding block {block_hash[:8]}... to chain")
             blockchain.chain.append(block)
             
-            # 6. Remove committed transactions from mempool
+            # 7. Remove committed transactions from mempool
             # This ensures all nodes have consistent mempool state
             included_tx_hashes = {tx.tx_hash for tx in block.transactions}
             blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
