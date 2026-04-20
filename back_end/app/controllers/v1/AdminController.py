@@ -62,13 +62,19 @@ def get_recent_activities():
         all_nfts.sort(key=lambda x: x.minted_at if x.minted_at else 0, reverse=True)
         recent_nfts = []
         for nft in all_nfts[:5]:
+            # Chúng ta cần lấy tên sinh viên. NFT model lưu recipient_name (nếu có) hoặc owner_address
+            # Ở đây ta ưu tiên recipient_name từ metadata hoặc database
+            student_name = nft.metadata.get('recipient_name') if nft.metadata else None
+            if not student_name:
+                student_name = getattr(nft, 'recipient_name', None) or nft.owner_address[:10] + "..."
+
             recent_nfts.append({
                 "id": nft.token_id,
-                "name": nft.owner_address.full_name or "N/A",
-                "degree": nft.metadata.degree_type,
-                "university": nft.metadata.institution_address,
+                "name": student_name,
+                "degree": nft.metadata.get('degree_type', 'N/A') if nft.metadata else "N/A",
+                "university": nft.metadata.get('institution_address', 'N/A') if nft.metadata else "N/A",
                 "status": "verified" if nft.is_valid else "revoked",
-                "date": datetime.fromtimestamp(nft.minted_at).strftime("%Y-%m-%d") if nft.minted_at else "N/A"
+                "date": datetime.fromtimestamp(float(nft.minted_at)).strftime("%Y-%m-%d") if nft.minted_at else "N/A"
             })
 
         # Lấy 5 giao dịch gần nhất

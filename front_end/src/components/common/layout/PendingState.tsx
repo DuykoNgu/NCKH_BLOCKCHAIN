@@ -1,8 +1,45 @@
 import { motion } from "framer-motion";
-import { ShieldAlert, Fingerprint, Clock, Building2 } from "lucide-react";
+import { ShieldAlert, Fingerprint, Clock, Building2, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { fetchProfile } from "@/services/authService";
+import { toast } from "sonner";
 
 export const PendingState = ({ onLogout }: { onLogout?: () => void }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshStatus = async () => {
+    const address = localStorage.getItem("address");
+    if (!address) return;
+
+    try {
+      setIsRefreshing(true);
+      const res = await fetchProfile(address);
+      if (res && res.user) {
+        localStorage.setItem("role", res.user.role || "validator");
+        localStorage.setItem("is_active", String(res.user.is_active));
+        localStorage.setItem("full_name", res.user.full_name || "");
+
+        if (String(res.user.is_active) === "1") {
+          toast.success("Tài khoản đã được duyệt! Đang mở khóa Dashboard...", {
+            duration: 3000,
+            icon: <ShieldCheck className="h-5 w-5 text-green-500" />
+          });
+          setTimeout(() => {
+            window.location.href = "/home";
+          }, 1500);
+        } else {
+          toast.info("Tài khoản vẫn đang trong quá trình MOET thẩm định.");
+        }
+      }
+    } catch (error) {
+      console.error("Refresh status failed:", error);
+      toast.error("Không thể kiểm tra trạng thái. Vui lòng thử lại sau.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -19,7 +56,7 @@ export const PendingState = ({ onLogout }: { onLogout?: () => void }) => {
           >
             <Clock className="w-5 h-5" />
           </motion.div>
-          
+
           <ShieldAlert className="w-20 h-20 text-yellow-500 mx-auto" strokeWidth={1.5} />
         </div>
       </div>
@@ -33,7 +70,7 @@ export const PendingState = ({ onLogout }: { onLogout?: () => void }) => {
         <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground">
           Đang Chờ Phê Duyệt
         </h2>
-        
+
         <p className="text-lg text-muted-foreground leading-relaxed px-4">
           Tài khoản Tổ chức/Trường học của bạn đang được <strong className="text-foreground">Bộ Giáo Dục và Đào Tạo (MOET)</strong> thẩm định danh tính. Quá trình kiểm tra KYC là bắt buộc trên Blockchain EduChain để đảm bảo tính xác thực của Chứng chỉ.
         </p>
@@ -52,19 +89,21 @@ export const PendingState = ({ onLogout }: { onLogout?: () => void }) => {
         </div>
 
         <div className="flex items-center justify-center gap-4 mt-6">
-          <Button 
-            variant="outline" 
-            size="lg" 
-            onClick={() => window.location.reload()}
-            className="border-yellow-500/30 hover:bg-yellow-500/10 hover:text-yellow-600 rounded-full px-8"
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleRefreshStatus}
+            disabled={isRefreshing}
+            className="border-yellow-500/30 hover:bg-yellow-500/10 hover:text-yellow-600 rounded-full px-8 gap-2"
           >
+            {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Tải lại phần quyền
           </Button>
 
           {onLogout && (
-            <Button 
-              variant="ghost" 
-              size="lg" 
+            <Button
+              variant="ghost"
+              size="lg"
               onClick={onLogout}
               className="text-muted-foreground hover:text-foreground rounded-full px-8"
             >

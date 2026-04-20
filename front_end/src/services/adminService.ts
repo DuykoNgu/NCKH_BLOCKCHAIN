@@ -72,5 +72,11 @@ export const adminService = {
     });
     if (!response.ok) throw new Error("Failed to approve validator");
     return response.json();
-  }
+  },
+
+  getValidators: async (all: boolean = false) => {
+    const response = await fetch(`${API_URL}/users/pending_validators${all ? '?all=true' : ''}`);
+    if (!response.ok) throw new Error("Failed to fetch validators");
+    return response.json();
+  },
 };

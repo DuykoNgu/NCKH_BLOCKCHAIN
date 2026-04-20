@@ -197,7 +197,7 @@ export default function Degrees() {
                   return (
                     <TableRow key={deg.token_id}>
                       <TableCell className="font-mono text-primary text-xs">{deg.token_id.slice(0, 8)}...</TableCell>
-                      <TableCell className="font-medium text-foreground">{deg.recipient_name}</TableCell>
+                      <TableCell className="font-medium text-foreground">{deg.recipient_name || deg.owner_address || "N/A"}</TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{deg.metadata?.degree_type}</TableCell>
                       <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">{deg.metadata?.institution_address}</TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{dateStr}</TableCell>

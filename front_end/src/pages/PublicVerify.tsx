@@ -138,49 +138,36 @@ const PublicVerify = () => {
 
                 <div className="grid grid-cols-2 gap-y-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground mb-1">Sinh viên</p>
-                    <p className="text-foreground font-medium">{nft.metadata?.student_id || '-'}</p>
+                    <p className="text-muted-foreground mb-1">Loại bằng cấp</p>
+                    <p className="text-foreground font-medium">{nft.metadata?.degree_type || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground mb-1">Tổ chức phát hành</p>
-                    <p className="text-foreground font-medium">{nft.metadata?.institution || '-'}</p>
+                    <p className="text-muted-foreground mb-1">Đơn vị cấp phát</p>
+                    <p className="text-foreground font-medium">{nft.metadata?.institution_address || nft.metadata?.institution || '-'}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1">Ngày cấp</p>
                     <p className="text-foreground font-medium">
-                      {nft.minted_at ? new Date(nft.minted_at).toLocaleDateString('vi-VN') : '-'}
+                      {nft.minted_at ? new Date(nft.minted_at * 1000).toLocaleDateString('vi-VN') : '-'}
                     </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground mb-1">Trạng thái</p>
-                    <p className={verifyResult?.is_revoked ? "text-destructive font-medium" : "text-success font-medium"}>
+                    <p className={verifyResult?.is_revoked ? "text-destructive font-medium" : "text-green-500 font-medium"}>
                       {verifyResult?.is_revoked ? "Đã thu hồi" : "Đang hiệu lực"}
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Bằng chứng Blockchain</p>
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border group">
-                            <div className="overflow-hidden">
-                                <p className="text-[10px] text-muted-foreground mb-0.5">Địa chỉ người nhận</p>
-                                <p className="font-mono text-xs text-foreground truncate">{nft.recipient_address}</p>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(nft.recipient_address)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Copy className="w-3 h-3 text-muted-foreground" />
-                            </Button>
-                        </div>
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border group">
-                            <div className="overflow-hidden">
-                                <p className="text-[10px] text-muted-foreground mb-0.5">Chữ ký số phát hành</p>
-                                <p className="font-mono text-xs text-foreground truncate">{nft.issuer_pubkey}</p>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => copyToClipboard(nft.issuer_pubkey)} className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Copy className="w-3 h-3 text-muted-foreground" />
-                            </Button>
-                        </div>
-                    </div>
+                {/* Mã văn bằng - có thể sao chép để chia sẻ */}
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border group">
+                  <div className="overflow-hidden">
+                    <p className="text-[10px] text-muted-foreground mb-0.5">Mã chứng chỉ (dùng để tra cứu)</p>
+                    <p className="font-mono text-xs text-foreground truncate">{nft.token_id}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => copyToClipboard(nft.token_id)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Copy className="w-3 h-3 text-muted-foreground" />
+                  </Button>
                 </div>
 
                 {nft.metadata?.pdf_url && (

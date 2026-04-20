@@ -12,7 +12,14 @@ export interface CreateWalletResult {
   address: string;
 }
 
+export const clearOldSession = () => {
+  const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn"];
+  items.forEach(item => localStorage.removeItem(item));
+  console.log('[authService] Local session cleared');
+};
+
 export const createWallet = async (password: string): Promise<CreateWalletResult> => {
+  clearOldSession();
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
@@ -63,21 +70,13 @@ export const registerSchool = async (
   email: string,
   phone: string
 ): Promise<CreateWalletResult> => {
+  clearOldSession();
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
   // Mã hóa private key bằng password
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
-
-  const userData: Record<string, any> = {
-    user_id: Math.random().toString(36).substr(2, 9),
-    public_key: uint8ArrayToHex(publicKey),
-    address: address.toLowerCase(),
-    vault,
-    role: "validator",
-    is_active: "0",
-  };
 
   // Đăng ký với Backend
   try {
@@ -102,7 +101,16 @@ export const registerSchool = async (
     console.error('Network error during school registration:', error);
   }
 
-  userData["full_name"] = schoolName;
+  const userData: Record<string, any> = {
+    user_id: Math.random().toString(36).substr(2, 9),
+    public_key: uint8ArrayToHex(publicKey),
+    address: address.toLowerCase(),
+    vault,
+    role: "validator",
+    full_name: schoolName,
+    is_active: "0",
+  };
+
   saveUserData(userData);
 
   return { mnemonic, address };
@@ -180,9 +188,12 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
   try {
     const profile = await fetchProfile(address);
     if (profile && profile.user) {
-      localStorage.setItem("role", profile.user.role || "client");
-      localStorage.setItem("is_active", String(profile.user.is_active ?? 1));
-      localStorage.setItem("full_name", profile.user.full_name || "");
+      saveUserData({
+        ...profile.user,
+        full_name: profile.user.full_name || "",
+        is_active: String(profile.user.is_active)
+      });
+      console.log(`[authService] Sync success for address: ${address}`);
     }
   } catch (err) {
     console.warn("Could not fetch latest profile on login", err);
@@ -244,9 +255,11 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
     const verifyData = await verifyRes.json();
     if (verifyData.status === "success" && verifyData.user) {
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('address', verifyData.user.address);
-      localStorage.setItem('role', verifyData.user.role || 'moet');
-      localStorage.setItem('full_name', verifyData.user.full_name || 'MOET Admin');
+      saveUserData({
+        ...verifyData.user,
+        full_name: verifyData.user.full_name || 'MOET Admin',
+        is_active: "1" // Admin always active
+      });
       return true;
     }
   } catch (error) {

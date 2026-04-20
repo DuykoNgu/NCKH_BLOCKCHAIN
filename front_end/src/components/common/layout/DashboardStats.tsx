@@ -21,7 +21,7 @@ const item = {
 } as any;
 
 export const DashboardStats = () => {
-  const { isUser, isValidator, isAdmin, fullName, address } = useAuth();
+  const { isUser, isValidator, isAdmin, role, fullName, address } = useAuth();
   const [nftCount, setNftCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,8 +37,9 @@ export const DashboardStats = () => {
           if (isAdmin) {
             setNftCount(res.total || res.nfts?.length || 0);
           } else if (isValidator) {
-            // Filter by institution address if validator
-            const owned = (res.nfts || []).filter((n) => n.metadata?.institution_address?.toLowerCase() === address.toLowerCase());
+            const owned = (res.nfts || []).filter(
+              (n) => n.metadata?.institution_address?.toLowerCase() === address.toLowerCase()
+            );
             setNftCount(owned.length);
           }
         }
@@ -71,35 +72,48 @@ export const DashboardStats = () => {
               </span>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Định danh tổ chức</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">
+                {isAdmin ? "Quản trị viên" : isValidator ? "Đơn vị cấp phát (Trường học)" : "Sinh viên"}
+              </p>
               <h4 className="text-lg font-bold font-display text-foreground truncate">
-                {fullName || (isAdmin ? "Quản Trị Viên (MOET)" : isValidator ? "Trường Học (Cấp Phát)" : "Tài Khoản Sinh Viên")}
+                {fullName || 
+                  (isValidator 
+                    ? "Tổ chức / Trường học" 
+                    : isAdmin 
+                      ? "Bộ Giáo dục & Đào tạo" 
+                      : "Tài khoản cá nhân")}
               </h4>
+              <div className="mt-3 p-2 bg-secondary/30 rounded-lg border border-border/20">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Địa chỉ cá nhân:</p>
+                <code className="text-[11px] text-primary font-mono break-all leading-tight">
+                  {address}
+                </code>
+              </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Network Card */}
+      {/* Status Card */}
       <motion.div variants={item}>
         <Card className="glass-card overflow-hidden relative group h-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between mb-4">
-              <div className="h-10 w-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center">
-                <Globe className="h-5 w-5" />
+              <div className="h-10 w-10 rounded-xl bg-green-500/20 text-green-500 flex items-center justify-center">
+                <ShieldCheck className="h-5 w-5" />
               </div>
-              <span className="flex items-center gap-1.5 text-xs font-medium text-blue-500">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-green-500">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                Connected
+                Hoạt động
               </span>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Mạng lưới Blockchain</p>
-              <h4 className="text-lg font-bold font-display text-foreground">EduChain Mainnet</h4>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Trạng thái hệ thống</p>
+              <h4 className="text-lg font-bold font-display text-foreground">Đang kết nối</h4>
             </div>
           </CardContent>
         </Card>
@@ -112,13 +126,17 @@ export const DashboardStats = () => {
           <CardContent className="p-4 flex flex-col justify-between h-full">
             <div className="flex items-center justify-between mb-4">
               <div className="h-10 w-10 rounded-xl bg-purple-500/20 text-purple-500 flex items-center justify-center">
-                <ShieldCheck className="h-5 w-5" />
+                <Globe className="h-5 w-5" />
               </div>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground font-medium mb-1">Vai trò hệ thống</p>
+              <p className="text-sm text-muted-foreground font-medium mb-1">Quyền hạn</p>
               <h4 className="text-lg font-bold font-display text-foreground">
-                {isAdmin ? "MOET Admin" : isValidator ? "Trường Học (Cấp Phát)" : "Sinh Viên (Người Nhận)"}
+                {isAdmin
+                  ? "Quản lý toàn hệ thống"
+                  : isValidator
+                  ? "Cấp phát bằng cấp"
+                  : "Xem & chia sẻ bằng cấp"}
               </h4>
             </div>
           </CardContent>
@@ -137,10 +155,14 @@ export const DashboardStats = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground font-medium mb-1">
-                {isUser ? "Chứng chỉ sở hữu" : isAdmin ? "Tổng chứng chỉ toàn mạng" : "Bằng cấp đã phát hành"}
+                {isUser
+                  ? "Bằng cấp của tôi"
+                  : isAdmin
+                  ? "Tổng bằng cấp trong hệ thống"
+                  : "Bằng cấp đã cấp phát"}
               </p>
               <h4 className="text-xl font-bold font-display text-foreground">
-                {nftCount === null ? "..." : nftCount}
+                {nftCount === null ? "..." : `${nftCount} văn bằng`}
               </h4>
             </div>
           </CardContent>

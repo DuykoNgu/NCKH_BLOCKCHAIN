@@ -19,8 +19,8 @@ export default function AdminValidators() {
   const fetchValidators = async () => {
     try {
       setLoading(true);
-      const data = await adminService.getPendingValidators();
-      setValidators(data.users || []);
+      const data = await adminService.getValidators(false);
+      setValidators(data.data || []);
     } catch (error) {
       console.error("Failed to fetch validators:", error);
       toast.error("Không thể tải danh sách trường chờ duyệt");
@@ -36,7 +36,7 @@ export default function AdminValidators() {
   const handleApprove = async (address: string) => {
     try {
       const res = await adminService.approveValidator(address);
-      if (res.success) {
+      if (res.success || res.status === "success") {
         toast.success("Đã phê duyệt trường thành công!");
         fetchValidators();
       }

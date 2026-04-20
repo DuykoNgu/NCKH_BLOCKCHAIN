@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
   },
   {
     path: ROUTES.HOME,
-    element: <ProtectedRoute allowedRoles={['admin', 'client', 'validator']}><Home /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'client', 'validator', 'moet']}><Home /></ProtectedRoute>,
     errorElement: <NotFoundPage />,
   },
   {

@@ -99,17 +99,28 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
+            
+            # Convert role enum to string value safely
+            role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
+            
             cursor.execute('''
                 UPDATE account 
                 SET public_key = ?, role = ?, org_name = ?, full_name = ?, avatar_url = ?, tax_id = ?, representative = ?, email = ?, phone = ?, is_active = ?
                 WHERE address = ?
-            ''', (account.public_key, account.role.value if hasattr(account.role, 'value') else account.role, 
+            ''', (account.public_key, role_value, 
                   account.org_name, account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.address))
             conn.commit()
+            updated = cursor.rowcount > 0
             conn.close()
-            return cursor.rowcount > 0
+            
+            if updated:
+                logger.info(f"Successfully updated account: {account.address}, is_active: {account.is_active}")
+            else:
+                logger.warning(f"No account found to update with address: {account.address}")
+            
+            return updated
         except Exception as e:
-            logger.error(f"Error updating account: {e}")
+            logger.error(f"Error updating account {account.address}: {e}")
             return False
 
     @staticmethod

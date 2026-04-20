@@ -67,9 +67,9 @@ export const MyNFTs = ({ account, onSelectNFT }: MyNFTsProps) => {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
                     <p className="font-medium">{nft.metadata?.degree_type || 'Chứng chỉ'}</p>
-                    <p className="text-sm text-muted-foreground">{nft.metadata?.institution}</p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {nft.token_id.slice(0, 16)}...
+                    <p className="text-sm text-muted-foreground">{nft.metadata?.institution_address || nft.metadata?.institution || 'Đơn vị cấp phát'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {nft.minted_at ? `Cấp ngày: ${new Date(nft.minted_at * 1000).toLocaleDateString('vi-VN')}` : ''}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">

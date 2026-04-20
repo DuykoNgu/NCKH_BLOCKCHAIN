@@ -36,7 +36,8 @@ export default function Transactions() {
 
   const filtered = transactions.filter((tx) => {
     const op = tx.payload?.op || "";
-    const matchSearch = tx.hash.toLowerCase().includes(search.toLowerCase()) || 
+    const hash = tx.tx_hash || "";
+    const matchSearch = hash.toLowerCase().includes(search.toLowerCase()) || 
                       op.toLowerCase().includes(search.toLowerCase());
     const matchType = filterType === "all" || op.toLowerCase() === filterType.toLowerCase();
     return matchSearch && matchType;
@@ -115,22 +116,22 @@ export default function Transactions() {
                 ) : filtered.map((tx) => {
                   const dateStr = tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString("vi-VN") : "N/A";
                   const op = tx.payload?.op || "Unknown";
-                  
+                  const txHash = tx.tx_hash || tx.hash || "";
                   return (
-                    <TableRow key={tx.hash}>
-                      <TableCell className="font-mono text-primary text-xs cursor-help" title={tx.hash}>
-                        {tx.hash.slice(0, 10)}...
+                    <TableRow key={txHash}>
+                      <TableCell className="font-mono text-primary text-xs cursor-help" title={txHash}>
+                        {txHash.slice(0, 10)}...
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-none">
-                          {op}
+                        <Badge variant="secondary" className="bg-primary/10 text-primary hover:bg-primary/20 border-none text-xs">
+                          {op === "mint_nft" ? "Cấp bằng" : op === "revoke_nft" ? "Thu hồi" : op === "register_user" ? "Đăng ký" : op === "approve_validator" ? "Phê duyệt" : op}
                         </Badge>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-xs text-muted-foreground">
-                        {tx.sender.slice(0, 8)}...
+                        {tx.sender_address ? `${tx.sender_address.slice(0, 8)}...` : "—"}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell font-mono text-xs text-muted-foreground">
-                        {tx.recipient ? `${tx.recipient.slice(0, 8)}...` : "Network"}
+                        {tx.recipient_address ? `${tx.recipient_address.slice(0, 8)}...` : "Hệ thống"}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-muted-foreground text-xs">
                         {dateStr}

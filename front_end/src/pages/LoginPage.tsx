@@ -4,7 +4,7 @@ import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import { createWallet, registerSchool } from '@/services/authService';
+import { createWallet, registerSchool, clearOldSession } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
@@ -31,6 +31,11 @@ const LoginPage = () => {
   // Update step when URL type changes
   useEffect(() => {
     if (type === 'existing') {
+      const hasWallet = !!localStorage.getItem('address');
+      if (!hasWallet) {
+        navigate('/login', { replace: true });
+        return;
+      }
       setStep('import');
     } else if (type === 'new') {
       setStep('set-password');
@@ -133,16 +138,25 @@ const LoginPage = () => {
 
     // Render import/login page
     if (step === 'import') {
+      const address = localStorage.getItem('address');
+      
+      const handleClearWallet = () => {
+        clearOldSession();
+        window.location.reload(); 
+      };
+
       return (
         <ImportWallet
           error={error}
           isLoading={isLoading}
           showPassword={showPassword}
           password={password}
+          currentAddress={address}
           onPasswordChange={setPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           onLogin={handleLogin}
           onBack={() => navigate('/login')}
+          onClearWallet={handleClearWallet}
         />
       );
     }

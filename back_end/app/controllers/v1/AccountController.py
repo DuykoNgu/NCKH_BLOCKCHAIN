@@ -128,18 +128,25 @@ def update_profile():
 
 @user_bp.route('/pending_validators', methods=['GET'])
 def get_pending_validators():
+    # Lấy query param 'all'
+    get_all = request.args.get('all', 'false').lower() == 'true'
+    
     # Fetch all accounts
-    # In a real app we'd have a specific DB query, but for now we filter all accounts
     all_accounts = AccountService.get_all_account()
     
-    # Filter for role 'validator' and is_active == 0
-    pending = [acc for acc in all_accounts if 
-               (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator') 
-               and acc.is_active == 0]
+    if get_all:
+        # Lấy tất cả validator
+        validators = [acc for acc in all_accounts if 
+                    (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator')]
+    else:
+        # Chỉ lấy validator đang chờ phê duyệt (is_active == 0)
+        validators = [acc for acc in all_accounts if 
+                    (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator') 
+                    and acc.is_active == 0]
     
     return jsonify({
         "status": "success",
-        "data": [acc.to_dict() for acc in pending]
+        "data": [acc.to_dict() for acc in validators]
     }), 200
 
 @user_bp.route('/approve_validator', methods=['POST'])
@@ -160,6 +167,7 @@ def approve_validator():
     if success:
         return jsonify({
             "status": "success",
+            "success": True,
             "message": "Validator approved successfully",
             "user": account.to_dict()
         }), 200
@@ -177,5 +185,16 @@ def get_profile(address):
         
     return jsonify({
         "status": "success",
-        "user": account.to_dict()
+        "user": {
+            "address": account.address,
+            "public_key": account.public_key,
+            "role": account.role.value if hasattr(account.role, 'value') else str(account.role),
+            "full_name": account.full_name,
+            "avatar_url": account.avatar_url,
+            "is_active": int(account.is_active), # Cast to int for consistency
+            "tax_id": account.tax_id,
+            "representative": account.representative,
+            "email": account.email,
+            "phone": account.phone
+        }
     }), 200
