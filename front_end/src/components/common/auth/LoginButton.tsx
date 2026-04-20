@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 interface LoginButtonProps {
   onCreateWallet: () => void;
   onImportWallet: () => void;
+  onRegisterSchool: () => void;
 }
 
-export default function LoginButton({ onCreateWallet, onImportWallet }: LoginButtonProps) {
+export default function LoginButton({ onCreateWallet, onImportWallet, onRegisterSchool }: LoginButtonProps) {
   return (
     <div className="w-full space-y-3">
       <Button
@@ -24,6 +25,14 @@ export default function LoginButton({ onCreateWallet, onImportWallet }: LoginBut
       >
         <KeyRound size={16} className="mr-2" />
         Tôi đã có tài khoản
+      </Button>
+
+      <Button
+        variant="ghost"
+        onClick={onRegisterSchool}
+        className="w-full h-10 rounded-xl font-display font-medium text-sm text-primary hover:text-primary hover:bg-primary/10"
+      >
+        Dành cho Trường học / Tổ chức
       </Button>
     </div>
   );
