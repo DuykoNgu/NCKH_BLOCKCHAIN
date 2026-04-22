@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ShieldCheck, User } from 'lucide-react';
 
 interface ImportWalletProps {
   error: string;
@@ -42,9 +42,16 @@ const ImportWallet = ({
             </p>
 
             {currentAddress && (
-              <div className="mb-6 p-3 bg-secondary/30 rounded-xl w-full border border-border/30">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Địa chỉ ví hiện tại:</p>
-                <code className="text-[11px] text-primary font-mono break-all">{currentAddress}</code>
+              <div className="mb-6 p-4 bg-primary/5 rounded-2xl w-full border border-primary/10 flex flex-col items-center">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                  <User className="h-6 w-6 text-primary" />
+                </div>
+                <p className="text-sm font-bold text-foreground mb-1">
+                  {localStorage.getItem('full_name') || 'Ví cá nhân'}
+                </p>
+                <code className="text-[10px] text-muted-foreground font-mono bg-secondary/30 px-2 py-0.5 rounded break-all text-center">
+                  {currentAddress.slice(0, 12)}...{currentAddress.slice(-12)}
+                </code>
               </div>
             )}
 
@@ -93,10 +100,11 @@ const ImportWallet = ({
             <div className="mt-6 flex flex-col items-center gap-3">
               <button 
                 onClick={onClearWallet} 
-                className="text-sm text-primary font-medium hover:underline transition-colors"
-                title="Xóa ví cũ khỏi trình duyệt"
+                className="text-sm text-primary font-semibold hover:text-primary/80 transition-colors flex items-center gap-2"
+                title="Chuyển đổi giữa các tài khoản đã lưu"
               >
-                Dùng tài khoản khác
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                Chuyển tài khoản
               </button>
               
               <button 

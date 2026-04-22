@@ -153,6 +153,23 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Backend registration failed:', errorData);
+    } else {
+      // Nếu đăng ký/import thành công, thử lấy profile để đồng bộ tên/role
+      try {
+        const profile = await fetchProfile(address.toLowerCase());
+        if (profile && profile.user) {
+          saveUserData({
+            ...profile.user,
+            public_key: uint8ArrayToHex(publicKey),
+            vault,
+            is_active: String(profile.user.is_active)
+          });
+          localStorage.setItem('isLoggedIn', 'true');
+          return { address };
+        }
+      } catch (profileErr) {
+        console.warn("Could not fetch profile during import", profileErr);
+      }
     }
   } catch (error) {
     console.error('Network error during registration:', error);
@@ -326,4 +343,37 @@ export const approveValidator = async (address: string) => {
   });
   if (!response.ok) throw new Error("Failed to approve validator");
   return response.json();
+};
+
+export const getRecentAccounts = (): any[] => {
+  try {
+    const accountsRaw = localStorage.getItem('accounts');
+    return accountsRaw ? JSON.parse(accountsRaw) : [];
+  } catch (err) {
+    console.error('[authService] Failed to parse accounts:', err);
+    return [];
+  }
+};
+
+export const switchAccount = (address: string): boolean => {
+  const accounts = getRecentAccounts();
+  const account = accounts.find((a: any) => a.address.toLowerCase() === address.toLowerCase());
+  
+  if (!account) return false;
+
+  // Set as primary keys for flat access
+  const items: Record<string, string> = {
+    address: account.address,
+    vault: account.vault,
+    full_name: account.full_name || '',
+    role: account.role || 'client',
+    public_key: account.public_key || '',
+    is_active: account.is_active || '1'
+  };
+
+  Object.entries(items).forEach(([key, value]) => {
+    localStorage.setItem(key, value);
+  });
+
+  return true;
 };

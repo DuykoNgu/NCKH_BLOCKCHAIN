@@ -4,7 +4,9 @@ import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import { createWallet, registerSchool, clearOldSession } from '@/services/authService';
+import AccountSwitcher from '@/components/common/auth/AccountSwitcher';
+import ImportMnemonic from '@/components/common/auth/ImportMnemonic';
+import { createWallet, registerSchool, clearOldSession, getRecentAccounts, switchAccount, importWallet } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
@@ -13,7 +15,7 @@ const LoginPage = () => {
   const { type } = useParams<{ type?: string }>();
   
   // Use state to properly trigger re-render when URL changes
-  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register'>('home');
+  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'switch-account' | 'import-mnemonic'>('home');
   const [showSeed, setShowSeed] = useState(false);
   
   const [seed, setSeed] = useState<string[]>([]);
@@ -30,19 +32,22 @@ const LoginPage = () => {
 
   // Update step when URL type changes
   useEffect(() => {
+    const hasWallet = !!localStorage.getItem('address') && !!localStorage.getItem('vault');
+
     if (type === 'existing') {
-      const hasWallet = !!localStorage.getItem('address');
-      if (!hasWallet) {
-        navigate('/login', { replace: true });
-        return;
-      }
-      setStep('import');
+      // Explicitly requested to import an existing mnemonic
+      setStep('import-mnemonic');
     } else if (type === 'new') {
       setStep('set-password');
     } else if (type === 'school') {
       setStep('school-register');
     } else {
-      setStep('home');
+      // If no specific type, and user has a wallet, default to Unlock view (MetaMask style)
+      if (hasWallet) {
+        setStep('import');
+      } else {
+        setStep('home');
+      }
     }
     // Reset states when URL changes
     setShowSeed(false);
@@ -69,8 +74,23 @@ const LoginPage = () => {
     try {
       let result;
       if (step === 'school-register') {
-        if (!taxId || !representative || !email || !phone) {
+        if (!schoolName || !taxId || !representative || !email || !phone) {
           setError('Vui lòng điền đầy đủ các thông tin pháp lý');
+          setIsLoading(false);
+          return;
+        }
+
+        // Final regex validation for safety
+        const phoneRegex = /^[0-9]+$/;
+        if (!phoneRegex.test(phone)) {
+          setError('Số điện thoại chỉ được chứa chữ số');
+          setIsLoading(false);
+          return;
+        }
+
+        const taxIdRegex = /^[a-zA-Z0-9]+$/;
+        if (!taxIdRegex.test(taxId)) {
+          setError('Mã số thuế chỉ được chứa chữ cái và số');
           setIsLoading(false);
           return;
         }
@@ -114,6 +134,21 @@ const LoginPage = () => {
     }
   };
 
+  const handleImportWallet = async (mnemonic: string, pass: string) => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await importWallet(mnemonic, pass);
+      navigate('/home');
+    } catch (err: any) {
+      setError(err.message || 'Khôi phục ví thất bại. Vui lòng kiểm tra lại cụm từ bí mật.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Render content based on step - Scene3D stays mounted at root level
   const renderContent = () => {
     // Render home page
@@ -141,8 +176,7 @@ const LoginPage = () => {
       const address = localStorage.getItem('address');
       
       const handleClearWallet = () => {
-        clearOldSession();
-        window.location.reload(); 
+        setStep('switch-account');
       };
 
       return (
@@ -155,9 +189,45 @@ const LoginPage = () => {
           onPasswordChange={setPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           onLogin={handleLogin}
-          onBack={() => navigate('/login')}
+          onBack={() => setStep('home')}
           onClearWallet={handleClearWallet}
         />
+      );
+    }
+
+    if (step === 'switch-account') {
+      const accounts = getRecentAccounts();
+      const handleSelectAccount = (address: string) => {
+        switchAccount(address);
+        setStep('import');
+      };
+
+      return (
+        <div className="relative z-10 w-full max-w-md mx-4">
+          <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
+            <AccountSwitcher 
+              accounts={accounts}
+              onSelect={handleSelectAccount}
+              onAddNew={() => setStep('home')}
+              onBack={() => setStep('import')}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (step === 'import-mnemonic') {
+      return (
+        <div className="relative z-10 w-full max-w-md mx-4">
+          <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
+            <ImportMnemonic 
+              error={error}
+              isLoading={isLoading}
+              onImport={handleImportWallet}
+              onBack={() => setStep('home')}
+            />
+          </div>
+        </div>
       );
     }
 

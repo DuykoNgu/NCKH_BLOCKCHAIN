@@ -82,7 +82,10 @@ const CreateWallet = ({
                     <Input
                       type="text"
                       value={schoolName || ''}
-                      onChange={(e) => onSchoolNameChange(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9À-ỹ\s]/g, '');
+                        onSchoolNameChange(val);
+                      }}
                       placeholder="VD: Trường Đại học Bách Khoa"
                       className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                     />
@@ -92,7 +95,10 @@ const CreateWallet = ({
                     <Input
                       type="text"
                       value={taxId || ''}
-                      onChange={(e) => onTaxIdChange && onTaxIdChange(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '');
+                        onTaxIdChange && onTaxIdChange(val);
+                      }}
                       placeholder="VD: 0100684128"
                       className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                     />
@@ -102,7 +108,10 @@ const CreateWallet = ({
                     <Input
                       type="text"
                       value={representative || ''}
-                      onChange={(e) => onRepresentativeChange && onRepresentativeChange(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^a-zA-ZÀ-ỹ\s]/g, '');
+                        onRepresentativeChange && onRepresentativeChange(val);
+                      }}
                       placeholder="Họ và tên"
                       className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                     />
@@ -123,7 +132,10 @@ const CreateWallet = ({
                       <Input
                         type="tel"
                         value={phone || ''}
-                        onChange={(e) => onPhoneChange && onPhoneChange(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          onPhoneChange && onPhoneChange(val);
+                        }}
                         placeholder="0912..."
                         className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                       />
