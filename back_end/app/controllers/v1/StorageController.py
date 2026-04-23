@@ -16,32 +16,37 @@ cloudinary.config(
 )
 @storage_bp.route('/signature', methods=['GET'])
 def get_signature():
+    folder = request.args.get('folder', 'default-storage')
+    tags = request.args.get('tags')
+    # Thêm resource_type vào để ký nếu bạn biết chắc chắn loại file
+    # Hoặc để 'auto' nếu muốn Cloudinary tự nhận diện
     
-        folder = request.args.get('folder', 'default-storage')
-        # Lấy thêm tags từ query params nếu FE có gửi lên để ký luôn
-        tags = request.args.get('tags', '') 
-        
-        timestamp = int(time.time())
-        
-        param_to_sign = {
-            "folder": folder,
+    timestamp = int(time.time())
+    
+    param_to_sign = {
+        "folder": folder,
+        "timestamp": timestamp,
+    }
+    
+    if tags and tags.strip():
+        # Cloudinary yêu cầu tags phải khớp chính xác từng dấu phẩy
+        param_to_sign["tags"] = tags.strip()
+
+    # Lấy secret key từ env
+    api_secret = os.getenv('CLOUDINARY_API_SECRET')
+    
+    # Tạo signature
+    # Hàm api_sign_request sẽ tự động sắp xếp key theo alphabet
+    signature = cloudinary.utils.api_sign_request(param_to_sign, api_secret)
+    
+    return jsonify({
+        "status": "success",
+        "data": {
             "timestamp": timestamp,
+            "signature": signature,
+            "cloud_name": cloudinary.config().cloud_name,
+            "api_key": cloudinary.config().api_key,
+            "folder": folder,
+            "tags": tags.strip() if tags else None
         }
-        
-        # Nếu có tags thì phải đưa vào danh sách ký
-        if tags:
-            param_to_sign["tags"] = tags
-
-        signature = cloudinary.utils.api_sign_request(param_to_sign, os.getenv('CLOUDINARY_API_SECRET'))
-
-        return jsonify({
-            "status": "success",
-            "data": {
-                "timestamp": timestamp,
-                "signature": signature,
-                "cloud_name": cloudinary.config().cloud_name,
-                "api_key": cloudinary.config().api_key,
-                "folder": folder,
-                "tags": tags # Trả về tags để FE dùng đúng cái đã ký
-            }
-        })
+    })

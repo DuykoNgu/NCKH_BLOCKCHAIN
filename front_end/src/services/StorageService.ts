@@ -50,6 +50,7 @@ class StorageService {
           tags
         },
       });
+      console.log('Signature response from backend:', response);
       return response.data.data;
     } catch (error) {
       throw new Error(`Không thể lấy signature: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -63,37 +64,48 @@ class StorageService {
    * @returns URL của file đã upload
    */
  async uploadFile(file: File, options: UploadOptions = {}): Promise<string> {
-    try {
-      // 1. Lấy signature (Lưu ý truyền tags vào nếu muốn dùng)
-      const signature = await this.getSignature(options.folder, options.tags?.join(','));
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', signature.api_key);
-      formData.append('timestamp', signature.timestamp.toString());
-      formData.append('signature', signature.signature);
-      formData.append('folder', signature.folder);
+  try {
+    // 1. Chuẩn bị tags (phải giống hệt lúc gửi lên Backend để ký)
+    const tagsParam = options.tags && options.tags.length > 0 
+      ? options.tags.join(',') 
+      : undefined;
 
-      // CHỈ thêm tags nếu Backend đã ký và trả về tags đó
-      if (signature.tags) {
-        formData.append('tags', signature.tags);
-      }
+    // 2. Lấy signature từ Backend
+    const sigResponse = await this.getSignature(options.folder, tagsParam);
+    const { signature, timestamp, api_key, cloud_name, folder, tags } = sigResponse;
 
-      const resourceType = options.resourceType || 'auto';
-      const uploadUrl = `${this.cloudinaryUrl}/${signature.cloud_name}/${resourceType}/upload`;
+    // 3. Tạo FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('api_key', api_key);
+    formData.append('timestamp', timestamp.toString());
+    formData.append('signature', signature);
+    formData.append('folder', folder);
 
-      const uploadResponse = await axios.post<CloudinaryUploadResponse>(uploadUrl, formData, {
-        // Bỏ Content-Type header để Axios tự nhận diện boundary
-        timeout: 60000,
-      });
-
-      return uploadResponse.data.secure_url;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error('Lỗi upload file:', errorMessage);
-      throw new Error(`Upload thất bại: ${errorMessage}`);
+    // QUAN TRỌNG: Chỉ thêm tags nếu signature đã bao gồm tags
+    if (tags) {
+      formData.append('tags', tags);
     }
+
+    // 4. Xác định resourceType
+    // Với PDF/Doc nên dùng 'raw', với ảnh dùng 'image'. 
+    // Nếu không chắc, bạn có thể truyền từ options hoặc dùng 'auto'
+    const resourceType = options.resourceType || 'auto'; 
+    
+    // URL upload của Cloudinary
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/${resourceType}/upload`;
+
+    const uploadResponse = await axios.post(uploadUrl, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }, // Axios sẽ tự xử lý boundary
+      timeout: 60000,
+    });
+
+    return uploadResponse.data.secure_url;
+  } catch (error: any) {
+    console.error('Chi tiết lỗi Cloudinary:', error.response?.data || error.message);
+    throw new Error(`Upload thất bại: ${error.response?.data?.error?.message || error.message}`);
   }
+}
 
   /**
    * Upload multiple files
