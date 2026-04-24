@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NFTService } from '@/services/nftService';
 import { useStorage } from '@/hooks/useStorage';
+import { usePassword } from '@/hooks/usePassword';
+import { calculatePdfHash, createSigningData, signDataWithBytes } from '@/utils/signatureUtils';
+import { decryptPrivateKey } from '@/utils/cryptoVault';
 import type { CreateNFTRequest } from '@/services/nftService';
 
 interface NFTCreateProps {
@@ -27,14 +30,18 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
   const { uploading: pdfUploading, error: pdfError, uploadPDF, clearError: clearPdfError } = useStorage();
+  const { getPassword, hasPassword } = usePassword();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfHash, setPdfHash] = useState<string>('');
   const [formData, setFormData] = useState<CreateNFTRequest>({
     issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
+    pdf_hash: '',
     institution: '',
+    institution_address: account,
     recipient_address: account,
   });
 
@@ -47,10 +54,25 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       clearPdfError();
       setSelectedFile(null);
       setFormData({ ...formData, pdf_url: '' });
+      setPdfHash('');
       return;
     }
-
+    const hash = '';
     setSelectedFile(file);
+
+    // Calculate PDF hash
+    try {
+      const buffer = await file.arrayBuffer();
+      const hash = await calculatePdfHash(buffer);
+      setPdfHash(hash);
+    } catch (error) {
+      console.error('Failed to calculate PDF hash:', error);
+      setResult({
+        success: false,
+        message: 'Lỗi tính toán hash PDF',
+      });
+      return;
+    }
 
     // Auto upload when file selected
     try {
@@ -59,16 +81,18 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
         folder: 'nft-certificates',
         tags: ['nft', 'certificate'],
       });
-      setFormData({ ...formData, pdf_url: url });
+      setFormData({ ...formData, pdf_url: url, pdf_hash: hash });
     } catch (error) {
       console.error('Upload PDF failed:', error);
       setSelectedFile(null);
+      setPdfHash('');
     }
   };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
-    setFormData({ ...formData, pdf_url: '' });
+    setPdfHash('');
+    setFormData({ ...formData, pdf_url: '', pdf_hash: '' });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -86,11 +110,62 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       return;
     }
 
+    // Kiểm tra password đã được lưu từ lúc đăng nhập
+    if (!hasPassword()) {
+      setResult({
+        success: false,
+        message: 'Mật khẩu ví không tìm thấy. Vui lòng đăng nhập lại.',
+      });
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
 
     try {
-      const response = await NFTService.createNFT(formData);
+      // Lấy password từ session storage
+      const password = getPassword();
+      if (!password) {
+        throw new Error('Mật khẩu ví không tìm thấy');
+      }
+
+      // Get private key from vault using password
+      const vault = localStorage.getItem('vault');
+      if (!vault) {
+        throw new Error('Không tìm thấy ví trong hệ thống');
+      }
+
+      const vaultData = JSON.parse(vault);
+      const privateKeyBytes = await decryptPrivateKey(vaultData, password);
+
+      // Create signing data with current timestamp
+      const issuedAt = Date.now() / 1000; // seconds
+      const signingMetadata = {
+        degree_type: formData.degree_type,
+        pdf_url: formData.pdf_url,
+        pdf_hash: formData.pdf_hash,
+        institution_address: formData.institution_address,
+        issued_at: issuedAt,
+      };
+
+      // Create signing data string (same format as backend)
+      const signingData = createSigningData(signingMetadata);
+      console.log('Signing data:', signingData);
+
+      // Sign the data
+      const signature = signDataWithBytes(signingData, privateKeyBytes);
+      console.log('Signature generated:', signature);
+
+      // Prepare request with signature
+      const requestData = {
+        ...formData,
+        issued_at: issuedAt,
+        signature: signature,
+      };
+
+      console.log('Request data:', requestData);
+
+      const response = await NFTService.createNFT(requestData);
       if (response.success) {
         setResult({
           success: true,
@@ -103,10 +178,13 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           student_id: '',
           degree_type: '',
           pdf_url: '',
+          pdf_hash: '',
           institution: '',
+          institution_address: account,
           recipient_address: account,
         });
         setSelectedFile(null);
+        setPdfHash('');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
@@ -125,6 +203,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
         errorMessage = error;
       }
 
+      console.error('NFT creation error:', error);
       setResult({
         success: false,
         message: errorMessage,
@@ -206,6 +285,18 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="institution_address">Địa chỉ ví tổ chức</Label>
+            <Input
+              id="institution_address"
+              placeholder="0x..."
+              value={formData.institution_address}
+              onChange={(e) => setFormData({ ...formData, institution_address: e.target.value })}
+              required
+              className="bg-background/50 font-mono text-sm"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="pdf_file">Upload Chứng chỉ (PDF)</Label>
             <div className="relative">
               <input
@@ -266,6 +357,14 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
                 </div>
               )}
 
+              {pdfHash && (
+                <div className="mt-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                  <p className="text-xs font-mono text-blue-600 break-all">
+                    Hash: {pdfHash}
+                  </p>
+                </div>
+              )}
+
               <input
                 id="pdf_url"
                 type="hidden"
@@ -321,7 +420,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang cấp phát...
+                Đang ký và cấp phát...
               </>
             ) : pdfUploading ? (
               <>
@@ -336,7 +435,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Cấp phát Chứng chỉ
+                Ký và Cấp phát Chứng chỉ
               </>
             )}
           </Button>

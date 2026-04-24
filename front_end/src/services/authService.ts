@@ -1,6 +1,7 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
 import saveUserData from "@/utils/saveDataToStorage";
 import { generateWallet, restoreWallet, validateMnemonic, bytesToHex } from "@/utils/walletGenerator";
+import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
 import * as secp from "@noble/secp256k1";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -15,6 +16,8 @@ export interface CreateWalletResult {
 export const clearOldSession = () => {
   const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn"];
   items.forEach(item => localStorage.removeItem(item));
+  // Xóa password khỏi session storage
+  clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
 
@@ -57,6 +60,10 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
   }
 
   saveUserData(userData);
+
+  // Lưu password vào session storage để dùng cho signing
+  savePasswordToSession(password);
+  console.log('[authService] Password saved to session storage');
 
   // Trả về mnemonic để hiển thị cho user backup
   return { mnemonic, address };
@@ -101,7 +108,7 @@ export const registerSchool = async (
     console.error('Network error during school registration:', error);
   }
 
-  const userData: Record<string, any> = {
+  const userData: Record<string, unknown> = {
     user_id: Math.random().toString(36).substr(2, 9),
     public_key: uint8ArrayToHex(publicKey),
     address: address.toLowerCase(),
@@ -112,6 +119,10 @@ export const registerSchool = async (
   };
 
   saveUserData(userData);
+
+  // Lưu password vào session storage để dùng cho signing
+  savePasswordToSession(password);
+  console.log('[authService] Password saved to session storage');
 
   return { mnemonic, address };
 };
@@ -163,6 +174,10 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   // Set login state so user can access home
   localStorage.setItem('isLoggedIn', 'true');
 
+  // Lưu password vào session storage để dùng cho signing
+  savePasswordToSession(password);
+  console.log('[authService] Password saved to session storage');
+
   return { address };
 };
 
@@ -201,6 +216,10 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
 
   localStorage.setItem("isLoggedIn", "true");
   console.log('[LoginWallet] Wallet unlocked successfully');
+
+  // Lưu password vào session storage để dùng cho signing
+  savePasswordToSession(password);
+  console.log('[authService] Password saved to session storage');
   
   return privateKey;
 };
@@ -270,6 +289,9 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
 
 export const logoutUser = (): void => {
   localStorage.removeItem('isLoggedIn');
+  // Xóa password khỏi session storage khi logout
+  clearPasswordFromSession();
+  console.log('[authService] User logged out, password cleared');
 };
 
 export const updateProfile = async (
