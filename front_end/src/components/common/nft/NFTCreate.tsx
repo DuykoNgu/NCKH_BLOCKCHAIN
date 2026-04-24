@@ -125,6 +125,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     try {
       // Lấy password từ session storage
       const password = getPassword();
+      console.log('Password : ',password);
       if (!password) {
         throw new Error('Mật khẩu ví không tìm thấy');
       }
