@@ -1,14 +1,22 @@
-import { ShieldCheck, User as UserIcon } from "lucide-react"
+import { ShieldCheck, User as UserIcon, LogOut } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
+import { useNavigate } from "react-router-dom"
+import { logoutUser } from "@/services/authService"
 
 export const Header = () => {
-  const { fullName, role, isAdmin } = useAuth();
+  const { fullName, role, isAdmin, isValidator } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate('/login');
+  };
   
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/home')}>
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
@@ -28,13 +36,23 @@ export const Header = () => {
               Role: {role}
             </span>
           </div>
-          
-          <div className="flex items-center gap-2 bg-secondary/30 px-3 py-1.5 rounded-full border border-border/50">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-            <span className="text-xs font-medium text-foreground">
-              Online
-            </span>
-          </div>
+          {(isValidator || isAdmin) && (
+            <button 
+              onClick={() => navigate('/admin')}
+              className="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl border border-primary/20 transition-all font-semibold text-xs"
+            >
+              Trang quản trị
+            </button>
+          )}
+
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive px-3 py-1.5 rounded-xl border border-border/50 transition-all group"
+            title="Đăng xuất"
+          >
+            <LogOut className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+            <span className="text-xs font-semibold">Đăng xuất</span>
+          </button>
         </div>
       </div>
     </header>

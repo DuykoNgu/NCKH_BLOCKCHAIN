@@ -14,9 +14,9 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { type } = useParams<{ type?: string }>();
   
-  // Use state to properly trigger re-render when URL changes
   const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'switch-account' | 'import-mnemonic'>('home');
   const [showSeed, setShowSeed] = useState(false);
+  const [hasAutoRedirected, setHasAutoRedirected] = useState(false);
   
   const [seed, setSeed] = useState<string[]>([]);
   const [password, setPassword] = useState('');
@@ -35,16 +35,16 @@ const LoginPage = () => {
     const hasWallet = !!localStorage.getItem('address') && !!localStorage.getItem('vault');
 
     if (type === 'existing') {
-      // Explicitly requested to import an existing mnemonic
       setStep('import-mnemonic');
     } else if (type === 'new') {
       setStep('set-password');
     } else if (type === 'school') {
       setStep('school-register');
     } else {
-      // If no specific type, and user has a wallet, default to Unlock view (MetaMask style)
-      if (hasWallet) {
+      // If we've already manually navigated back to home, don't auto-redirect again
+      if (hasWallet && !hasAutoRedirected) {
         setStep('import');
+        setHasAutoRedirected(true);
       } else {
         setStep('home');
       }
@@ -60,7 +60,7 @@ const LoginPage = () => {
     setEmail('');
     setPhone('');
     setError('');
-  }, [type]);
+  }, [type, hasAutoRedirected]);
 
   const handleCreateWallet = async () => {
     if (!password || password.length < 8 || password !== confirmPassword) {
@@ -163,7 +163,10 @@ const LoginPage = () => {
           <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
             <SeedDisplay 
               seed={seed}
-              onBack={() => setShowSeed(false)}
+              onBack={() => {
+                setShowSeed(false);
+                navigate('/login');
+              }}
               onConfirmed={handleSeedConfirmed}
             />
           </div>
@@ -189,7 +192,7 @@ const LoginPage = () => {
           onPasswordChange={setPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           onLogin={handleLogin}
-          onBack={() => setStep('home')}
+          onBack={() => navigate('/login')}
           onClearWallet={handleClearWallet}
         />
       );
@@ -208,7 +211,7 @@ const LoginPage = () => {
             <AccountSwitcher 
               accounts={accounts}
               onSelect={handleSelectAccount}
-              onAddNew={() => setStep('home')}
+              onAddNew={() => navigate('/login')}
               onBack={() => setStep('import')}
             />
           </div>
@@ -224,7 +227,7 @@ const LoginPage = () => {
               error={error}
               isLoading={isLoading}
               onImport={handleImportWallet}
-              onBack={() => setStep('home')}
+              onBack={() => navigate('/login')}
             />
           </div>
         </div>

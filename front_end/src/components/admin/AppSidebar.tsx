@@ -11,9 +11,9 @@ import {
   LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/admin/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useWallet } from "@/hooks/useWallet";
+import { adminLogout } from "@/services/authService";
 import {
   Sidebar,
   SidebarContent,
@@ -47,7 +47,7 @@ const manageItems = [
 export function AppSidebar() {
   const { state } = useSidebar();
   const { role } = useAuth();
-  const { lock } = useWallet();
+  const navigate = useNavigate();
   const collapsed = state === "collapsed";
   const location = useLocation();
 
@@ -57,8 +57,8 @@ export function AppSidebar() {
   const filteredManageItems = manageItems.filter(item => !item.roles || item.roles.includes(role || ""));
 
   const handleLogout = () => {
-    lock();
-    window.location.href = "/login";
+    adminLogout(); // Chỉ xoá session, giữ vault để lần sau đăng nhập bằng mật khẩu
+    navigate('/moet-login');
   };
 
   return (

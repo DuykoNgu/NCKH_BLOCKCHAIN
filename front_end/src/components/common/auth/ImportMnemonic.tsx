@@ -33,9 +33,9 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
         <ArrowLeft size={16} className="mr-1" /> Quay lại
       </button>
 
-      <h2 className="font-display text-xl font-bold text-foreground mb-1">Khôi phục ví</h2>
+      <h2 className="font-display text-xl font-bold text-foreground mb-1">Đăng nhập tài khoản cũ</h2>
       <p className="text-sm text-muted-foreground mb-6">
-        Nhập 12 từ khóa bí mật để khôi phục quyền truy cập vào ví của bạn.
+        Nhập 12 từ khóa bí mật (Mnemonic) để khôi phục quyền truy cập vào hồ sơ của bạn.
       </p>
 
       {error && (
@@ -46,23 +46,26 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Cụm từ bí mật (12 từ)</Label>
+          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">ID 12 từ khóa (Thay thế Email/Username)</Label>
           <textarea
             value={mnemonic}
             onChange={(e) => setMnemonic(e.target.value)}
-            placeholder="word1 word2 word3 ..."
+            placeholder="Ví dụ: apple banana cherry ..."
             className="w-full min-h-[100px] bg-secondary/50 border border-border/50 rounded-xl p-4 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:bg-background focus:ring-1 focus:ring-primary outline-none transition-all resize-none"
           />
+          <p className="text-[10px] text-muted-foreground leading-relaxed italic">
+            * Cụm từ này được cấp khi bạn đăng ký tài khoản. Hệ thống Blockchain không sử dụng Email để đăng nhập để đảm bảo tính riêng tư.
+          </p>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu mới</Label>
+        <div className="space-y-2 pt-2 border-t border-border/30">
+          <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu cho thiết bị này</Label>
           <div className="relative">
             <Input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Tối thiểu 8 ký tự"
+              placeholder="Thiết lập mật khẩu mở khóa"
               className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
             />
             <button
@@ -73,6 +76,9 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
+          <p className="text-[10px] text-muted-foreground">
+            Dùng để mở khóa nhanh khi bạn quay lại bằng trình duyệt này.
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -81,7 +87,7 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Nhập lại mật khẩu"
+            placeholder="Nhập lại mật khẩu trên"
             className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
           />
         </div>
@@ -91,7 +97,7 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
           disabled={isLoading || !isFormValid}
           className="w-full h-12 rounded-xl font-display font-semibold text-sm mt-4"
         >
-          {isLoading ? 'Đang khôi phục...' : 'Tiếp tục khôi phục'}
+          {isLoading ? 'Đang xác thực...' : 'Bắt đầu đăng nhập'}
           <ShieldCheck size={16} className="ml-2" />
         </Button>
       </form>

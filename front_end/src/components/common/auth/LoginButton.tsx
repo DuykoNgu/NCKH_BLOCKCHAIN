@@ -14,7 +14,7 @@ export default function LoginButton({ onCreateWallet, onImportWallet, onRegister
         onClick={onCreateWallet}
         className="w-full h-14 rounded-xl font-display font-semibold text-sm tracking-wide group"
       >
-        Tạo tài khoản định danh
+        Đăng ký tài khoản mới
         <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
       </Button>
 
@@ -24,7 +24,7 @@ export default function LoginButton({ onCreateWallet, onImportWallet, onRegister
         className="w-full h-14 rounded-xl font-display font-semibold text-sm tracking-wide border-border/60 hover:bg-secondary/60"
       >
         <KeyRound size={16} className="mr-2" />
-        Tôi đã có tài khoản
+        Đăng nhập hồ sơ cũ
       </Button>
 
       <Button

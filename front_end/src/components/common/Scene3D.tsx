@@ -242,7 +242,6 @@ export default memo(function Scene3D() {
         style={{ background: 'transparent' }}
         dpr={[1, 1.5]}
       >
-        <color attach="background" args={['transparent']} />
         <fog attach="fog" args={['#ffffff', 6, 14]} />
         
         <ambientLight intensity={0.5} />

@@ -15,6 +15,7 @@ interface CreateWalletProps {
   onTogglePassword: () => void;
   onCreateWallet: () => void;
   isSchool?: boolean;
+  isImporting?: boolean;
   schoolName?: string;
   onSchoolNameChange?: (name: string) => void;
   taxId?: string;
@@ -39,6 +40,7 @@ const CreateWallet = ({
   onTogglePassword,
   onCreateWallet,
   isSchool,
+  isImporting,
   schoolName,
   onSchoolNameChange,
   taxId,
@@ -60,12 +62,14 @@ const CreateWallet = ({
             </button>
 
             <h2 className="font-display text-xl font-bold text-foreground mb-1">
-              {isSchool ? 'Đăng ký Trường học / Tổ chức' : 'Tạo mật khẩu'}
+              {isSchool ? 'Đăng ký Trường học / Tổ chức' : (isImporting ? 'Thiết lập mật khẩu thiết bị' : 'Tạo mật khẩu')}
             </h2>
             <p className="text-sm text-muted-foreground mb-6">
               {isSchool 
                 ? 'Đăng ký định danh cho tổ chức cấp phát văn bằng.' 
-                : 'Mật khẩu dùng để bảo mật tài khoản trên thiết bị này.'}
+                : (isImporting 
+                  ? 'Mật khẩu dùng để bảo mật và đăng nhập nhanh trên thiết bị này.' 
+                  : 'Mật khẩu dùng để bảo mật tài khoản trên thiết bị này.')}
             </p>
 
             {error && (

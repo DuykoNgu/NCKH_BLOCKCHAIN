@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { adminService } from "@/services/adminService";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -28,6 +29,7 @@ export default function Degrees() {
   const [mintOpen, setMintOpen] = useState(false);
   const [degrees, setDegrees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentPage, setCurrentPage, itemsPerPage, paginate, handlePageSizeChange } = usePagination(10);
 
   const fetchDegrees = async () => {
     try {
@@ -189,11 +191,10 @@ export default function Degrees() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ) : filtered.map((deg) => {
+                ) : paginate(filtered).map((deg) => {
                   const status = deg.is_valid ? "verified" : "revoked";
                   const sc = statusConfig[status];
                   const dateStr = deg.minted_at ? new Date(deg.minted_at * 1000).toLocaleDateString("vi-VN") : "N/A";
-                  
                   return (
                     <TableRow key={deg.token_id}>
                       <TableCell className="font-mono text-primary text-xs">{deg.token_id.slice(0, 8)}...</TableCell>
@@ -222,6 +223,16 @@ export default function Degrees() {
                 })}
               </TableBody>
             </Table>
+            <div className="px-4 pb-4">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                pageSize={itemsPerPage}
+                onPageChange={(p) => { setCurrentPage(p); }}
+                onPageSizeChange={handlePageSizeChange}
+                pageSizeOptions={[5, 10, 20, 50]}
+              />
+            </div>
           </CardContent>
         </Card>
       </motion.div>

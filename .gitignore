@@ -78,3 +78,6 @@ temp/
 # Misc
 .DS_Store
 Thumbs.db
+# Generated output files
+moet_account.txt
+db_output.txt

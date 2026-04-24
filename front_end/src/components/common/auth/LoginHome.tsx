@@ -24,14 +24,23 @@ const LoginHome = () => {
             onRegisterSchool={() => navigate('/login/school')}
           />
 
-          <div className="w-full mt-8 pt-8 border-t border-border/50">
+          <div className="w-full mt-8 pt-6 border-t border-border/50 space-y-4">
             <button 
               onClick={() => navigate('/verify')}
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 transition-colors group"
+              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-slate-50 hover:bg-white border border-border/30 dark:bg-white/5 dark:hover:bg-white/10 transition-all group"
             >
               <Search className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-medium text-foreground">Xác minh văn bằng (Công khai)</span>
+              <span className="text-sm font-medium text-foreground">Tra cứu & Xác minh văn bằng</span>
             </button>
+
+            <div className="text-center pt-2">
+              <button 
+                onClick={() => navigate('/moet-login')}
+                className="text-xs text-muted-foreground hover:text-primary transition-colors italic"
+              >
+                Bạn là Quản trị viên MOET? Đăng nhập tại đây
+              </button>
+            </div>
           </div>
         </div>
       </div>

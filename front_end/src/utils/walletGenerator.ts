@@ -18,12 +18,7 @@ export async function generateWallet() {
   // 1. Entropy ngẫu nhiên 128-bit (16 bytes) → 12 từ
   const entropy = crypto.getRandomValues(new Uint8Array(16));
 
-  console.log(entropy)
-
-  // 2. Entropy → Seed Phrase (12 từ)
   const mnemonic = bip39.entropyToMnemonic(entropy, wordlist);
-
-  console.log(mnemonic)
 
   // 3. Mnemonic → Seed (512 bits)
   const seed = await bip39.mnemonicToSeed(mnemonic);

@@ -38,7 +38,7 @@ const ImportWallet = ({
 
             <h2 className="font-display text-xl font-bold text-foreground mb-1">Chào mừng trở lại</h2>
             <p className="text-sm text-muted-foreground mb-4 text-center">
-              Mở khóa ví để truy cập hệ thống
+              Nhập mật khẩu để đăng nhập vào tài khoản
             </p>
 
             {currentAddress && (
@@ -47,10 +47,10 @@ const ImportWallet = ({
                   <User className="h-6 w-6 text-primary" />
                 </div>
                 <p className="text-sm font-bold text-foreground mb-1">
-                  {localStorage.getItem('full_name') || 'Ví cá nhân'}
+                  {localStorage.getItem('full_name') || 'Tài khoản của tôi'}
                 </p>
                 <code className="text-[10px] text-muted-foreground font-mono bg-secondary/30 px-2 py-0.5 rounded break-all text-center">
-                  {currentAddress.slice(0, 12)}...{currentAddress.slice(-12)}
+                  ID: {currentAddress.slice(0, 12)}...{currentAddress.slice(-12)}
                 </code>
               </div>
             )}
@@ -63,13 +63,13 @@ const ImportWallet = ({
 
             <div className="space-y-4 w-full">
               <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu mở khóa</Label>
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu truy cập</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => onPasswordChange(e.target.value)}
-                    placeholder="Nhập mật khẩu"
+                    placeholder="Nhập mật khẩu của bạn"
                     className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                   />
                   <button
@@ -87,7 +87,7 @@ const ImportWallet = ({
                 disabled={isLoading || !password || password.length < 8 || !currentAddress}
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >
-                {isLoading ? 'Đang mở khóa...' : 'Mở khóa ví'}
+                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập ngay'}
                 <ArrowRight size={16} className="ml-2" />
               </Button>
               {!currentAddress && (

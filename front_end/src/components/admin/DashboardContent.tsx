@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Copy, ExternalLink, TrendingUp, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Copy, ExternalLink, TrendingUp, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,10 +73,42 @@ export default function DashboardContent() {
   }
 
   const statCards = [
-    { label: "Tổng NFT phát hành", value: stats?.total_nfts || 0, icon: GraduationCap, color: "text-primary", change: "+0%" },
-    { label: "Đã xác thực", value: stats?.verified_nfts || 0, icon: Shield, color: "text-green-400", change: "+0%" },
-    { label: "Yêu cầu chờ duyệt", value: stats?.pending_validators || 0, icon: Clock, color: "text-yellow-400", change: "Mới" },
-    { label: "Giao dịch hôm nay", value: stats?.transactions_today || 0, icon: Activity, color: "text-accent", change: "+0%" },
+    {
+      label: "Tổng NFT phát hành",
+      value: stats?.total_nfts ?? 0,
+      icon: GraduationCap,
+      bgColor: "bg-primary/15",
+      iconColor: "text-primary",
+      badgeColor: "text-primary bg-primary/10",
+      change: "+0%",
+    },
+    {
+      label: "Đã xác thực",
+      value: stats?.verified_nfts ?? 0,
+      icon: Shield,
+      bgColor: "bg-green-400/15",
+      iconColor: "text-green-400",
+      badgeColor: "text-green-400 bg-green-400/10",
+      change: "+0%",
+    },
+    {
+      label: "Yêu cầu chờ duyệt",
+      value: stats?.pending_validators ?? 0,
+      icon: Clock,
+      bgColor: "bg-yellow-400/15",
+      iconColor: "text-yellow-400",
+      badgeColor: "text-yellow-400 bg-yellow-400/10",
+      change: "Mới",
+    },
+    {
+      label: "Giao dịch hôm nay",
+      value: stats?.transactions_today ?? 0,
+      icon: Activity,
+      bgColor: "bg-accent/15",
+      iconColor: "text-accent",
+      badgeColor: "text-accent bg-accent/10",
+      change: "+0%",
+    },
   ];
 
   return (
@@ -88,22 +120,23 @@ export default function DashboardContent() {
             <h2 className="font-display text-2xl font-bold text-foreground">Xin chào, Admin 👋</h2>
             <p className="text-sm text-muted-foreground mt-1">Quản lý bằng đại học NFT trên blockchain</p>
           </div>
-          {/* Network Info */}
-          <div className="flex items-center gap-4 text-xs bg-secondary/50 rounded-lg px-4 py-2">
-            <div className="flex items-center gap-2">
-              <Activity className="h-3 w-3 text-green-400" />
-              <span className="text-muted-foreground">Mạng:</span>
-              <span className="text-foreground font-medium">{network?.name}</span>
+          {/* Thông số hệ thống thực tế */}
+          <div className="flex items-center gap-3 text-xs bg-secondary/60 border border-border/50 rounded-xl px-4 py-2.5">
+            <div className="flex items-center gap-1.5">
+              <div className={`h-2 w-2 rounded-full ${network?.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-muted-foreground">Hệ thống:</span>
+              <span className="text-foreground font-semibold">EduChain</span>
             </div>
             <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Gas:</span>
-              <span className="text-foreground font-medium">{network?.gas_price}</span>
+            <div className="flex items-center gap-1.5">
+              <Users className="h-3 w-3 text-muted-foreground" />
+              <span className="text-muted-foreground">Trường học:</span>
+              <span className="text-foreground font-semibold">{stats?.total_validators ?? 0}</span>
             </div>
             <div className="h-4 w-px bg-border" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-muted-foreground">Block:</span>
-              <span className="text-primary font-mono">#{stats?.total_blocks}</span>
+              <span className="text-primary font-mono font-bold">#{stats?.total_blocks ?? 0}</span>
             </div>
           </div>
         </div>
@@ -128,12 +161,23 @@ export default function DashboardContent() {
                   </button>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Trạng thái Node</p>
-                <p className="font-display text-2xl font-bold gradient-text">{network?.status === 'active' ? 'Đang hoạt động' : 'Ngoại tuyến'}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[200px]" title={stats?.latest_block_hash}>
-                  Lớp băm cuối: {stats?.latest_block_hash.slice(0, 20)}...
-                </p>
+              <div className="flex flex-col items-end gap-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Trạng thái Node</p>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border font-semibold text-sm ${
+                  network?.status === 'active'
+                    ? 'bg-green-400/15 border-green-400/30 text-green-400'
+                    : 'bg-destructive/15 border-destructive/30 text-destructive'
+                }`}>
+                  <span className={`h-2 w-2 rounded-full ${
+                    network?.status === 'active' ? 'bg-green-400 animate-pulse' : 'bg-destructive'
+                  }`} />
+                  {network?.status === 'active' ? 'Đang hoạt động' : 'Ngoại tuyến'}
+                </div>
+                {stats?.latest_block_hash && (
+                  <p className="text-[10px] font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md" title={stats.latest_block_hash}>
+                    {stats.latest_block_hash.slice(0, 18)}…
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -143,19 +187,19 @@ export default function DashboardContent() {
       {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Card key={stat.label} className="glass-card hover:border-primary/30 transition-colors">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className={`h-9 w-9 rounded-lg bg-secondary flex items-center justify-center ${stat.color}`}>
-                  <stat.icon className="h-4 w-4" />
+          <Card key={stat.label} className="glass-card hover:border-primary/30 transition-all hover:shadow-md">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`h-11 w-11 rounded-xl ${stat.bgColor} flex items-center justify-center`}>
+                  <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
                 </div>
-                <span className="text-xs text-green-400 flex items-center gap-1">
+                <span className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${stat.badgeColor}`}>
                   <TrendingUp className="h-3 w-3" />
                   {stat.change}
                 </span>
               </div>
-              <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+              <p className="font-display text-3xl font-bold text-foreground">{stat.value}</p>
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">{stat.label}</p>
             </CardContent>
           </Card>
         ))}

@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Shield, Bell, Globe, Key, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,26 @@ const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } 
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 export default function Settings() {
-  const handleSave = () => toast.success("Đã lưu cài đặt!");
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem("adminSettings");
+    return saved ? JSON.parse(saved) : {
+      mintNFT: true,
+      verifyDegree: true,
+      txFail: true,
+      dailyReport: false,
+      twoFactor: false,
+      autoLock: true
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem("adminSettings", JSON.stringify(settings));
+  }, [settings]);
+
+  const handleSave = () => toast.success("Đã lưu các thay đổi cấu hình hệ thống!");
+  const handleToggle = (key: string) => (checked: boolean) => {
+    setSettings((prev: any) => ({ ...prev, [key]: checked }));
+  };
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-3xl">
@@ -80,14 +100,17 @@ export default function Settings() {
           </CardHeader>
           <CardContent className="space-y-4">
             {[
-              ["Mint NFT mới", "Thông báo khi có NFT được mint", true],
-              ["Xác thực bằng cấp", "Thông báo khi có yêu cầu xác thực", true],
-              ["Giao dịch thất bại", "Cảnh báo khi giao dịch lỗi", true],
-              ["Báo cáo hàng ngày", "Nhận email tổng hợp mỗi ngày", false],
-            ].map(([title, desc, defaultOn]) => (
-              <div key={title as string} className="flex items-center justify-between">
-                <div><p className="text-sm font-medium text-foreground">{title as string}</p><p className="text-xs text-muted-foreground">{desc as string}</p></div>
-                <Switch defaultChecked={defaultOn as boolean} />
+              { id: "mintNFT", title: "Mint NFT mới", desc: "Thông báo khi có NFT được mint" },
+              { id: "verifyDegree", title: "Xác thực bằng cấp", desc: "Thông báo khi có yêu cầu xác thực" },
+              { id: "txFail", title: "Giao dịch thất bại", desc: "Cảnh báo khi giao dịch lỗi" },
+              { id: "dailyReport", title: "Báo cáo hàng ngày", desc: "Nhận email tổng hợp mỗi ngày" },
+            ].map((n) => (
+              <div key={n.id} className="flex items-center justify-between">
+                <div><p className="text-sm font-medium text-foreground">{n.title}</p><p className="text-xs text-muted-foreground">{n.desc}</p></div>
+                <Switch 
+                  checked={settings[n.id]} 
+                  onCheckedChange={handleToggle(n.id)} 
+                />
               </div>
             ))}
           </CardContent>
@@ -103,12 +126,12 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div><p className="text-sm font-medium text-foreground">Xác thực 2 lớp (2FA)</p><p className="text-xs text-muted-foreground">Bảo vệ tài khoản với xác thực 2 lớp</p></div>
-              <Switch />
+              <Switch checked={settings.twoFactor} onCheckedChange={handleToggle("twoFactor")} />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
               <div><p className="text-sm font-medium text-foreground">Tự động khóa</p><p className="text-xs text-muted-foreground">Khóa ví sau 15 phút không hoạt động</p></div>
-              <Switch defaultChecked />
+              <Switch checked={settings.autoLock} onCheckedChange={handleToggle("autoLock")} />
             </div>
           </CardContent>
         </Card>

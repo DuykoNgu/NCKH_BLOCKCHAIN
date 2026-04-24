@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, CheckCircle2, Info, Mail, Phone, User, Building2 } from "lucide-react";
+import { Search, CheckCircle2, Info, Mail, Phone, User, Building2, Eye, FileText, CalendarClock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { adminService } from "@/services/adminService";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -15,6 +17,7 @@ export default function AdminValidators() {
   const [validators, setValidators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { currentPage, setCurrentPage, itemsPerPage, paginate, handlePageSizeChange } = usePagination(10);
 
   const fetchValidators = async () => {
     try {
@@ -42,6 +45,18 @@ export default function AdminValidators() {
       }
     } catch (error) {
       toast.error("Phê duyệt thất bại");
+    }
+  };
+
+  const handleReject = async (address: string) => {
+    try {
+      const res = await adminService.rejectValidator(address);
+      if (res.success || res.status === "success") {
+        toast.success("Đã từ chối và xoá yêu cầu!");
+        fetchValidators();
+      }
+    } catch (error) {
+      toast.error("Từ chối thất bại");
     }
   };
 
@@ -95,7 +110,7 @@ export default function AdminValidators() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length > 0 ? filtered.map((v) => (
+                {paginate(filtered).length > 0 ? paginate(filtered).map((v) => (
                   <TableRow key={v.address}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -129,16 +144,94 @@ export default function AdminValidators() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10">
-                          Từ chối
+                        {/* Chi tiết */}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="gap-2">
+                              <Eye className="h-4 w-4" />
+                              <span className="hidden sm:inline">Chi tiết</span>
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md glass-card">
+                            <DialogHeader>
+                              <DialogTitle className="flex items-center gap-2">
+                                <FileText className="h-5 w-5 text-primary" />
+                                Hồ sơ đăng ký Validator
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                              <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center">
+                                  <Building2 className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                  <h3 className="font-bold text-lg">{v.org_name || "Trường Đại học"}</h3>
+                                  <p className="text-sm text-muted-foreground font-mono">Ví: {v.address}</p>
+                                </div>
+                              </div>
+                              <div className="grid gap-3 bg-secondary/30 p-4 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">Mã số thuế:</span>
+                                  <span className="text-sm font-semibold">{v.tax_id || "Không có"}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">Người đại diện:</span>
+                                  <span className="text-sm font-semibold">{v.representative || "Không có"}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">SĐT liên hệ:</span>
+                                  <span className="text-sm font-semibold">{v.phone || "Không có"}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">Email:</span>
+                                  <span className="text-sm font-semibold">{v.email || "Không có"}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm text-muted-foreground">Thời gian nộp:</span>
+                                  <span className="text-sm font-semibold flex items-center gap-1">
+                                    <CalendarClock className="h-3 w-3" />
+                                    {v.created_at || "Vừa xong"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 pt-2">
+                                <Button 
+                                  onClick={() => handleApprove(v.address)} 
+                                  className="w-full bg-green-500 hover:bg-green-600 text-white gap-2"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Phê duyệt đối tác này
+                                </Button>
+                                <Button 
+                                  onClick={() => handleReject(v.address)} 
+                                  variant="outline" 
+                                  className="w-full text-destructive hover:bg-destructive/10"
+                                >
+                                  Từ chối yêu cầu
+                                </Button>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
+                        <Button 
+                          onClick={() => handleReject(v.address)} 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-destructive hover:bg-destructive/10 px-2 sm:px-3"
+                          title="Từ chối"
+                        >
+                          <span className="sm:hidden">X</span>
+                          <span className="hidden sm:inline">Từ chối</span>
                         </Button>
                         <Button 
                           onClick={() => handleApprove(v.address)}
                           size="sm" 
-                          className="bg-green-500 hover:bg-green-600 text-white gap-2"
+                          className="bg-green-500 hover:bg-green-600 text-white gap-2 px-2 sm:px-3"
+                          title="Phê duyệt"
                         >
                           <CheckCircle2 className="h-4 w-4" />
-                          Phê duyệt
+                          <span className="hidden sm:inline">Phê duyệt</span>
                         </Button>
                       </div>
                     </TableCell>
@@ -152,6 +245,16 @@ export default function AdminValidators() {
                 )}
               </TableBody>
             </Table>
+            <div className="px-4 pb-4">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={filtered.length}
+                pageSize={itemsPerPage}
+                onPageChange={(p) => { setCurrentPage(p); }}
+                onPageSizeChange={handlePageSizeChange}
+                pageSizeOptions={[5, 10, 20]}
+              />
+            </div>
           </CardContent>
         </Card>
       </motion.div>

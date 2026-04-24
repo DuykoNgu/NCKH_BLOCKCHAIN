@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 import json
 import time
+import hashlib
 
 class NFTmetadata:
      def __init__(self,
@@ -33,4 +34,6 @@ class NFTmetadata:
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return NFTmetadata(**data)
-     
+          
+     def hash_metadata(self) -> str:
+          return hashlib.sha256(self.get_signing_data().encode('utf-8')).hexdigest()

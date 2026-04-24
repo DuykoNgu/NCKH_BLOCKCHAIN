@@ -177,6 +177,27 @@ def approve_validator():
             "error": "Failed to update validator"
         }), 500
 
+@user_bp.route('/reject_validator', methods=['POST'])
+def reject_validator():
+    data = request.json
+    address = data.get('address')
+    
+    if not address:
+        return jsonify({"error": "Missing address"}), 400
+        
+    success, message = AccountService.delete_account(address)
+    if success:
+        return jsonify({
+            "status": "success",
+            "success": True,
+            "message": "Validator rejected and removed successfully"
+        }), 200
+    else:
+        return jsonify({
+            "status": "fail",
+            "error": message
+        }), 500
+
 @user_bp.route('/profile/<address>', methods=['GET'])
 def get_profile(address):
     account = AccountService.get_account_by_address(address.lower())

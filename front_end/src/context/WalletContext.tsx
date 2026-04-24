@@ -8,6 +8,7 @@ interface WalletContextType {
   isUnlocked: boolean;
   unlock: (password: string) => Promise<void>;
   lock: () => void;
+  clearWallet: () => void;
 }
 
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -36,24 +37,24 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const lock = useCallback(() => {
     setPrivateKey(null);
+    localStorage.removeItem("isLoggedIn");
+    console.log('[WalletContext] User logged out, session cleared');
+  }, []);
+
+  const clearWallet = useCallback(() => {
+    setPrivateKey(null);
     setAddress(null);
     setPublicKey(null);
     
-    // Clear all session-related data
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("role");
-    localStorage.removeItem("address");
-    localStorage.removeItem("public_key");
-    localStorage.removeItem("full_name");
-    localStorage.removeItem("is_active");
-    localStorage.removeItem("avatar_url");
-    localStorage.removeItem("vault");
+    // Clear all wallet and session data
+    const items = ["isLoggedIn", "role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "accounts"];
+    items.forEach(item => localStorage.removeItem(item));
     
-    console.log('[WalletContext] Session cleared properly');
+    console.log('[WalletContext] Wallet completely cleared from device');
   }, []);
 
   return (
-    <WalletContext.Provider value={{ privateKey, address, publicKey, isUnlocked, unlock, lock }}>
+    <WalletContext.Provider value={{ privateKey, address, publicKey, isUnlocked, unlock, lock, clearWallet }}>
       {children}
     </WalletContext.Provider>
   );

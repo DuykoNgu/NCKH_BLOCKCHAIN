@@ -119,67 +119,69 @@ export const registerSchool = async (
 export const importWallet = async (mnemonic: string, password: string): Promise<{ address: string }> => {
   // Validate mnemonic
   if (!validateMnemonic(mnemonic)) {
-    throw new Error("Invalid mnemonic phrase");
+    throw new Error('Invalid mnemonic phrase');
   }
 
-  // Khôi phục ví từ mnemonic
+  // Restore wallet
   const { privateKey, publicKey, address } = await restoreWallet(mnemonic);
 
-  // Mã hóa và lưu
+  // Encrypt and prepare vault
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
 
-  const userData = {
-    user_id: Math.random().toString(36).substr(2, 9),
-    public_key: uint8ArrayToHex(publicKey),
-    address: address.toLowerCase(),
-    vault,
-    role: "client",
-    is_active: "1",
-  };
-
-  // Đăng ký với Backend
+  // Try to fetch existing profile first
+  let profile: any = null;
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "client"
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend registration failed:', errorData);
-    } else {
-      // Nếu đăng ký/import thành công, thử lấy profile để đồng bộ tên/role
-      try {
-        const profile = await fetchProfile(address.toLowerCase());
-        if (profile && profile.user) {
-          saveUserData({
-            ...profile.user,
-            public_key: uint8ArrayToHex(publicKey),
-            vault,
-            is_active: String(profile.user.is_active)
-          });
-          localStorage.setItem('isLoggedIn', 'true');
-          return { address };
-        }
-      } catch (profileErr) {
-        console.warn("Could not fetch profile during import", profileErr);
-      }
-    }
-  } catch (error) {
-    console.error('Network error during registration:', error);
+    profile = await fetchProfile(address.toLowerCase());
+  } catch (e) {
+    // profile not found – will register later
   }
 
-  saveUserData(userData);
+  if (!profile || !profile.user) {
+    // Register wallet (ignore duplicate errors)
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: address.toLowerCase(),
+          public_key: uint8ArrayToHex(publicKey),
+          role: "client"
+        })
+      });
+    } catch (error) {
+      console.warn('Wallet registration error (may be duplicate):', error);
+    }
+    // Fetch profile again after registration
+    try {
+      profile = await fetchProfile(address.toLowerCase());
+    } catch (e) {
+      console.warn('Could not fetch profile after registration:', e);
+    }
+  }
 
-  // Set login state so user can access home
+  if (profile && profile.user) {
+    // Save full profile data (including role, full_name, etc.)
+    saveUserData({
+      ...profile.user,
+      public_key: uint8ArrayToHex(publicKey),
+      vault,
+      is_active: String(profile.user.is_active)
+    });
+  } else {
+    // Fallback: generic user data
+    const userData = {
+      user_id: Math.random().toString(36).substr(2, 9),
+      public_key: uint8ArrayToHex(publicKey),
+      address: address.toLowerCase(),
+      vault,
+      role: "client",
+      is_active: "1",
+    };
+    saveUserData(userData);
+  }
+
   localStorage.setItem('isLoggedIn', 'true');
-
   return { address };
 };
 
@@ -222,68 +224,122 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
   return privateKey;
 };
 
-export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
-  try {
-    // Lấy Public Key từ Private Key
-    const cleanKey = privateKeyHex.replace(/^0x/i, '').replace(/\s+/g, '');
-    if (cleanKey.length !== 64) {
-      throw new Error(`Private key hex length must be exactly 64 characters. Got length: ${cleanKey.length}`);
-    }
-    const privateKey = secp.etc.hexToBytes(cleanKey);
-    const publicKeyBytes = secp.getPublicKey(privateKey, false);
-    
-    // Tạo địa chỉ
-    // Note: this assumes walletGenerator produces Ethereum-style keccak addresses. 
-    // Mượn logic tương tự trong utils
-    const { keccak_256 } = await import("@noble/hashes/sha3.js");
-    const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);
-
-    // Get Nonce
-    const nonceRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_NONCE}?address=${address.toLowerCase()}`);
-    if (!nonceRes.ok) throw new Error("Failed to fetch nonce");
-    const { nonce } = await nonceRes.json();
-
-    // Chuẩn bị msg_hash
-    const encoder = new TextEncoder();
-    const msgHashRaw = await crypto.subtle.digest("SHA-256", encoder.encode(nonce));
-    const msgHash = new Uint8Array(msgHashRaw);
-    const msgHex = bytesToHex(msgHash);
-
-    // Ký msg (với prehash: false vì chúng ta đã tự hash bằng WebCrypto)
-    const signatureRaw = secp.sign(msgHash, privateKey, { prehash: false });
-    const signatureHex = bytesToHex(signatureRaw);
-
-    // Verify
-    const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_LOGIN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        msg_hash: msgHex,
-        signature: signatureHex
-      }),
-    });
-
-    if (!verifyRes.ok) {
-      const errorData = await verifyRes.json();
-      throw new Error(errorData.message || "Invalid credentials");
-    }
-
-    const verifyData = await verifyRes.json();
-    if (verifyData.status === "success" && verifyData.user) {
-      localStorage.setItem('isLoggedIn', 'true');
-      saveUserData({
-        ...verifyData.user,
-        full_name: verifyData.user.full_name || 'MOET Admin',
-        is_active: "1" // Admin always active
-      });
-      return true;
-    }
-  } catch (error) {
-    console.error("Admin login failed:", error);
-    throw error;
+/**
+ * Lần đầu: Nhập Private Key để xác thực với server, sau đó mã hoá và lưu vault cục bộ.
+ * Những lần sau chỉ cần dùng adminUnlockVault() bằng mật khẩu.
+ */
+export const adminImportAndSaveVault = async (privateKeyHex: string, password: string) => {
+  const cleanKey = privateKeyHex.replace(/^0x/i, '').replace(/\s+/g, '');
+  if (cleanKey.length !== 64) {
+    throw new Error(`Private key phải đúng 64 ký tự hex. Hiện có: ${cleanKey.length}`);
   }
+
+  const privateKeyBytes = secp.etc.hexToBytes(cleanKey);
+  const publicKeyBytes = secp.getPublicKey(privateKeyBytes, false);
+  const { keccak_256 } = await import("@noble/hashes/sha3.js");
+  const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);
+
+  // Xác thực với server (challenge-response)
+  const nonceRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_NONCE}?address=${address.toLowerCase()}`);
+  if (!nonceRes.ok) throw new Error("Không lấy được nonce từ server");
+  const { nonce } = await nonceRes.json();
+
+  const encoder = new TextEncoder();
+  const msgHashRaw = await crypto.subtle.digest("SHA-256", encoder.encode(nonce));
+  const msgHash = new Uint8Array(msgHashRaw);
+  const msgHex = bytesToHex(msgHash);
+
+  const signatureRaw = secp.sign(msgHash, privateKeyBytes, { prehash: false });
+  const signatureHex = bytesToHex(signatureRaw);
+
+  const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_LOGIN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: address.toLowerCase(), msg_hash: msgHex, signature: signatureHex }),
+  });
+
+  if (!verifyRes.ok) {
+    const errData = await verifyRes.json();
+    throw new Error(errData.message || "Xác thực thất bại – địa chỉ không tồn tại hoặc sai khoá");
+  }
+
+  const verifyData = await verifyRes.json();
+  if (verifyData.status !== "success" || !verifyData.user) {
+    throw new Error("Tài khoản không hợp lệ");
+  }
+
+  // Kiểm tra quyền admin
+  const role = verifyData.user.role;
+  if (role !== 'moet' && role !== 'admin') {
+    throw new Error("Tài khoản này không có quyền quản trị MOET");
+  }
+
+  // Mã hoá private key → lưu vault riêng cho admin
+  const { encrypted, iv } = await encryptPrivateKey(privateKeyBytes, password);
+  const adminVault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
+  localStorage.setItem('admin_vault', JSON.stringify(adminVault));
+  localStorage.setItem('admin_address', address.toLowerCase());
+
+  // Lưu thông tin phiên
+  localStorage.setItem('isLoggedIn', 'true');
+  saveUserData({
+    ...verifyData.user,
+    full_name: verifyData.user.full_name || 'MOET Admin',
+    is_active: "1",
+  });
+
+  return true;
 };
+
+/**
+ * Những lần sau: Mở khoá admin vault bằng mật khẩu cục bộ (không cần private key nữa).
+ */
+export const adminUnlockVault = async (password: string) => {
+  const adminVaultRaw = localStorage.getItem('admin_vault');
+  const adminAddress = localStorage.getItem('admin_address');
+
+  if (!adminVaultRaw || !adminAddress) {
+    throw new Error("Chưa thiết lập tài khoản admin trên thiết bị này");
+  }
+
+  const vault = JSON.parse(adminVaultRaw);
+  // Thử giải mã – nếu sai mật khẩu sẽ throw (kết quả không cần dùng tiếp)
+  await decryptPrivateKey(vault, password);
+
+  // Lấy thông tin mới nhất từ server (đảm bảo vẫn còn quyền admin)
+  try {
+    const profile = await fetchProfile(adminAddress);
+    if (profile && profile.user) {
+      const role = profile.user.role;
+      if (role !== 'moet' && role !== 'admin') {
+        throw new Error("Tài khoản này không còn quyền quản trị");
+      }
+      saveUserData({ ...profile.user, is_active: "1" });
+    }
+  } catch (e: any) {
+    if (e.message?.includes('quyền')) throw e;
+    console.warn("[adminUnlockVault] Không thể lấy profile, dùng cache cục bộ:", e);
+  }
+
+  localStorage.setItem('isLoggedIn', 'true');
+  return true;
+};
+
+/** Đăng xuất Admin – xoá phiên nhưng GIỮ vault để đăng nhập lại bằng mật khẩu */
+export const adminLogout = (): void => {
+  localStorage.removeItem('isLoggedIn');
+  // Không xoá admin_vault và admin_address để lần sau dùng mật khẩu thôi
+};
+
+/** Xoá hoàn toàn Admin vault khỏi thiết bị (dùng khi muốn đổi tài khoản) */
+export const adminClearVault = (): void => {
+  localStorage.removeItem('admin_vault');
+  localStorage.removeItem('admin_address');
+  localStorage.removeItem('isLoggedIn');
+};
+
+/** @deprecated Dùng adminImportAndSaveVault thay thế */
+export const adminLoginWithPrivateKey = adminImportAndSaveVault;
 
 export const logoutUser = (): void => {
   localStorage.removeItem('isLoggedIn');

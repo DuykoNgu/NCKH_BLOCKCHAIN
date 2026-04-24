@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { adminService, type DashboardStats } from "@/services/adminService";
+import { Pagination, usePagination } from "@/components/ui/pagination";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -21,6 +22,7 @@ export default function NetworkPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [validators, setValidators] = useState<Validator[]>([]);
   const [loading, setLoading] = useState(true);
+  const { currentPage, setCurrentPage, itemsPerPage, paginate, handlePageSizeChange } = usePagination(5);
 
   const fetchData = async () => {
     setLoading(true);
@@ -112,41 +114,53 @@ export default function NetworkPage() {
                   <p className="text-sm">Chưa có validator nào trong hệ thống</p>
                 </div>
               ) : (
-                <div className="divide-y divide-border">
-                  {validators.map((validator) => (
-                    <div
-                      key={validator.address}
-                      className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${validator.is_active ? "bg-green-400/20" : "bg-yellow-400/20"}`}>
-                          <Server className={`h-5 w-5 ${validator.is_active ? "text-green-400" : "text-yellow-400"}`} />
+                <>
+                  <div className="divide-y divide-border">
+                    {paginate(validators).map((validator) => (
+                      <div
+                        key={validator.address}
+                        className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${validator.is_active ? "bg-green-400/20" : "bg-yellow-400/20"}`}>
+                            <Server className={`h-5 w-5 ${validator.is_active ? "text-green-400" : "text-yellow-400"}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {validator.org_name || "Trường Đại học"}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {validator.address.slice(0, 10)}...{validator.address.slice(-8)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {validator.org_name || "Trường Đại học"}
-                          </p>
-                          <p className="text-xs text-muted-foreground font-mono">
-                            {validator.address.slice(0, 10)}...{validator.address.slice(-8)}
-                          </p>
+                        <div className="flex items-center gap-4 shrink-0">
+                          {validator.is_active ? (
+                            <Badge variant="outline" className="bg-green-400/10 text-green-400 border-green-400/20">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Hoạt động
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-yellow-400/10 text-yellow-400 border-yellow-400/20">
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              Chờ duyệt
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 shrink-0">
-                        {validator.is_active ? (
-                          <Badge variant="outline" className="bg-green-400/10 text-green-400 border-green-400/20">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Hoạt động
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-yellow-400/10 text-yellow-400 border-yellow-400/20">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Chờ duyệt
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  <div className="px-6 pb-4">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalItems={validators.length}
+                      pageSize={itemsPerPage}
+                      onPageChange={setCurrentPage}
+                      onPageSizeChange={handlePageSizeChange}
+                      pageSizeOptions={[5, 10, 20]}
+                    />
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
