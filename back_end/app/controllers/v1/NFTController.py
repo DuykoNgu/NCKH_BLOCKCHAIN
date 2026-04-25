@@ -46,7 +46,7 @@ def create_nft():
         issued_at = data.get('issued_at')
         if issued_at:
             try:
-                issued_at = float(issued_at)
+                issued_at = int(issued_at)
             except (ValueError, TypeError):
                 issued_at = None
 
