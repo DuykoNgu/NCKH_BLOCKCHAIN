@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NFTService } from '@/services/nftService';
 import { useStorage } from '@/hooks/useStorage';
 import { usePassword } from '@/hooks/usePassword';
-import { calculatePdfHash, createSigningData, signDataWithBytes } from '@/utils/signatureUtils';
+import { calculatePdfHash, signDataWithBytes } from '@/utils/signatureUtils';
 import { decryptPrivateKey } from '@/utils/cryptoVault';
 import type { CreateNFTRequest } from '@/services/nftService';
 
@@ -98,7 +98,16 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     }
     clearPdfError();
   };
+const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
+  const sortedObj = {} as T;
+  const keys = Object.keys(obj).sort() as Array<keyof T>;
 
+  keys.forEach((key) => {
+    sortedObj[key] = obj[key];
+  });
+
+  return sortedObj;
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -140,17 +149,22 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       const privateKeyBytes = await decryptPrivateKey(vaultData, password);
 
       // Create signing data with current timestamp
-      const issuedAt = Date.now() / 1000; // seconds
-      const signingMetadata = {
-        degree_type: formData.degree_type,
-        pdf_url: formData.pdf_url,
-        pdf_hash: formData.pdf_hash,
-        institution_address: formData.institution_address,
-        issued_at: issuedAt,
-      };
+      const issuedAt = Math.floor(Date.now() / 1000); // seconds
 
-      // Create signing data string (same format as backend)
-      const signingData = createSigningData(signingMetadata);
+
+// Trong handleSubmit, hãy sửa lại đoạn tạo signingData:
+const signingMetadata = {
+  degree_type: formData.degree_type,
+  pdf_url: formData.pdf_url,
+  pdf_hash: formData.pdf_hash,
+  institution_address: formData.institution_address,
+  issued_at: issuedAt,
+};
+
+
+const sortedMetadata = sortObjectKeys(signingMetadata);
+
+const signingData = JSON.stringify(sortedMetadata);
       console.log('Signing data:', signingData);
 
       // Sign the data
@@ -165,7 +179,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       };
 
       console.log('Request data:', requestData);
-
+      
       const response = await NFTService.createNFT(requestData);
       if (response.success) {
         setResult({

@@ -105,7 +105,10 @@ export function createSigningData(metadata: {
     pdf_hash: metadata.pdf_hash,
     pdf_url: metadata.pdf_url,
   };
-  return JSON.stringify(data, null, 0).replace(/\s/g, "");
+  // IMPORTANT: DO NOT use .replace(/\s/g, "") - it removes spaces from string VALUES!
+  // "Bachelor of Science" becomes "BachelorofScience" which breaks signature!
+  // Match Python: json.dumps(data, sort_keys=True, separators=(',', ':'))
+  return JSON.stringify(data).replace(/:\s/g, ':').replace(/,\s/g, ',');
 }
 
 /**
@@ -150,12 +153,12 @@ export function signData(data: string, privateKeyHex: string): string {
  */
 export function signDataWithBytes(data: string, privateKeyBytes: Uint8Array): string {
   try {
-    // Hash the data with SHA256 (same as backend)
+    // Encode data to bytes (DO NOT hash - backend will hash during verification)
     const messageBytes = new TextEncoder().encode(data);
-    const messageHash = sha256(messageBytes);
 
-    // Sign with private key - returns Bytes (Uint8Array with r+s concatenated, 64 bytes)
-    const signatureBytes = secp.sign(messageHash, privateKeyBytes);
+    // Sign with private key - secp.sign will hash with SHA256 internally
+    // DO NOT pass prehashed data - let secp.sign handle hashing
+    const signatureBytes = secp.sign(messageBytes, privateKeyBytes);
 
     // Extract r and s (each 32 bytes)
     const rBytes = new Uint8Array(signatureBytes.slice(0, 32));
