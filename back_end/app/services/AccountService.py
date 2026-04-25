@@ -80,14 +80,16 @@ class AccountService:
                 return False, None, "Account already exists"
 
             now = datetime.datetime.now()
-            created_at = now.strftime("%d/%m/%Y %H:%M:%S")
+            
+            # Default is_active=1 for CLIENT/MOET, is_active=0 for VALIDATOR (pending approval)
+            is_active = 0 if role == Role.VALIDATOR else 1
 
             account = Account(
-                address=address,
-                public_key=public_key,
-                role=role,
-                is_active=1,
-                created_at=created_at,
+                address= address,
+                public_key= public_key,
+                role = role,
+                is_active=is_active,
+                created_at=now.strftime("%d/%m/%Y %H:%M:%S")
             )
 
             # 1. Write to local DB immediately (fast UX)
@@ -172,9 +174,7 @@ class AccountService:
             return False, f"Verification error: {str(e)}"
 
     @staticmethod
-    def update_profile(
-        address: str, full_name: str = None, avatar_url: str = None
-    ) -> Tuple[bool, Optional[Account], str]:
+    def update_profile(address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
         """Update account profile (name and avatar)"""
         address = address.lower()
         logger.info(f"Updating profile for address: {address}")
@@ -190,8 +190,15 @@ class AccountService:
                 account.full_name = full_name
             if avatar_url is not None:
                 account.avatar_url = avatar_url
-
-            # 1. Write to local DB immediately (fast UX)
+            if tax_id is not None:
+                account.tax_id = tax_id
+            if representative is not None:
+                account.representative = representative
+            if email is not None:
+                account.email = email
+            if phone is not None:
+                account.phone = phone
+                
             success = AccountRepository.update_account(account)
             if not success:
                 return False, None, "Failed to update profile in database"

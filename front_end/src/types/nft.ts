@@ -3,7 +3,9 @@ export interface NFTMetadata {
   degree_type: string;
   pdf_url: string;
   pdf_hash: string;
-  institution: string;
+  institution?: string;
+  institution_address?: string;
+  issued_at?: string;
 }
 
 export interface NFT {
@@ -11,7 +13,7 @@ export interface NFT {
   issuer_pubkey: string;
   recipient_address: string;
   is_valid: boolean;
-  minted_at: string;
+  minted_at: number;
   metadata?: NFTMetadata;
   issuer_signature?: string;
 }
@@ -21,9 +23,12 @@ export interface CreateNFTRequest {
   student_id: string;
   degree_type: string;
   pdf_url: string;
+  pdf_hash: string;
   institution: string;
+  institution_address: string;
   recipient_address: string;
-  issuer_private_key?: string;
+  signature?: string;
+  issued_at?: number;
 }
 
 export interface VerifyResult {

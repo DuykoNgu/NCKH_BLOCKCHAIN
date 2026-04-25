@@ -4,7 +4,7 @@ import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import { createWallet } from '@/services/authService';
+import { createWallet, registerSchool, clearOldSession } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
@@ -13,7 +13,7 @@ const LoginPage = () => {
   const { type } = useParams<{ type?: string }>();
   
   // Use state to properly trigger re-render when URL changes
-  const [step, setStep] = useState<'home' | 'import' | 'set-password'>('home');
+  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register'>('home');
   const [showSeed, setShowSeed] = useState(false);
   
   const [seed, setSeed] = useState<string[]>([]);
@@ -22,13 +22,25 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [taxId, setTaxId] = useState('');
+  const [representative, setRepresentative] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   // Update step when URL type changes
   useEffect(() => {
     if (type === 'existing') {
+      const hasWallet = !!localStorage.getItem('address');
+      if (!hasWallet) {
+        navigate('/login', { replace: true });
+        return;
+      }
       setStep('import');
     } else if (type === 'new') {
       setStep('set-password');
+    } else if (type === 'school') {
+      setStep('school-register');
     } else {
       setStep('home');
     }
@@ -37,6 +49,11 @@ const LoginPage = () => {
     setSeed([]);
     setPassword('');
     setConfirmPassword('');
+    setSchoolName('');
+    setTaxId('');
+    setRepresentative('');
+    setEmail('');
+    setPhone('');
     setError('');
   }, [type]);
 
@@ -50,11 +67,21 @@ const LoginPage = () => {
     setError('');
 
     try {
-      const result = await createWallet(password);
+      let result;
+      if (step === 'school-register') {
+        if (!taxId || !representative || !email || !phone) {
+          setError('Vui lòng điền đầy đủ các thông tin pháp lý');
+          setIsLoading(false);
+          return;
+        }
+        result = await registerSchool(password, schoolName, taxId, representative, email, phone);
+      } else {
+        result = await createWallet(password);
+      }
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
     } catch (err) {
-      setError('Tạo ví thất bại. Vui lòng thử lại.');
+      setError('Tạo tài khoản thất bại. Vui lòng thử lại.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -111,23 +138,43 @@ const LoginPage = () => {
 
     // Render import/login page
     if (step === 'import') {
+      const address = localStorage.getItem('address');
+      
+      const handleClearWallet = () => {
+        clearOldSession();
+        window.location.reload(); 
+      };
+
       return (
         <ImportWallet
           error={error}
           isLoading={isLoading}
           showPassword={showPassword}
           password={password}
+          currentAddress={address}
           onPasswordChange={setPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           onLogin={handleLogin}
           onBack={() => navigate('/login')}
+          onClearWallet={handleClearWallet}
         />
       );
     }
 
-    // Render create password page
+    // Render create password / school page
     return (
       <CreateWallet
+        isSchool={step === 'school-register'}
+        schoolName={schoolName}
+        onSchoolNameChange={setSchoolName}
+        taxId={taxId}
+        onTaxIdChange={setTaxId}
+        representative={representative}
+        onRepresentativeChange={setRepresentative}
+        email={email}
+        onEmailChange={setEmail}
+        phone={phone}
+        onPhoneChange={setPhone}
         error={error}
         isLoading={isLoading}
         showPassword={showPassword}

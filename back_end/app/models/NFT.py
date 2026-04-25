@@ -20,7 +20,7 @@ class NFT:
         seed = f"{self.metadata.get_signing_data()}|{owner_address.address}"
         self.token_id = HashUtils.hash_sha256(seed)
         self.issuer_signature: Optional[str] = None
-        self.minted_at = datetime.datetime.utcnow().isoformat()
+        self.minted_at = datetime.datetime.utcnow().timestamp()
         self.is_valid = True
 
 
@@ -31,11 +31,12 @@ class NFT:
             "issuer_address": self.issuer_address,
             "issuer_pubkey": self.issuer_pubkey,
             "metadata": self.metadata.to_dict(),
-            "owner_address": self.owner_address.to_dict(),
+            # Dữ liệu phẳng cho FE
+            "recipient_address": self.owner_address.address if hasattr(self.owner_address, 'address') else self.owner_address,
+            "recipient_name": getattr(self.owner_address, 'full_name', 'Unknown') if hasattr(self.owner_address, 'full_name') else "Unknown",
             "issuer_signature": self.issuer_signature,
             "is_valid": self.is_valid,
             "minted_at": self.minted_at,
-
         }
 
     @staticmethod
