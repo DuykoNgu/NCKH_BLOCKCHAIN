@@ -34,6 +34,13 @@ class NFTmetadata:
                "issued_at": self.issued_at
           }
           return json.dumps(data, sort_keys= True,separators=(',', ':'))
+     
+     def hash_metadata(self) -> str:
+          """Hash the metadata using SHA256"""
+          from app.utils.HashUtils import HashUtils
+          metadata_json = json.dumps(self.to_dict(), sort_keys=True, separators=(',', ':'))
+          return HashUtils.hash_sha256(metadata_json)
+     
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return NFTmetadata(**data)

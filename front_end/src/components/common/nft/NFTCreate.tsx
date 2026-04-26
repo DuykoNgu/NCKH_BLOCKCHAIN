@@ -38,7 +38,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     issuer_id: '',
     student_id: '',
     degree_type: '',
-    pdf_url: 'https://www.facebook.com/',
+    pdf_url: '',
     pdf_hash: '',
     institution: '',
     institution_address: account,
