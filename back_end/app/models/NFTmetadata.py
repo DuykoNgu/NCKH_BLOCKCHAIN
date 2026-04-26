@@ -5,8 +5,10 @@ import time
 
 class NFTmetadata:
      def __init__(self,
-                  degree_type: str, pdf_url: str, pdf_hash: str, institution_address: str, issued_at: Optional[float] = None):
+                  degree_type: str, pdf_url: str, pdf_hash: str, institution_address: str, issued_at: Optional[float] = None,institution: str = None, student_id: str = None):
           self.degree_type = degree_type
+          self.student_id = student_id
+          self.institution = institution
           self.pdf_url = pdf_url  
           self.pdf_hash = pdf_hash
           self.institution_address = institution_address
@@ -15,6 +17,8 @@ class NFTmetadata:
      def to_dict(self) -> Dict[str, Any]:
           return {
                "degree_type": self.degree_type,
+               "student_id": self.student_id,
+               "institution": self.institution,
                "pdf_url": self.pdf_url,
                "pdf_hash": self.pdf_hash,
                "institution_address": self.institution_address,

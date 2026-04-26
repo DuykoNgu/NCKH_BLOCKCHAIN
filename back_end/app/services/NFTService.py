@@ -57,7 +57,10 @@ class NFTService:
     def get_all_nfts() -> List[NFT]:
         """Lấy tất cả NFT trong hệ thống"""
         return NFTRepository.get_all_nfts()
-    
+    @staticmethod
+    def get_nft_by_issuer(issuer_address: str) -> List[NFT]:
+        """Lấy tất cả NFT do một issuer phát hành"""
+        return NFTRepository.get_nft_by_issuer(issuer_address)
     @staticmethod
     def get_nft_by_id(token_id : str) -> NFT:
         return NFTRepository.get_nft_by_id(token_id)

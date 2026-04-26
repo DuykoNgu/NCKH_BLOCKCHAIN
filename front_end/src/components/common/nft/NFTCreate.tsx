@@ -38,7 +38,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     issuer_id: '',
     student_id: '',
     degree_type: '',
-    pdf_url: '',
+    pdf_url: 'https://www.facebook.com/',
     pdf_hash: '',
     institution: '',
     institution_address: account,
@@ -176,6 +176,8 @@ const signingData = JSON.stringify(sortedMetadata);
         ...formData,
         issued_at: issuedAt,
         signature: signature,
+        institution: formData.institution,
+        student_id: formData.student_id,
       };
 
       console.log('Request data:', requestData);

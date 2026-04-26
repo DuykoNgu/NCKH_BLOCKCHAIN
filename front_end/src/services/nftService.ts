@@ -9,8 +9,8 @@ class NFTServiceClass {
     try {
       const response = await api.post(NFT_SERVER.CREATE, data);
       return response.data;
-    } catch (error: any) {
-      return { success: false, error: error.response?.data?.error || error.message };
+    } catch (error: unknown) {
+      return { success: false, error: (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message };
     }
   }
 
@@ -18,8 +18,8 @@ class NFTServiceClass {
     try {
       const response = await api.get(NFT_SERVER.GET_BY_ID.replace(':tokenId', tokenId));
       return response.data;
-    } catch (error: any) {
-      return { error: error.response?.data?.error || error.message };
+    } catch (error: unknown) {
+      return { error: (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message };
     }
   }
 
@@ -27,8 +27,8 @@ class NFTServiceClass {
     try {
       const response = await api.get(NFT_SERVER.GET_STUDENT_NFTS.replace(':studentId', studentId));
       return response.data;
-    } catch (error: any) {
-      throw error;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
   }
 
@@ -36,8 +36,8 @@ class NFTServiceClass {
     try {
       const response = await api.get(NFT_SERVER.GET_USER_NFTS.replace(':recipientAddress', recipientAddress));
       return response.data;
-    } catch (error: any) {
-      throw error;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
   }
 
@@ -45,17 +45,27 @@ class NFTServiceClass {
     try {
       const response = await api.get(NFT_SERVER.GET_ALL);
       return response.data;
-    } catch (error: any) {
-      throw error;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
+  }
+
+  async getNFTsByIssuer(issuerAddress: string): Promise<{total: number; nfts: NFT[]}>{
+    try{
+      const response = await api.get(NFT_SERVER.GET_BY_ISSUER.replace(':issuer_address', issuerAddress));
+      return response.data;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
+    }
+    
   }
 
   async verifyNFT(tokenId: string): Promise<VerifyResult> {
     try {
       const response = await api.post(NFT_SERVER.VERIFY.replace(':tokenId', tokenId));
       return response.data;
-    } catch (error: any) {
-      throw error;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
   }
 
@@ -63,17 +73,17 @@ class NFTServiceClass {
     try {
       const response = await api.post(NFT_SERVER.REVOKE.replace(':tokenId', tokenId));
       return response.data;
-    } catch (error: any) {
-      return { error: error.response?.data?.error || error.message };
+    } catch (error: unknown) {
+      return { error: (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message };
     }
   }
 
-  async verifyBatchNFTs(tokenIds: string[]): Promise<any> {
+  async verifyBatchNFTs(tokenIds: string[]): Promise<unknown> {
     try {
       const response = await api.post(NFT_SERVER.VERIFY_BATCH, { token_ids: tokenIds });
       return response.data;
-    } catch (error: any) {
-      throw error;
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
   }
 
@@ -81,8 +91,8 @@ class NFTServiceClass {
     try {
       const response = await api.get(NFT_SERVER.GET_METADATA_HASH.replace(':tokenId', tokenId));
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.error || error.message);
+    } catch (error: unknown) {
+      throw (error as { response?: { data?: { error?: string } } }).response?.data?.error || (error as Error).message;
     }
   }
 }

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
     degree_type TEXT,
     pdf_url TEXT,
     pdf_hash TEXT,
+    student_id TEXT,
+    institution TEXT,
     institution_address TEXT,
     issued_at REAL,
     FOREIGN KEY (institution_address) REFERENCES account(address)

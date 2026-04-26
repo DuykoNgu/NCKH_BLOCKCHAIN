@@ -3,9 +3,9 @@ export interface NFTMetadata {
   degree_type: string;
   pdf_url: string;
   pdf_hash: string;
-  institution?: string;
-  institution_address?: string;
-  issued_at?: string;
+  institution: string;
+  institution_address: string;
+  issued_at: string;
 }
 
 export interface NFT {
@@ -14,7 +14,7 @@ export interface NFT {
   recipient_address: string;
   is_valid: boolean;
   minted_at: number;
-  metadata?: NFTMetadata;
+  metadata: NFTMetadata;
   issuer_signature?: string;
 }
 

@@ -59,7 +59,9 @@ def create_nft():
         )
         
         message_to_verify = metadata.get_signing_data()
-
+        metadata.institution = data['institution']
+        metadata.student_id = data['student_id']
+      
         is_authentic = CryptoUtils.verify_signature(
             data= message_to_verify,
             signature_hex=data['signature'],
@@ -187,6 +189,16 @@ def get_all_nfts():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@nft_bp.route('/issuer/<issuer_address>', methods=['GET'])
+def get_nfts_by_issuer(issuer_address: str):
+    try:
+        nfts= NFTService.get_nft_by_issuer(issuer_address)
+        return jsonify({
+            "total": len(nfts),
+            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @nft_bp.route('/<token_id>/verify', methods=['POST'])
 def verify_nft(token_id: str):
