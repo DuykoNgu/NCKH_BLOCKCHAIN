@@ -33,7 +33,7 @@ export async function generateWallet() {
   const privateKey = new Uint8Array(hash);
 
   // 5. Private Key → Public Key (uncompressed 65 bytes)
-  const publicKey = secp.getPublicKey(privateKey);
+  const publicKey = secp.getPublicKey(privateKey, false); // false = uncompressed
 
   // 6. Public Key → Address (Keccak-256, lấy 20 bytes cuối)
   // Public key uncompressed: byte đầu là 0x04, bỏ đi → lấy 64 bytes còn lại
@@ -57,7 +57,7 @@ export async function restoreWallet(mnemonic: string) {
   const seed = await bip39.mnemonicToSeed(mnemonic);
   const hash = await crypto.subtle.digest("SHA-256", seed.slice(0, 32));
   const privateKey = new Uint8Array(hash);
-  const publicKey = secp.getPublicKey(privateKey);
+  const publicKey = secp.getPublicKey(privateKey, false); // false = uncompressed
   const address = "0x" + bytesToHex(keccak_256(publicKey.slice(1))).slice(-40);
 
   return { mnemonic, privateKey, publicKey, address };

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
     degree_type TEXT,
     pdf_url TEXT,
     pdf_hash TEXT,
+    student_id TEXT,
+    institution TEXT,
     institution_address TEXT,
     issued_at REAL,
     FOREIGN KEY (institution_address) REFERENCES account(address)
@@ -29,6 +31,10 @@ CREATE TABLE IF NOT EXISTS account (
     org_name TEXT,
     full_name TEXT,
     avatar_url TEXT,
+    tax_id TEXT,
+    representative TEXT,
+    email TEXT,
+    phone TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
@@ -126,6 +132,26 @@ def init_db():
           
      try:
           cursor.execute("ALTER TABLE account ADD COLUMN avatar_url TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN tax_id TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN representative TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN email TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN phone TEXT")
      except sqlite3.OperationalError:
           pass
           

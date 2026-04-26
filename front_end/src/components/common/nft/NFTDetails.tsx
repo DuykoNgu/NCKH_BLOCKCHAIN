@@ -157,81 +157,86 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Metadata Info */}
+        {/* Metadata Info - Friendly for all users */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">ID Sinh viên</p>
-            <p className="font-medium">{nft.metadata?.student_id || '-'}</p>
-          </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Loại bằng cấp</p>
             <p className="font-medium">{nft.metadata?.degree_type || '-'}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Tổ chức phát hành</p>
-            <p className="font-medium">{nft.metadata?.institution || '-'}</p>
+            <p className="text-xs text-muted-foreground">Đơn vị cấp phát</p>
+            <p className="font-medium">{nft.metadata?.institution_address || nft.metadata?.institution || '-'}</p>
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Ngày cấp phát</p>
             <p className="font-medium">
-              {nft.minted_at ? new Date(nft.minted_at).toLocaleDateString('vi-VN') : '-'}
+              {nft.minted_at ? new Date(nft.minted_at * 1000).toLocaleDateString('vi-VN') : '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Trạng thái</p>
+            <p className={`font-medium ${nft.is_valid ? 'text-green-500' : 'text-destructive'}`}>
+              {nft.is_valid ? 'Đang hiệu lực' : 'Đã thu hồi'}
             </p>
           </div>
         </div>
 
-        <Separator />
-
-        {/* Blockchain Info */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
-            Bằng chứng Pháp lý (Blockchain)
-          </h4>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Mã định danh duy nhất (UUID)</p>
-                <p className="font-mono text-sm">{formatAddress(nft.token_id)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.token_id, 'Mã số')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Địa chỉ người nhận</p>
-                <p className="font-mono text-sm">{formatAddress(nft.recipient_address)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.recipient_address, 'Địa chỉ')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Chữ ký số Đơn vị cấp phát</p>
-                <p className="font-mono text-sm">{formatAddress(nft.issuer_pubkey)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.issuer_pubkey, 'Chữ ký')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {metadataHash && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div>
-                  <p className="text-xs text-muted-foreground">Mã băm dữ liệu gốc (Integrity Hash)</p>
-                  <p className="font-mono text-sm">{formatAddress(metadataHash)}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(metadataHash, 'Mã băm')}>
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+        {/* Mã văn bằng - Shown to all */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+          <div>
+            <p className="text-xs text-muted-foreground">Mã văn bằng</p>
+            <p className="font-mono text-sm">{formatAddress(nft.token_id)}</p>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.token_id, 'Mã văn bằng')}>
+            <Copy className="w-4 h-4" />
+          </Button>
         </div>
+
+        {/* Blockchain Proof - Only shown to admin/validator */}
+        {!isUser && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                Thông tin xác thực kỹ thuật
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Địa chỉ ví người nhận</p>
+                    <p className="font-mono text-sm">{formatAddress(nft.recipient_address || '-')}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.recipient_address || '', 'Địa chỉ')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Khoá công khai đơn vị cấp phát</p>
+                    <p className="font-mono text-sm">{formatAddress(nft.issuer_pubkey)}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.issuer_pubkey, 'Khóa công khai')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {metadataHash && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Mã xác thực tính toàn vẹn</p>
+                      <p className="font-mono text-sm">{formatAddress(metadataHash)}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(metadataHash, 'Mã xác thực')}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* PDF Link */}
         {nft.metadata?.pdf_url && (

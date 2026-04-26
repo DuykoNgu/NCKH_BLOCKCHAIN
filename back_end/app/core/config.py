@@ -24,3 +24,8 @@ DATABASE_PATH = os.getenv("DATABASE_PATH", "NCKH_educhain.db")
 SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
 SERVER_PORT = int(os.getenv("SERVER_PORT", "5000"))
 DEBUG_MODE = os.getenv("DEBUG_MODE", "True").lower() == "true"
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")

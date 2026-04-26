@@ -21,7 +21,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
   const fetchNFTs = async () => {
     setIsLoading(true);
     try {
-      const response = await NFTService.getAllNFTs();
+      const issuerAddress = localStorage.getItem('address');
+      const response = await NFTService.getNFTsByIssuer(issuerAddress || '');
       setNfts(response.nfts || []);
       setFilteredNfts(response.nfts || []);
     } catch (error) {
@@ -41,7 +42,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
         (nft) =>
           nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
           nft.metadata?.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata?.institution.toLowerCase().includes(searchTerm.toLowerCase())
+          nft.metadata.institution.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredNfts(filtered);
     } else {
@@ -145,7 +146,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {nft.minted_at ? formatDate(nft.minted_at) : '-'}
+                          {nft.minted_at ? formatDate((nft.minted_at * 1000).toString()) : '-'}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm">
