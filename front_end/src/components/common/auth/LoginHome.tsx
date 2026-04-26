@@ -21,6 +21,7 @@ const LoginHome = () => {
           <LoginButton 
             onCreateWallet={() => navigate('/login/new')} 
             onImportWallet={() => navigate('/login/existing')} 
+            onRegisterSchool={() => navigate('/login/school')}
           />
 
           <div className="w-full mt-8 pt-8 border-t border-border/50">

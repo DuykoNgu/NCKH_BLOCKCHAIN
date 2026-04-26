@@ -7,6 +7,20 @@ from pathlib import Path
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional
 
+class SafeRotatingFileHandler(RotatingFileHandler):
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass
+
+class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass
+
 try:
     from pythonjsonlogger import jsonlogger
     JSON_LOGGER_AVAILABLE = True
@@ -112,7 +126,7 @@ def get_logger(
 
     # ==================== 2. File Handler - Rotate theo dung lượng ====================
     if LOG_TO_FILE:
-        all_file_handler = RotatingFileHandler(
+        all_file_handler = SafeRotatingFileHandler(
             LOG_DIR / "app.log",
             maxBytes=10_000_000,    # 10MB
             backupCount=10,
@@ -127,7 +141,7 @@ def get_logger(
         daily_dir = LOG_DIR / "daily"
         daily_dir.mkdir(parents=True, exist_ok=True)  # Tạo thư mục con
 
-        daily_handler = TimedRotatingFileHandler(
+        daily_handler = SafeTimedRotatingFileHandler(
             filename=str(daily_dir / "app.log"),  # str() để tránh lỗi Path trên Windows
             when="midnight",
             interval=1,
@@ -148,7 +162,7 @@ def get_logger(
 
 
     # ==================== 4. Error-only File ====================
-    error_handler = RotatingFileHandler(
+    error_handler = SafeRotatingFileHandler(
         LOG_DIR / "error.log",
         maxBytes=5_000_000,
         backupCount=10,

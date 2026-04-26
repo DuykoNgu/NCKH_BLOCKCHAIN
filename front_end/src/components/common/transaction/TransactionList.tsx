@@ -112,7 +112,6 @@ export const TransactionList = () => {
                   <p className="font-medium text-foreground">
                     {activity.title}
                   </p>
-                  <p className="text-sm text-muted-foreground">{activity.address}</p>
                 </div>
               </div>
               <div className="text-right">

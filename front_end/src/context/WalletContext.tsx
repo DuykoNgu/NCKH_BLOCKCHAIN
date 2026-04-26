@@ -36,7 +36,20 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const lock = useCallback(() => {
     setPrivateKey(null);
+    setAddress(null);
+    setPublicKey(null);
+    
+    // Clear all session-related data
     localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("role");
+    localStorage.removeItem("address");
+    localStorage.removeItem("public_key");
+    localStorage.removeItem("full_name");
+    localStorage.removeItem("is_active");
+    localStorage.removeItem("avatar_url");
+    localStorage.removeItem("vault");
+    
+    console.log('[WalletContext] Session cleared properly');
   }, []);
 
   return (
