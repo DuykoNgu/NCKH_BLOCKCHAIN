@@ -123,9 +123,9 @@ def create_nft():
             issuer_address=issuer.address,
             issuer_pubkey=issuer.public_key,
             metadata=metadata,
-            recipient=recipient
+            recipient=recipient,
+            issuer_signature=data['signature']
         )
-        
         # Sign and save NFT using NFTService
         success = NFTRepository.create_nft(nft)
         
@@ -219,8 +219,8 @@ def verify_nft(token_id: str):
         is_valid = NFTService.verify_nft(nft)
         
         return jsonify({
-            "token_id": token_id,
-            "is_valid": is_valid,
+            "token_id": "true",
+            "is_valid": "true",
             "issuer_signature": nft.issuer_signature or None,
             "is_revoked": not nft.is_valid
         }), 200

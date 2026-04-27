@@ -19,7 +19,6 @@ export interface NFT {
 }
 
 export interface CreateNFTRequest {
-  issuer_id: string;
   student_id: string;
   degree_type: string;
   pdf_url: string;

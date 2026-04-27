@@ -11,13 +11,14 @@ class NFTService:
 
     @staticmethod
     def create_nft(issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, 
-                   recipient: Account) -> NFT:
+                   recipient: Account, issuer_signature: Optional[str] = None) -> NFT:
         """Tạo NFT mới"""
         nft = NFT(
             issuer_address=issuer_address,
             issuer_pubkey=issuer_pubkey,
             metadata=metadata,
-            owner_address=recipient
+            owner_address=recipient,
+            issuer_signature=issuer_signature
         )
         return nft
 
@@ -39,14 +40,21 @@ class NFTService:
         if not nft.issuer_signature:
             return False
         
-        nft_data = {
-            "token_id": nft.token_id,
-            "metadata": nft.metadata.to_dict(),
-            "owner_address": nft.owner_address.address
-        }
-        nft_data_bytes = json.dumps(nft_data, sort_keys=True).encode()
-        return CryptoUtils.verify_signature(nft_data_bytes, nft.issuer_signature, nft.issuer_pubkey)
-
+        metadata = NFTmetadata(
+            degree_type=nft.metadata.degree_type,
+            pdf_url=nft.metadata.pdf_url,
+            pdf_hash=nft.metadata.pdf_hash,
+            institution_address=nft.metadata.institution_address,
+            issued_at=nft.metadata.issued_at
+        )
+        print("Verifying NFT with metadata:", metadata.to_dict())
+        message_to_verify = metadata.get_signing_data()
+        is_authentic = CryptoUtils.verify_signature(
+            data= message_to_verify,
+            signature_hex=nft.issuer_signature,
+            public_key_hex=nft.issuer_pubkey
+        )
+        return is_authentic
 
     @staticmethod
     def get_user_nfts(recipient_address: str) -> List[NFT]:

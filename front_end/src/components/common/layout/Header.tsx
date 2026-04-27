@@ -1,4 +1,4 @@
-import { ShieldCheck, User as UserIcon } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
 export const Header = () => {

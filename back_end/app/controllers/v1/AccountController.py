@@ -31,6 +31,13 @@ def register():
     address = data.get('address')
     public_key = data.get('public_key')
     role_str = data.get('role', 'client')
+
+    # Thông tin bổ sung (dành cho validator/trường học)
+    full_name = data.get('full_name')
+    tax_id = data.get('tax_id')
+    representative = data.get('representative')
+    email = data.get('email')
+    phone = data.get('phone')
     
     # Convert string to Role enum
     role_map = {
@@ -40,7 +47,14 @@ def register():
     }
     role = role_map.get(role_str.lower(), Role.CLIENT)
 
-    success, account, message = AccountService.register_account(address, public_key, role)
+    success, account, message = AccountService.register_account(
+        address, public_key, role,
+        full_name=full_name,
+        tax_id=tax_id,
+        representative=representative,
+        email=email,
+        phone=phone
+    )
 
     if success:
         return {

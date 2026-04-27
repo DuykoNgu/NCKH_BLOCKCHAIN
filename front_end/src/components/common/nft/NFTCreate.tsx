@@ -34,17 +34,17 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pdfHash, setPdfHash] = useState<string>('');
+  const fullname = localStorage.getItem('full_name') || 'Người dùng';
   const [formData, setFormData] = useState<CreateNFTRequest>({
-    issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
     pdf_hash: '',
-    institution: '',
+    institution: fullname,
     institution_address: account,
     recipient_address: account,
   });
-
+ 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -191,14 +191,13 @@ const signingData = JSON.stringify(sortedMetadata);
         });
         // Reset form
         setFormData({
-          issuer_id: '',
           student_id: '',
           degree_type: '',
           pdf_url: '',
           pdf_hash: '',
           institution: '',
           institution_address: account,
-          recipient_address: account,
+          recipient_address: '',
         });
         setSelectedFile(null);
         setPdfHash('');
@@ -247,17 +246,6 @@ const signingData = JSON.stringify(sortedMetadata);
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="issuer_id">ID Người phát hành</Label>
-              <Input
-                id="issuer_id"
-                placeholder="VD: teacher_001"
-                value={formData.issuer_id}
-                onChange={(e) => setFormData({ ...formData, issuer_id: e.target.value })}
-                required
-                className="bg-background/50"
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="student_id">ID Sinh viên</Label>
               <Input
                 id="student_id"
@@ -268,9 +256,7 @@ const signingData = JSON.stringify(sortedMetadata);
                 className="bg-background/50"
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
+                   <div className="space-y-2 ">
             <Label htmlFor="degree_type">Loại bằng cấp</Label>
             <Select
               value={formData.degree_type}
@@ -288,16 +274,16 @@ const signingData = JSON.stringify(sortedMetadata);
               </SelectContent>
             </Select>
           </div>
+          </div>
 
+  
           <div className="space-y-2">
             <Label htmlFor="institution">Tổ chức/Trường</Label>
             <Input
               id="institution"
-              placeholder="VD: Harvard University"
-              value={formData.institution}
-              onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-              required
-              className="bg-background/50"
+              value={formData.institution} 
+              readOnly 
+              className="bg-muted cursor-not-allowed" 
             />
           </div>
 
@@ -305,14 +291,22 @@ const signingData = JSON.stringify(sortedMetadata);
             <Label htmlFor="institution_address">Địa chỉ ví tổ chức</Label>
             <Input
               id="institution_address"
+              value={formData.institution_address} 
+              readOnly 
+              className="bg-muted cursor-not-allowed" 
+            />
+          </div>
+                  <div className="space-y-2">
+            <Label htmlFor="recipient_address">Địa chỉ định danh người nhận</Label>
+            <Input
+              id="recipient_address"
               placeholder="0x..."
-              value={formData.institution_address}
-              onChange={(e) => setFormData({ ...formData, institution_address: e.target.value })}
+              value={formData.recipient_address}
+              onChange={(e) => setFormData({ ...formData, recipient_address: e.target.value })}
               required
               className="bg-background/50 font-mono text-sm"
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="pdf_file">Upload Chứng chỉ (PDF)</Label>
             <div className="relative">
@@ -389,18 +383,6 @@ const signingData = JSON.stringify(sortedMetadata);
                 required
               />
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="recipient_address">Địa chỉ định danh người nhận</Label>
-            <Input
-              id="recipient_address"
-              placeholder="0x..."
-              value={formData.recipient_address}
-              onChange={(e) => setFormData({ ...formData, recipient_address: e.target.value })}
-              required
-              className="bg-background/50 font-mono text-sm"
-            />
           </div>
 
           {result && (
