@@ -33,7 +33,7 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
         <ArrowLeft size={16} className="mr-1" /> Quay lại
       </button>
 
-      <h2 className="font-display text-xl font-bold text-foreground mb-1">Đăng nhập tài khoản cũ</h2>
+      <h2 className="font-display text-xl font-bold text-foreground mb-1">Khôi phục tài khoản</h2>
       <p className="text-sm text-muted-foreground mb-6">
         Nhập 12 từ khóa bí mật (Mnemonic) để khôi phục quyền truy cập vào hồ sơ của bạn.
       </p>
@@ -97,7 +97,7 @@ const ImportMnemonic = ({ error, isLoading, onImport, onBack }: ImportMnemonicPr
           disabled={isLoading || !isFormValid}
           className="w-full h-12 rounded-xl font-display font-semibold text-sm mt-4"
         >
-          {isLoading ? 'Đang xác thực...' : 'Bắt đầu đăng nhập'}
+          {isLoading ? 'Đang xác thực...' : 'Khôi phục & Đặt mật khẩu'}
           <ShieldCheck size={16} className="ml-2" />
         </Button>
       </form>

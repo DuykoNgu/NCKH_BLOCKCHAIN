@@ -30,6 +30,7 @@ def register():
     address = data.get('address')
     public_key = data.get('public_key')
     role_str = data.get('role', 'client')
+    vault = data.get('vault')
     
     # Convert string to Role enum
     role_map = {
@@ -39,7 +40,7 @@ def register():
     }
     role = role_map.get(role_str.lower(), Role.CLIENT)
 
-    success, account, message = AccountService.register_account(address, public_key, role)
+    success, account, message = AccountService.register_account(address, public_key, role, vault)
 
     if success:
         return {
@@ -119,12 +120,21 @@ def update_profile():
             "message": message,
             "user": account.to_dict()
         }), 200
+
+@user_bp.route('/auth/update_vault', methods=['POST'])
+def update_vault():
+    data = request.json
+    address = data.get('address')
+    vault = data.get('vault')
+    
+    if not address or not vault:
+        return jsonify({"error": "Missing address or vault"}), 400
+        
+    success, message = AccountService.update_vault(address, vault)
+    if success:
+        return jsonify({"status": "success", "message": message}), 200
     else:
-        print(f"DEBUG: update_profile failed: {message}")
-        return jsonify({
-            "status": "fail",
-            "error": message
-        }), 400
+        return jsonify({"status": "fail", "error": message}), 400
 
 @user_bp.route('/pending_validators', methods=['GET'])
 def get_pending_validators():
@@ -200,7 +210,7 @@ def reject_validator():
 
 @user_bp.route('/profile/<address>', methods=['GET'])
 def get_profile(address):
-    account = AccountService.get_account_by_address(address.lower())
+    account = AccountService.get_account_by_address(address)
     if not account:
         return jsonify({"error": "Account not found"}), 404
         
@@ -216,6 +226,7 @@ def get_profile(address):
             "tax_id": account.tax_id,
             "representative": account.representative,
             "email": account.email,
-            "phone": account.phone
+            "phone": account.phone,
+            "vault": account.vault
         }
     }), 200

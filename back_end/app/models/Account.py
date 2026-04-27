@@ -10,6 +10,7 @@ class Account:
      def __init__(self, public_key: str, address: str, role: Role, org_name: str = None, 
                   full_name: str = None, avatar_url: str = None,
                   tax_id: str = None, representative: str = None, email: str = None, phone: str = None,
+                  vault: str = None,
                   is_active: int = 1, created_at: str = None):
           self.public_key = public_key
           self.address = address
@@ -21,6 +22,7 @@ class Account:
           self.representative = representative
           self.email = email
           self.phone = phone
+          self.vault = vault
           self.is_active = is_active
           self.created_at = created_at
 
@@ -36,10 +38,10 @@ class Account:
                "representative": self.representative,
                "email": self.email,
                "phone": self.phone,
+               "vault": self.vault,
                "is_active": self.is_active,
                "created_at": self.created_at
           }
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return Account(**data)
-     

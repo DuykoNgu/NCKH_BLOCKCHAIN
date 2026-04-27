@@ -26,6 +26,8 @@ interface CreateWalletProps {
   onEmailChange?: (email: string) => void;
   phone?: string;
   onPhoneChange?: (phone: string) => void;
+  fullName?: string;
+  onFullNameChange?: (name: string) => void;
   onBack: () => void;
 }
 
@@ -51,6 +53,8 @@ const CreateWallet = ({
   onEmailChange,
   phone,
   onPhoneChange,
+  fullName,
+  onFullNameChange,
   onBack,
 }: CreateWalletProps) => {
   return (
@@ -79,6 +83,21 @@ const CreateWallet = ({
             )}
 
             <div className="space-y-4">
+              {/* Full Name field — shown for Client accounts only */}
+              {!isSchool && onFullNameChange && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên hiển thị</Label>
+                  <Input
+                    type="text"
+                    value={fullName || ''}
+                    onChange={(e) => onFullNameChange(e.target.value)}
+                    placeholder="Họ và tên của bạn"
+                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                  />
+                  <p className="text-xs text-muted-foreground">Dùng để đăng nhập thay cho địa chỉ ví trên thiết bị mới.</p>
+                </div>
+              )}
+
               {isSchool && onSchoolNameChange && (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -188,7 +207,8 @@ const CreateWallet = ({
                   !password || 
                   password.length < 8 || 
                   password !== confirmPassword ||
-                  (isSchool && (!schoolName || !taxId || !representative || !email || !phone))
+                  (isSchool && (!schoolName || !taxId || !representative || !email || !phone)) ||
+                  (!isSchool && !fullName)
                 }
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >

@@ -44,7 +44,8 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
       body: JSON.stringify({
         address: address.toLowerCase(),
         public_key: uint8ArrayToHex(publicKey),
-        role: "client"
+        role: "client",
+        vault: JSON.stringify(vault)
       }),
     });
     
@@ -86,7 +87,8 @@ export const registerSchool = async (
       body: JSON.stringify({
         address: address.toLowerCase(),
         public_key: uint8ArrayToHex(publicKey),
-        role: "validator"
+        role: "validator",
+        vault: JSON.stringify(vault)
       }),
     });
     
@@ -146,7 +148,8 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
         body: JSON.stringify({
           address: address.toLowerCase(),
           public_key: uint8ArrayToHex(publicKey),
-          role: "client"
+          role: "client",
+          vault: JSON.stringify(vault)
         })
       });
     } catch (error) {
@@ -182,6 +185,10 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   }
 
   localStorage.setItem('isLoggedIn', 'true');
+  
+  // Sync vault to backend just in case
+  await updateVault(address.toLowerCase(), JSON.stringify(vault));
+  
   return { address };
 };
 
@@ -376,6 +383,25 @@ export const updateProfile = async (
     localStorage.setItem('avatar_url', result.user.avatar_url || '');
   }
   return result;
+};
+
+export const updateVault = async (address: string, vault: string) => {
+  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.UPDATE_VAULT}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address: address.toLowerCase(), vault }),
+  });
+  return response.json();
+};
+
+export const fetchVault = async (address: string): Promise<string | null> => {
+  try {
+    const profile = await fetchProfile(address);
+    return profile?.user?.vault || null;
+  } catch (err) {
+    console.error('[authService] Failed to fetch vault:', err);
+    return null;
+  }
 };
 
 export const fetchProfile = async (address: string) => {

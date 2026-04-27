@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 class AccountService:
     """Service for Account business logic"""
     @staticmethod
-    def register_account(address: str,public_key: str,role: Role = Role.CLIENT) -> Tuple[bool, Optional[Account], str]:
+    def register_account(address: str, public_key: str, role: Role = Role.CLIENT, vault: str = None) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
         try:
             existing =  AccountRepository.get_account_by_address(address)
@@ -26,6 +26,7 @@ class AccountService:
                 address= address,
                 public_key= public_key,
                 role = role,
+                vault=vault,
                 is_active=is_active,
                 created_at=now.strftime("%d/%m/%Y %H:%M:%S")
             )
@@ -40,13 +41,12 @@ class AccountService:
             return False, None,f"Regisration error:{str(e)}"
        
     @staticmethod
-    def get_account_by_address(address: str) -> Optional[Account]:
-        """Get account by address"""
-        address = address.lower()
+    def get_account_by_address(address_or_name: str) -> Optional[Account]:
+        """Get account by address or name"""
         try:
-            return AccountRepository.get_account_by_address(address)
+            return AccountRepository.get_account_by_identifier(address_or_name)
         except Exception as e:
-            logger.error(f"Error getting account by address: {e}")
+            logger.error(f"Error getting account by address/name: {e}")
             return None
 
     @staticmethod
@@ -127,3 +127,22 @@ class AccountService:
         except Exception as e:
             logger.error(f"Error updating profile: {e}")
             return False, None, f"Update error: {str(e)}"
+
+    @staticmethod
+    def update_vault(address: str, vault: str) -> Tuple[bool, str]:
+        """Update encrypted vault (on forgot password / recovery)"""
+        address = address.lower()
+        try:
+            account = AccountRepository.get_account_by_address(address)
+            if not account:
+                return False, "Account not found"
+            
+            account.vault = vault
+            success = AccountRepository.update_account(account)
+            if success:
+                return True, "Vault updated successfully"
+            else:
+                return False, "Failed to update vault in database"
+        except Exception as e:
+            logger.error(f"Error updating vault: {e}")
+            return False, f"Update error: {str(e)}"

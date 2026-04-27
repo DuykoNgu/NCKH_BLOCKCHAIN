@@ -6,6 +6,7 @@ export const AUTH_SERVER = {
   GET_PROFILE: '/users/profile/:address',
   GET_PENDING_VALIDATORS: '/users/pending_validators',
   APPROVE_VALIDATOR: '/users/approve_validator',
+  UPDATE_VAULT: '/users/auth/update_vault',
 } as const;
 
 export const TRANSACTION_SERVER = {

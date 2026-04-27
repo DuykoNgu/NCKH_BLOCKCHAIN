@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS account (
     representative TEXT,
     email TEXT,
     phone TEXT,
+    vault TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
@@ -149,6 +150,11 @@ def init_db():
           
      try:
           cursor.execute("ALTER TABLE account ADD COLUMN phone TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN vault TEXT")
      except sqlite3.OperationalError:
           pass
           
