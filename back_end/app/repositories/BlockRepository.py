@@ -208,7 +208,7 @@ class BlockRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            cursor.execute('SELECT block_id FROM block ORDER BY index DESC LIMIT 1')
+            cursor.execute('SELECT block_id FROM block ORDER BY index_num DESC LIMIT 1')
             row = cursor.fetchone()
 
             conn.close()

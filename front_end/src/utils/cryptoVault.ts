@@ -16,13 +16,16 @@ export async function encryptPrivateKey(privateKey: Uint8Array, password: string
   );
 
   const iv = crypto.getRandomValues(new Uint8Array(12));
+  
+  // IMPORTANT: Pass Uint8Array directly, not .buffer
+  // Uint8Array.buffer may have offset/length, causing data mismatch
   const encrypted = await crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
       iv: iv
     },
     key,
-    privateKey.buffer as any
+    privateKey as unknown as ArrayBuffer  // Use Uint8Array directly
   );
 
   return { encrypted: new Uint8Array(encrypted), iv };
@@ -52,10 +55,10 @@ export async function decryptPrivateKey(vault: { encrypted: string; iv: string }
   const decrypted = await crypto.subtle.decrypt(
     {
       name: 'AES-GCM',
-      iv: iv as any
+      iv: iv as unknown as ArrayBuffer
     },
     key,
-    encrypted as any
+    encrypted as unknown as ArrayBuffer
   );
 
   return new Uint8Array(decrypted);

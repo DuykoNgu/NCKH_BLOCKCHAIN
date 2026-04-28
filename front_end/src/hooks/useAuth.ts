@@ -7,6 +7,7 @@ export const useAuth = () => {
   const avatarUrl = localStorage.getItem("avatar_url");
 
   const address = localStorage.getItem("address");
+  const isActive = localStorage.getItem("is_active") === "1";
 
   return {
     isLoggedIn,
@@ -14,8 +15,10 @@ export const useAuth = () => {
     fullName,
     avatarUrl,
     address,
+    isActive,
     isAdmin: role === "admin" || role === "moet",
     isValidator: role === "validator",
     isUser: role === "client",
+    isPendingApproval: role === "validator" && !isActive,
   };
 };
