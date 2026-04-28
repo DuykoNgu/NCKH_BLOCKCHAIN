@@ -15,21 +15,19 @@ class BlockRepository:
 
     @staticmethod
     def create_block(block: Block) -> bool:
-        """Create a new block in database"""
+        """Create a new block in database (idempotent - safe to call multiple times)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            # config = get_config()
-            # consensus_config = config.get_consensus_config()
-            # last_block = BlockRepository.get_latest_block()
-            # max_transactions = consensus_config.get('max_transactions_per_block', 100)
-            # if len(block.transactions) < max_transactions:
-            #     for tx in block.transactions:
-            #      cursor.execute('''
-            #         INSERT INTO transactions(tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id)
-            #         VALUES (?, ?, ?, ?, ?, ?, ?)
-            #      ''', (tx.tx_hash, tx.sender_address, tx.recipient_address, tx.payload, tx.signature, tx.timestamp, block.block_id))
-            #     return True
+            
+            # Check if block already exists (idempotency)
+            cursor.execute('SELECT block_id FROM block WHERE block_id = ?', (block.block_id,))
+            if cursor.fetchone():
+                logger.info(f"⚠ Block already exists: {block.block_id[:16]}... (skipping)")
+                conn.close()
+                return True  # Return True since block already saved
+            
+            # Insert block header
             cursor.execute('''
                 INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                 VALUES (?, ?, ?, ?, ?)
@@ -48,7 +46,11 @@ class BlockRepository:
             # Update transactions to associate them with this block
             updated_tx_count = 0
             if(block.block_id == "GENESIS"):
+                conn.commit()
+                conn.close()
+                logger.info(f"✓ Genesis block created: {block.block_id[:16]}...")
                 return True
+            
             for tx in block.transactions:
                 cursor.execute('''
                     UPDATE transactions 

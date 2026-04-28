@@ -141,6 +141,9 @@ def update_peer_status():
     Update peer status when node activates (from active_node.py)
     Updates public_key from node's keystore and sets status to ACTIVE
     
+    If peer doesn't exist or status update fails, auto-registers the peer.
+    This ensures nodes can activate even if registration wasn't received.
+    
     Request body:
     {
         "ip_address": "192.168.1.100",
@@ -166,7 +169,7 @@ def update_peer_status():
         
         service = get_network_service()
         
-        # Update peer: find by IP:port, save public_key, set status to ACTIVE
+        # Try to update peer: find by IP:port, save public_key, set status to ACTIVE
         success = service.update_peer_activation(
             ip_address=data['ip_address'],
             port=data['port'],
@@ -180,12 +183,41 @@ def update_peer_status():
                 'message': 'Peer activated - public_key saved and status set to ACTIVE'
             }), 200
         else:
-            return jsonify({
-                'success': False,
-                'error': 'Peer not found or update failed'
-            }), 404
+            # If update failed, try to register the peer first
+            # This handles cases where registration message wasn't received
+            from app.repositories.PeerRepository import PeerRepository
+            import hashlib
+            
+            ip = data['ip_address']
+            port = data['port']
+            public_key = data['public_key']
+            node_type = data.get('node_type', 'validator')
+            
+            # Generate consistent peer_id
+            peer_id = hashlib.sha256(f"{ip}:{port}".encode()).hexdigest()[:16]
+            
+            # Register peer as ACTIVE directly (since it's sending status update, it must be activated)
+            peer = PeerRepository.update_peer_public_key_and_activate(
+                peer_id=peer_id,
+                ip_address=ip,
+                port=port,
+                public_key=public_key
+            )
+            
+            if peer:
+                return jsonify({
+                    'success': True,
+                    'message': 'Peer registered and activated - public_key saved and status set to ACTIVE'
+                }), 200
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to register and activate peer'
+                }), 500
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

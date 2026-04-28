@@ -29,6 +29,10 @@ class NetworkService:
         print("🚀 Initializing EduChain Network Service")
         print("="*50)
         
+        # Step 0: Set local peer ID for message identification
+        if node_ip and node_port:
+            self.peer_manager.set_local_peer_id(node_ip, node_port)
+        
         # Step 1: Verify time synchronization
         print("\n[1/3] Verifying time synchronization...")
         if not verify_time_synchronization():
@@ -104,11 +108,23 @@ class NetworkService:
     
     def broadcast_transaction(self, tx_data: Dict) -> int:
         """Broadcast transaction to network via gossip"""
-        return self.gossip.propagate_transaction(tx_data)
+        tx_hash = tx_data.get('tx_hash', 'UNKNOWN')
+        try:
+            result = self.gossip.propagate_transaction(tx_data)
+            return result
+        except Exception as e:
+            print(f"❌ [NetworkService.broadcast_transaction] Failed to broadcast {tx_hash[:8]}: {e}")
+            raise
     
     def broadcast_block(self, block_data: Dict, use_inv: bool = True) -> int:
         """Broadcast block to network via gossip"""
-        return self.gossip.propagate_block(block_data, use_inv)
+        block_hash = block_data.get('block_hash', 'UNKNOWN')
+        try:
+            result = self.gossip.propagate_block(block_data, use_inv)
+            return result
+        except Exception as e:
+            print(f"❌ [NetworkService.broadcast_block] Failed to broadcast {block_hash[:8]}: {e}")
+            raise
     
     def receive_transaction(self, tx_data: Dict, sender_peer_id: str = None) -> bool:
         """Handle incoming transaction from gossip"""

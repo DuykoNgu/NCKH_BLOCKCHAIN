@@ -86,7 +86,14 @@ class AccountService:
 
     @staticmethod
     def register_account(
-        address: str, public_key: str, role: Role = Role.CLIENT
+        address: str,
+        public_key: str,
+        role: Role = Role.CLIENT,
+        full_name: str = None,
+        tax_id: str = None,
+        representative: str = None,
+        email: str = None,
+        phone: str = None,
     ) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
         try:
@@ -96,16 +103,22 @@ class AccountService:
                 return False, None, "Account already exists"
 
             now = datetime.datetime.now()
-            
+            created_at = now.strftime("%d/%m/%Y %H:%M:%S")
+
             # Default is_active=1 for CLIENT/MOET, is_active=0 for VALIDATOR (pending approval)
             is_active = 0 if role == Role.VALIDATOR else 1
 
             account = Account(
-                address= address,
-                public_key= public_key,
-                role = role,
+                address=address,
+                public_key=public_key,
+                role=role,
                 is_active=is_active,
-                created_at=now.strftime("%d/%m/%Y %H:%M:%S")
+                created_at=created_at,
+                full_name=full_name,
+                tax_id=tax_id,
+                representative=representative,
+                email=email,
+                phone=phone,
             )
 
             # 1. Write to local DB immediately (fast UX)
@@ -126,6 +139,17 @@ class AccountService:
                 "role": role_str,
                 "created_at": created_at,
             }
+            if full_name:
+                payload["full_name"] = full_name
+            if tax_id:
+                payload["tax_id"] = tax_id
+            if representative:
+                payload["representative"] = representative
+            if email:
+                payload["email"] = email
+            if phone:
+                payload["phone"] = phone
+
             tx = _build_account_tx(payload, sender_address=address)
             _submit_tx(tx)
 

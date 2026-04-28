@@ -10,9 +10,135 @@ from typing import List, Optional, Dict
 
 class BlockChainService:
     @staticmethod
+    def cleanup_mempool_from_chain(blockchain: BlockChain) -> int:
+        """
+        ✅ CRITICAL FIX: Remove all transactions that are already committed in blockchain
+        
+        Vấn đề: Khi receive block từ gossip, các node khác vẫn có transactions đó trong mempool
+        Nếu những transactions đó được include trong block của peer, thì node này không nên mine lại
+        
+        This function:
+        1. Scans all blocks in the chain
+        2. Collects all tx_hash from committed transactions
+        3. Removes them from mempool
+        4. Returns count of removed transactions
+        
+        Args:
+            blockchain: The blockchain instance
+            
+        Returns:
+            int: Number of transactions removed from mempool
+        """
+        # Collect all tx_hashes that are already in blocks
+        committed_tx_hashes = set()
+        
+        for block in blockchain.chain:
+            for tx in block.transactions:
+                if tx.tx_hash and tx.tx_hash != "":
+                    committed_tx_hashes.add(tx.tx_hash)
+        
+        # Filter mempool to remove committed transactions
+        original_size = len(blockchain.mempool)
+        blockchain.mempool = [
+            tx for tx in blockchain.mempool 
+            if tx.tx_hash not in committed_tx_hashes
+        ]
+        
+        removed = original_size - len(blockchain.mempool)
+        if removed > 0:
+            print(f"🧹 [MEMPOOL] Cleaned {removed} committed transactions from mempool")
+        
+        return removed
+    
+    @staticmethod
+    def deduplicate_mempool(blockchain: BlockChain) -> int:
+        """
+        Remove duplicate transactions from mempool
+        Keeps first occurrence, removes duplicates
+        """
+        seen_hashes = set()
+        deduplicated = []
+        duplicates = 0
+        
+        for tx in blockchain.mempool:
+            if tx.tx_hash not in seen_hashes:
+                seen_hashes.add(tx.tx_hash)
+                deduplicated.append(tx)
+            else:
+                duplicates += 1
+        
+        blockchain.mempool = deduplicated
+        
+        if duplicates > 0:
+            print(f"🧹 [MEMPOOL] Removed {duplicates} duplicate transactions from mempool")
+        
+        return duplicates
+    
+    @staticmethod
+    def validate_mempool_transactions(blockchain: BlockChain) -> int:
+        """
+        Re-validate all mempool transactions
+        Remove invalid ones (e.g., invalid signatures, sender not authorized)
+        """
+        valid_tx = []
+        invalid_count = 0
+        
+        for tx in blockchain.mempool:
+            if TransactionService.is_valid(tx):
+                valid_tx.append(tx)
+            else:
+                invalid_count += 1
+                print(f"⚠️ [MEMPOOL] Removed invalid transaction {tx.tx_hash[:8]}...")
+        
+        blockchain.mempool = valid_tx
+        
+        if invalid_count > 0:
+            print(f"🧹 [MEMPOOL] Removed {invalid_count} invalid transactions")
+        
+        return invalid_count
+    
+    @staticmethod
+    def rebuild_mempool(blockchain: BlockChain) -> None:
+        """
+        🔧 COMPREHENSIVE MEMPOOL REBUILD
+        Called when receiving new blocks to ensure mempool consistency across network
+        
+        Steps:
+        1. Remove transactions already in blockchain
+        2. Deduplicate remaining transactions
+        3. Validate all remaining transactions
+        4. Log results
+        """
+        print(f"\n📋 [MEMPOOL REBUILD] Before: {len(blockchain.mempool)} transactions")
+        
+        # Step 1: Clean committed transactions
+        BlockChainService.cleanup_mempool_from_chain(blockchain)
+        
+        # Step 2: Deduplicate
+        BlockChainService.deduplicate_mempool(blockchain)
+        
+        # Step 3: Validate
+        BlockChainService.validate_mempool_transactions(blockchain)
+        
+        print(f"📋 [MEMPOOL REBUILD] After: {len(blockchain.mempool)} transactions\n")
+    
+    @staticmethod
     def create_genesis_block(blockchain: BlockChain, pubkey_hex: str) -> Block:
         blockchain.super_validator_pubkey = pubkey_hex
         blockchain.authority_set.add(pubkey_hex)
+
+        # Create a genesis transaction (system-initiated, no signature needed)
+        genesis_tx = Transaction(
+            tx_id="GENESIS_TX",
+            sender_pubkey=pubkey_hex,
+            sender_address="system",  # lowercase for FK constraint compatibility
+            recipient_address="system",  # lowercase for FK constraint compatibility
+            payload={"op": "genesis", "message": "System Genesis Block"},
+            signature="GENESIS"
+        )
+        genesis_tx.tx_status = "COMMITTED"
+        genesis_tx.tx_hash = "GENESIS_TX_HASH"
+        genesis_tx.block_id = "GENESIS"  # Mark as already belonging to GENESIS block
 
         header = BlockHeader(
             index=0,
@@ -25,8 +151,12 @@ class BlockChainService:
             block_id="GENESIS",
             index=0,
             block_header=header,
-            transactions=[]
+            transactions=[genesis_tx]
         )
+        
+        # Calculate merkle root for genesis block
+        merkle_root = BlockService.calculate_merkle_root(genesis_block.transactions)
+        genesis_block.block_header.merkle_root = merkle_root
         
         blockchain.chain.append(genesis_block)
         return genesis_block
@@ -53,6 +183,11 @@ class BlockChainService:
         Returns: True if successful, False if failed (logged to tx status)
         """
         payload = tx.payload
+
+        # Genesis transaction (system operation)
+        if payload.get("op") == "genesis":
+            tx.tx_status = "COMMITTED"
+            return True
 
         # Generic key-value state update
         if payload.get("op") == "set":
@@ -164,6 +299,49 @@ class BlockChainService:
                 print(f"✗ [TX] account_update error: {tx.error_reason}")
                 return False
 
+        # Validator activation transaction
+        if payload.get("op") == "validator_activate":
+            try:
+                ip_address = payload.get("ip_address")
+                port = payload.get("port")
+                public_key = payload.get("public_key")
+                node_type = payload.get("node_type", "validator")
+                
+                if not ip_address or not port or not public_key:
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Missing validator activation fields. ip={bool(ip_address)}, port={bool(port)}, pubkey={bool(public_key)}"
+                    print(f"✗ [TX] validator_activate error: {tx.error_reason}")
+                    return False
+                
+                # Update peer activation via network service
+                from app.services.NetworkService import get_network_service
+                network_service = get_network_service()
+                
+                success = network_service.peer_manager.update_peer_activation_by_ip_port(
+                    ip_address=ip_address,
+                    port=int(port),
+                    public_key=public_key,
+                    node_type=node_type
+                )
+                
+                if success:
+                    tx.tx_status = "COMMITTED"
+                    print(f"✓ [TX] validator_activate applied: {ip_address}:{port}")
+                    return True
+                else:
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = f"Failed to activate peer: {ip_address}:{port}"
+                    print(f"✗ [TX] validator_activate failed: {tx.error_reason}")
+                    return False
+                    
+            except Exception as e:
+                tx.tx_status = "FAILED"
+                tx.error_reason = str(e)
+                print(f"✗ [TX] validator_activate error: {tx.error_reason}")
+                import traceback
+                traceback.print_exc()
+                return False
+
         # Unknown operation
         tx.tx_status = "FAILED"
         tx.error_reason = f"Unknown operation: {payload.get('op', 'UNKNOWN')}"
@@ -181,14 +359,19 @@ class BlockChainService:
             return False
 
         return True
-    # @staticmethod
-    # def add_transaction_in_block(transactions: Optional[Transaction])
+   
         
     @staticmethod
     def mine_block(blockchain: BlockChain, private_key: SigningKey, public_key_hex: str, 
-                   max_transactions: int = None) -> Block:
+                   max_transactions: int = None) -> tuple:
         """
         Mine a new block with transactions from mempool
+        
+        Logic:
+        - Genesis block (index 0): max 1 transaction (already has 1 system transaction)
+        - Other blocks: max 100 transactions
+        - If last block has < max_transactions: append transactions to it until it reaches max
+        - Only create a new block when last block is FULL
         
         Args:
             blockchain: The blockchain instance
@@ -197,16 +380,13 @@ class BlockChainService:
             max_transactions: Maximum number of transactions to include (optional)
         
         Returns:
-            Block: The newly mined block
+            Tuple: (block, is_new_block) where is_new_block indicates if it's a new block to be added
         """
         if public_key_hex not in blockchain.authority_set:
             raise PermissionError("Validator ko năm trong uỷ quyền")
 
-        prev_block = blockchain.get_last_block()
-        
-        # Get transactions from mempool with size limit
+        # Get max_transactions from config if not provided
         if max_transactions is None:
-            # Try to get from config
             try:
                 from network.config_loader import get_config
                 config = get_config()
@@ -215,33 +395,98 @@ class BlockChainService:
             except:
                 max_transactions = 100  # Default fallback
         
-        # Take only up to max_transactions from mempool
-        transactions_to_include = blockchain.mempool[:max_transactions]
+        last_block = blockchain.get_last_block()
+        current_tx_count = len(last_block.transactions)
         
-        merkle_root = BlockService.calculate_merkle_root(transactions_to_include)
+        # For Genesis block, max is 1 transaction (it starts with 1 system transaction)
+        if last_block.index == 0:
+            genesis_max_tx = 1
+        else:
+            genesis_max_tx = max_transactions
+        
+        # If last block is not full, append transactions to it
+        if current_tx_count < genesis_max_tx:
+            # Calculate how many transactions we need to fill the block
+            transactions_needed = genesis_max_tx - current_tx_count
+            
+            # Take transactions from mempool
+            new_transactions = blockchain.mempool[:transactions_needed]
+            
+            if new_transactions:
+                # Execute new transactions first
+                for tx in new_transactions:
+                    BlockChainService.execute_transaction(blockchain, tx)
+                
+                # Append transactions to last block
+                last_block.transactions.extend(new_transactions)
+                
+                # Recalculate merkle root with all transactions
+                merkle_root = BlockService.calculate_merkle_root(last_block.transactions)
+                last_block.block_header.merkle_root = merkle_root
+                
+                # Re-sign the block with updated merkle root
+                BlockService.sign_block(last_block, private_key)
+                
+                # Remove the appended transactions from mempool
+                included_tx_hashes = {tx.tx_hash for tx in new_transactions}
+                blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+                
+                print(f"→ Appended {len(new_transactions)} transactions to block {last_block.block_id} (total: {len(last_block.transactions)})")
+            
+            # Return the block but mark as NOT new (already in chain)
+            return (last_block, False)
+        
+        # Only create a new block when last block is FULL
+        # AND there are transactions waiting in mempool
+        elif current_tx_count == genesis_max_tx and blockchain.mempool:
+            transactions_to_include = blockchain.mempool[:max_transactions]
+            
+            # Execute new transactions first
+            for tx in transactions_to_include:
+                BlockChainService.execute_transaction(blockchain, tx)
+            
+            merkle_root = BlockService.calculate_merkle_root(transactions_to_include)
 
-        header = BlockHeader(
-            index=prev_block.index + 1,
-            pre_hash=prev_block.block_hash,
-            merkle_root=merkle_root,
-            validator_pubkey=public_key_hex,
-        )
+            header = BlockHeader(
+                index=last_block.index + 1,
+                pre_hash=last_block.block_hash,
+                merkle_root=merkle_root,
+                validator_pubkey=public_key_hex,
+            )
 
-        block = Block(
-            block_id=f"BLOCK_{header.index}",
-            index=header.index,
-            block_header=header,
-            transactions=transactions_to_include
-        )
+            block = Block(
+                block_id=f"BLOCK_{header.index}",
+                index=header.index,
+                block_header=header,
+                transactions=transactions_to_include
+            )
 
-        BlockService.sign_block(block, private_key)
+            BlockService.sign_block(block, private_key)
+            
+            # Remove the transactions that were included in the new block
+            included_tx_hashes = {tx.tx_hash for tx in transactions_to_include}
+            blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+            
+            print(f"→ Created new block {block.block_id} with {len(transactions_to_include)} transactions")
 
-        return block
+            # Return the block and mark as NEW (to be added to chain)
+            return (block, True)
+        
+        # If last block is full but mempool is empty, return last block (not new)
+        return (last_block, False)
 
     @staticmethod
     def add_block(blockchain: BlockChain, block: Block) -> bool:
         """
         Add block to blockchain and remove included transactions from mempool
+        
+        ⚠️  IMPORTANT: This is called ONLY after mine_block(), which already executed transactions.
+        So we DO NOT execute transactions again here (to avoid double-execution).
+        
+        For blocks received via gossip (receive_block), transactions ARE executed there.
+        This ensures single execution per node:
+        - Validator node: mine_block() executes, add_block() skips
+        - Non-validator node: receive_block() executes
         
         Args:
             blockchain: The blockchain instance
@@ -253,27 +498,18 @@ class BlockChainService:
         if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
             raise ValueError("invalid block")
 
-        # Execute transactions
-        print(f"→ Executing {len(block.transactions)} transactions from block {block.block_id[:8]}...")
-        failed_count = 0
-        for tx in block.transactions:
-            payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-            if payload_op == "account_register":
-                address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
-                print(f"[EXEC_TX] account_register: {address}")
-            
-            success = BlockChainService.execute_transaction(blockchain, tx)
-            if not success:
-                failed_count += 1
-                print(f"⚠ [BLOCK] Transaction {tx.tx_hash[:8]}... failed: {tx.error_reason}")
-
+        # ⚠️  SKIP transaction execution - already done by mine_block()
+        # This is called by ValidatorWorker AFTER mine_block(), so transactions are already executed
+        # Only remove them from mempool
+        print(f"→ Adding {len(block.transactions)} transactions to blockchain (already executed by mine_block)")
+        
         # Remove only the transactions that were included in this block
         # This allows remaining transactions to stay in mempool for next block
         included_tx_hashes = {tx.tx_hash for tx in block.transactions}
         blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
         
-        if failed_count > 0:
-            print(f"⚠ [BLOCK] {failed_count}/{len(block.transactions)} transactions failed in block {block.block_id}")
+        # if failed_count > 0:
+        #     print(f"⚠ [BLOCK] {failed_count}/{len(block.transactions)} transactions failed in block {block.block_id}")
         
         blockchain.chain.append(block)
         return True

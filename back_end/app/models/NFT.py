@@ -9,17 +9,17 @@ from app.models.Account import Account
 class NFT:
     """Model NFT - Token không fungible"""
 
-    def __init__(self, issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, owner_address: Account):
+    def __init__(self, issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, owner_address: Account,issuer_signature: Optional[str] = None):
         # Gán metadata TRƯỚC khi sử dụng
         self.metadata = metadata
         self.issuer_address = issuer_address
         self.issuer_pubkey = issuer_pubkey
         self.owner_address = owner_address
+        self.issuer_signature = issuer_signature
         
         # Sinh token_id từ metadata (sau khi đã gán)
         seed = f"{self.metadata.get_signing_data()}|{owner_address.address}"
         self.token_id = HashUtils.hash_sha256(seed)
-        self.issuer_signature: Optional[str] = None
         self.minted_at = datetime.datetime.utcnow().timestamp()
         self.is_valid = True
 

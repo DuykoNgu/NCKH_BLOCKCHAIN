@@ -16,12 +16,6 @@ import argparse
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
-from app.utils.KeystoreManager import KeystoreManager
-from app.main import app, init_db
-from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
-from consensus.validator_worker import start_validator_worker
-from network.config_loader import get_config
-
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='EduChain Backend Server')
@@ -236,9 +230,16 @@ if __name__ == "__main__":
     print(f"   Host: {args.host}:{args.port}")
     print("=" * 60)
     
-    # Step 0: Custom DB if specified (for multi-node testing)
+    # Step 0: Custom DB if specified (for multi-node testing) - MUST be done before app imports
     if args.db:
         setup_custom_db(args.db)
+    
+    # NOW import app modules after DB path is set
+    from app.utils.KeystoreManager import KeystoreManager
+    from app.main import app, init_db
+    from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
+    from consensus.validator_worker import start_validator_worker
+    from network.config_loader import get_config
     
     # Step 1: Initialize database
     total_steps = 5 if not args.no_network else 3
@@ -261,10 +262,21 @@ if __name__ == "__main__":
         keystore_data = KeystoreManager.load_keystore(keystore_path)
         public_key = keystore_data['public_key']
         
-        initialize_blockchain(public_key)
+        # Get seed nodes from config
+        config = get_config()
+        seed_nodes = config.get_seed_nodes()
+        
+        print(f"\n[DEBUG run.py] Before initialize_blockchain:")
+        print(f"  args.port: {args.port}")
+        print(f"  seed_nodes: {seed_nodes}")
+        print(f"  seed_nodes type: {type(seed_nodes)}")
+        
+        initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
         print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
     except Exception as e:
         print(f"⚠️  Blockchain initialization warning: {e}")
+        import traceback
+        traceback.print_exc()
         public_key = ""
     
     if not args.no_network:

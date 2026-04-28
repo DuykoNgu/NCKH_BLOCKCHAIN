@@ -17,25 +17,33 @@ class TransactionRepository:
     """Repository for Transaction database operations"""
     
     @staticmethod
-    def create_transaction(transaction: Transaction) -> bool:
-        """Tạo transaction mới với retry logic, bao gồm status tracking"""
+    def create_transaction(transaction: Transaction, conn=None) -> bool:
+        """Tạo transaction mới với retry logic, bao gồm status tracking
+        
+        Args:
+            transaction: Transaction object to create
+            conn: Optional existing database connection. If provided, uses it instead of creating new one.
+                 Caller is responsible for commit/close.
+        """
         max_retries = 3
         retry_delay = 0.5
+        should_close = conn is None  # Only close if we created the connection
         
         for attempt in range(max_retries):
             try:
-                conn = get_connection()
+                if conn is None:
+                    conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Handle NULL sender_address for system transactions
-                sender_addr = transaction.sender_address if transaction.sender_address != "system" else None
+                # Handle NULL sender_address for system transactions (both lowercase and uppercase)
+                sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
                 
                 # Convert empty string to None for FK constraints
                 block_id = transaction.block_id if transaction.block_id else None
             
                 
                 cursor.execute('''
-                    INSERT INTO transactions 
+                    INSERT OR IGNORE INTO transactions 
                     (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
@@ -51,8 +59,9 @@ class TransactionRepository:
                     transaction.error_reason
                 ))
                 
-                conn.commit()   
-                conn.close()
+                if should_close:
+                    conn.commit()   
+                    conn.close()
                 logger.info(f"✓ Transaction created: {transaction.tx_hash[:16]}...")
                 return True
             except Exception as e:
@@ -70,11 +79,11 @@ class TransactionRepository:
                     logger.error(f"  Check: Does account '{sender_addr}' exist? Does block '{block_id}' exist?")
                 
                 logger.error(f"✗ Error creating transaction {transaction.tx_hash[:16]}...: {e}")
-                logger.error(f"[TX_DEBUG] Full error details: {str(e)}")
-                try:
-                    conn.close()
-                except:
-                    pass
+                if should_close:
+                    try:
+                        conn.close()
+                    except:
+                        pass
                 return False
         
         return False
@@ -212,3 +221,46 @@ class TransactionRepository:
         except Exception as e:
             print(f"Error parsing transaction row: {e}")
             return None
+    
+    @staticmethod
+    def get_transaction_by_hash(tx_hash: str) -> Optional[Transaction]:
+        """Get transaction by hash (idempotency check)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            query = f"{BASE_TRANSACTION_SELECT} WHERE tx_hash = ?"
+            cursor.execute(query, (tx_hash,))
+            row = cursor.fetchone()
+            conn.close()
+            
+            return TransactionRepository._parse_transaction_row(row)
+        except Exception as e:
+            logger.error(f"Error getting transaction by hash: {e}")
+            return None
+    
+    @staticmethod
+    def update_transaction_block_id(tx_hash: str, block_id: str) -> bool:
+        """Update transaction with block_id (idempotent linking)"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                UPDATE transactions
+                SET block_id = ?
+                WHERE tx_hash = ? AND (block_id IS NULL OR block_id = '')
+            ''', (block_id, tx_hash))
+            
+            conn.commit()
+            conn.close()
+            
+            if cursor.rowcount > 0:
+                logger.info(f"✓ Updated transaction {tx_hash[:16]}... with block_id {block_id[:16]}...")
+                return True
+            else:
+                logger.debug(f"⚠ Transaction {tx_hash[:16]}... already has block_id")
+                return True  # Still OK, already updated
+        except Exception as e:
+            logger.error(f"✗ Error updating transaction block_id: {e}")
+            return False

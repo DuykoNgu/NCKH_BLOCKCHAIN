@@ -206,3 +206,19 @@ def count_blocks():
         
     except Exception as e:
         return jsonify({"error": f"Error counting blocks: {str(e)}"}), 500
+
+
+@block_bp.route('/genesis', methods=['GET'])
+def get_genesis_block():
+    """Get genesis block with all transactions for seed node sharing"""
+    try:
+        genesis_block = BlockRepository.get_block_by_id("GENESIS")
+        
+        if not genesis_block:
+            return jsonify({"error": "Genesis block not found"}), 404
+        
+        # Return full block with transactions data for other nodes to sync
+        return jsonify(genesis_block.to_dict()), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error getting genesis block: {str(e)}"}), 500
