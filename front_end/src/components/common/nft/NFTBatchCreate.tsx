@@ -382,12 +382,11 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         <Card className="glass-card border-border/50">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-black from-violet-500 to-fuchsia-500 flex items-center justify-center">
                         <FileText className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <CardTitle className="text-lg">Cấp phát Hàng loạt</CardTitle>
-                        <CardDescription>Upload file Excel + folder PDF để mint NFT cho nhiều sinh viên</CardDescription>
                     </div>
                 </div>
             </CardHeader>
@@ -455,7 +454,7 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                         <FolderOpen className="w-4 h-4 text-blue-500" />
-                        Folder chứa file PDF (tên file = MaSV.pdf)
+                        Folder chứa file PDF 
                     </Label>
                     <input
                         ref={folderInputRef}
@@ -627,7 +626,7 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                 {/* ──── ACTION BUTTONS ──── */}
                 <div className="flex gap-3">
                     {phase === 'validated' && (
-                        <Button onClick={startBatchProcess} className="flex-1 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:opacity-90 text-white">
+                        <Button onClick={startBatchProcess} className="flex-1 bg-black from-violet-500 to-fuchsia-500 hover:opacity-90 text-white">
                             <Play className="w-4 h-4 mr-2" />
                             Bắt đầu cấp phát ({excelRows.length} sinh viên)
                         </Button>

@@ -136,7 +136,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     try {
       // Lấy password từ session storage
       const password = getPassword();
-      console.log('Password : ', password);
       if (!password) {
         throw new Error('Mật khẩu ví không tìm thấy');
       }
@@ -241,10 +240,10 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       <TabsContent value="single">
         <Card className="glass-card border-border/50">
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl from-primary to-accent flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-black from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-white" />
+                    </div>
               <div>
                 <CardTitle className="text-lg">Cấp phát Chứng chỉ số</CardTitle>
                 <CardDescription>Lưu trữ chứng chỉ mới lên hệ thống EduChain</CardDescription>

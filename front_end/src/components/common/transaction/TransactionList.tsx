@@ -68,7 +68,7 @@ export const TransactionList = () => {
             id: tx.tx_hash,
             type: getTypeByOp(tx.payload?.op),
             title: getTitleByType(tx.payload),
-            address: tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4),
+            address: tx.sender_address ? tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4) : '',
             time: formatDistanceToNow(tx.timestamp),
             status: 'completed' // In our local DB, stored txs are usually confirmed
           }));

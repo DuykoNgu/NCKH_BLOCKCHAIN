@@ -1,3 +1,5 @@
+import os
+
 from flask import Blueprint, request, jsonify
 from typing import Optional
 from app.services.NFTService import NFTService
@@ -370,7 +372,7 @@ def batch_upload_pdfs():
                     io.BytesIO(file_bytes),
                     folder='nft-certificates',
                     resource_type='raw',
-                    public_id=f"batch_{student_id}",
+                    public_id=f"batch_{student_id}.pdf",
                     tags=['nft', 'certificate', 'batch'],
                     overwrite=True
                 )
@@ -378,7 +380,7 @@ def batch_upload_pdfs():
                 return {
                     "student_id": student_id,
                     "success": True,
-                    "url": upload_result['secure_url'],
+                    "url": upload_result.get('secure_url'),
                     "hash": pdf_hash
                 }
             except Exception as e:
@@ -391,7 +393,8 @@ def batch_upload_pdfs():
         # Đọc tất cả file data trước (vì file stream chỉ đọc 1 lần)
         file_items = []
         for f in files:
-            student_id = f.filename.rsplit('.', 1)[0]  # Remove .pdf
+            pure_filename = os.path.basename(f.filename)
+            student_id = pure_filename.rsplit('.', 1)[0]  
             file_bytes = f.read()
             file_items.append((file_bytes, student_id))
 
