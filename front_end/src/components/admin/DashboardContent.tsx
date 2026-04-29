@@ -117,7 +117,7 @@ export default function DashboardContent() {
       <motion.div variants={item}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl font-bold text-foreground">Xin chào, Admin 👋</h2>
+            <h2 className="font-display text-2xl font-bold text-foreground">Xin chào, Quản trị viên MOET 👋</h2>
             <p className="text-sm text-muted-foreground mt-1">Quản lý bằng đại học NFT trên blockchain</p>
           </div>
           {/* Thông số hệ thống thực tế */}

@@ -1,5 +1,6 @@
 import * as bip39 from "@scure/bip39";
 import { keccak_256 } from "@noble/hashes/sha3.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import * as secp from "@noble/secp256k1";
 import { wordlist } from "@scure/bip39/wordlists/english.js";
 
@@ -24,7 +25,7 @@ export async function generateWallet() {
   const seed = await bip39.mnemonicToSeed(mnemonic);
 
   // 4. Seed → Private Key (SHA-256 của 32 bytes đầu)
-  const hash = await crypto.subtle.digest("SHA-256", seed.slice(0, 32));
+  const hash = sha256(seed.slice(0, 32));
   const privateKey = new Uint8Array(hash);
 
   // 5. Private Key → Public Key (uncompressed 65 bytes)
@@ -50,7 +51,7 @@ export async function restoreWallet(mnemonic: string) {
 
   // Mnemonic → Seed → Private Key (giống generateWallet)
   const seed = await bip39.mnemonicToSeed(mnemonic);
-  const hash = await crypto.subtle.digest("SHA-256", seed.slice(0, 32));
+  const hash = sha256(seed.slice(0, 32));
   const privateKey = new Uint8Array(hash);
   const publicKey = secp.getPublicKey(privateKey);
   const address = "0x" + bytesToHex(keccak_256(publicKey.slice(1))).slice(-40);

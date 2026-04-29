@@ -98,6 +98,7 @@ def quick_test(num_nfts: int = 10):
             "pdf_hash": pdf_hash,
             "institution_address": issuer_addr,
             "recipient_address": recip_addr,
+            "issued_at": metadata.issued_at,
             "signature": signature
         })
         

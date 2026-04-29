@@ -97,6 +97,21 @@ def verify():
     
     except Exception as e:
         return jsonify({"status":"fail", "message": "Invalid signature"}),401
+
+@user_bp.route('/auth/check_unique', methods=['POST'])
+def check_unique():
+    data = request.json
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({"error": "Missing email"}), 400
+        
+    exists = AccountRepository.check_email_exists(email)
+    return jsonify({
+        "status": "success",
+        "exists": exists
+    }), 200
+
 @user_bp.route('/profile/update', methods=['POST'])
 def update_profile():
     data = request.json

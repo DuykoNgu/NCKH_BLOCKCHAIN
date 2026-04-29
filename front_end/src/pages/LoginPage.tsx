@@ -4,10 +4,8 @@ import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import AccountSwitcher from '@/components/common/auth/AccountSwitcher';
 import ImportMnemonic from '@/components/common/auth/ImportMnemonic';
-import LoginWithPassword from '@/components/common/auth/LoginWithPassword';
-import { createWallet, registerSchool, clearOldSession, getRecentAccounts, switchAccount, importWallet, fetchVault, updateProfile } from '@/services/authService';
+import { createWallet, registerSchool, clearOldSession, importWallet, updateProfile } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
 import saveUserData from "@/utils/saveDataToStorage";
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
@@ -16,9 +14,8 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { type } = useParams<{ type?: string }>();
   
-  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'switch-account' | 'import-mnemonic' | 'login-password'>('home');
+  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'import-mnemonic'>('home');
   const [showSeed, setShowSeed] = useState(false);
-  const [hasAutoRedirected, setHasAutoRedirected] = useState(false);
   
   const [seed, setSeed] = useState<string[]>([]);
   const [password, setPassword] = useState('');
@@ -38,16 +35,14 @@ const LoginPage = () => {
     const hasWallet = !!localStorage.getItem('address') && !!localStorage.getItem('vault');
 
     if (type === 'existing') {
-      setStep('login-password');
+      setStep('import-mnemonic');
     } else if (type === 'new') {
       setStep('set-password');
     } else if (type === 'school') {
       setStep('school-register');
     } else {
-      // If we've already manually navigated back to home, don't auto-redirect again
-      if (hasWallet && !hasAutoRedirected) {
+      if (hasWallet) {
         setStep('import');
-        setHasAutoRedirected(true);
       } else {
         setStep('home');
       }
@@ -64,7 +59,7 @@ const LoginPage = () => {
     setPhone('');
     setFullName('');
     setError('');
-  }, [type, hasAutoRedirected]);
+  }, [type]);
 
   const handleCreateWallet = async () => {
     if (!password || password.length < 8 || password !== confirmPassword) {
@@ -100,20 +95,20 @@ const LoginPage = () => {
         }
         result = await registerSchool(password, schoolName, taxId, representative, email, phone);
       } else {
-        if (!fullName.trim()) {
-          setError('Vui lòng nhập tên hiển thị');
+        if (!fullName.trim() || !email.trim()) {
+          setError('Vui lòng nhập tên hiển thị và email');
           setIsLoading(false);
           return;
         }
-        result = await createWallet(password);
-        // Save full name to profile right after wallet creation
+        result = await createWallet(password, email);
+        // Save full name and email to profile right after wallet creation
         const { updateProfile } = await import('@/services/authService');
-        await updateProfile(result.address, fullName.trim());
+        await updateProfile(result.address, fullName.trim(), undefined, undefined, undefined, email.trim());
       }
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
-    } catch (err) {
-      setError('Tạo tài khoản thất bại. Vui lòng thử lại.');
+    } catch (err: any) {
+      setError(err.message || 'Tạo tài khoản thất bại. Vui lòng thử lại.');
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -121,7 +116,7 @@ const LoginPage = () => {
   };
 
   const handleSeedConfirmed = () => {
-    navigate('/login/existing');
+    navigate('/home');
   };
 
   const { unlock } = useWallet();
@@ -146,46 +141,6 @@ const LoginPage = () => {
     }
   };
 
-  const handlePasswordLogin = async (loginAddress: string, pass: string) => {
-    setIsLoading(true);
-    setError('');
-
-    try {
-      // 1. Fetch vault from backend
-      const vaultStr = await fetchVault(loginAddress);
-      if (!vaultStr) {
-        throw new Error('Tài khoản này chưa thiết lập mật khẩu. Vui lòng dùng "Quên mật khẩu" để thiết lập.');
-      }
-
-      const vault = JSON.parse(vaultStr);
-
-      // 2. Derive private key to verify password
-      const { decryptPrivateKey } = await import('@/utils/cryptoVault');
-      const privateKey = await decryptPrivateKey(vault, pass);
-      
-      if (!privateKey) {
-        throw new Error('Mật khẩu không chính xác.');
-      }
-
-      // 3. If successful, prepare local storage
-      const profile = await (await import('@/services/authService')).fetchProfile(loginAddress);
-      
-      saveUserData({
-        ...(profile?.user || {}),
-        address: loginAddress.toLowerCase(),
-        vault: vault
-      });
-
-      // 4. Final unlock and navigate
-      await unlock(pass);
-      navigate('/home');
-    } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại địa chỉ và mật khẩu.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleImportWallet = async (mnemonic: string, pass: string) => {
     setIsLoading(true);
@@ -232,7 +187,10 @@ const LoginPage = () => {
       const address = localStorage.getItem('address');
       
       const handleClearWallet = () => {
-        setStep('switch-account');
+        if (window.confirm("CẢNH BÁO: Bạn chuẩn bị xóa dữ liệu đăng nhập khỏi thiết bị này. Lần sau muốn đăng nhập lại, bạn sẽ BẮT BUỘC phải dùng 12 từ khóa bí mật để khôi phục. Bạn có chắc chắn muốn xóa?")) {
+          clearOldSession();
+          window.location.href = '/login';
+        }
       };
 
       return (
@@ -251,27 +209,6 @@ const LoginPage = () => {
       );
     }
 
-    if (step === 'switch-account') {
-      const accounts = getRecentAccounts();
-      const handleSelectAccount = (address: string) => {
-        switchAccount(address);
-        setStep('import');
-      };
-
-      return (
-        <div className="relative z-10 w-full max-w-md mx-4">
-          <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
-            <AccountSwitcher 
-              accounts={accounts}
-              onSelect={handleSelectAccount}
-              onAddNew={() => navigate('/login')}
-              onBack={() => setStep('import')}
-            />
-          </div>
-        </div>
-      );
-    }
-
     if (step === 'import-mnemonic') {
       return (
         <div className="relative z-10 w-full max-w-md mx-4">
@@ -280,28 +217,13 @@ const LoginPage = () => {
               error={error}
               isLoading={isLoading}
               onImport={handleImportWallet}
-              onBack={() => setStep('login-password')}
+              onBack={() => navigate('/login')}
             />
           </div>
         </div>
       );
     }
 
-    if (step === 'login-password') {
-      return (
-        <div className="relative z-10 w-full max-w-md mx-4">
-          <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
-            <LoginWithPassword
-              error={error}
-              isLoading={isLoading}
-              onLogin={handlePasswordLogin}
-              onBack={() => navigate('/login')}
-              onUseMnemonic={() => setStep('import-mnemonic')}
-            />
-          </div>
-        </div>
-      );
-    }
 
     // Render create password / school page
     return (

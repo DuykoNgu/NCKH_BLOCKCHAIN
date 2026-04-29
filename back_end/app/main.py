@@ -25,7 +25,7 @@ def create_app():
     def after_request(response):
         # Explicitly handle preflight and allowed origins
         origin = request.headers.get('Origin')
-        if origin in ['http://localhost:5173', 'http://127.0.0.1:5173']:
+        if origin:
             response.headers.add('Access-Control-Allow-Origin', origin)
             
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')

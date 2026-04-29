@@ -13,13 +13,36 @@ export interface CreateWalletResult {
 }
 
 export const clearOldSession = () => {
-  const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn"];
+  const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn", "accounts"];
   items.forEach(item => localStorage.removeItem(item));
   console.log('[authService] Local session cleared');
 };
 
-export const createWallet = async (password: string): Promise<CreateWalletResult> => {
+export const checkUniqueEmail = async (email: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.CHECK_UNIQUE}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) return false;
+    const data = await response.json();
+    return !data.exists; // Returns true if unique (not exists)
+  } catch (error) {
+    console.error('Check unique email error:', error);
+    return false;
+  }
+};
+
+export const createWallet = async (password: string, email: string): Promise<CreateWalletResult> => {
   clearOldSession();
+  
+  // Check email uniqueness first
+  const isUnique = await checkUniqueEmail(email);
+  if (!isUnique) {
+    throw new Error("Email hoặc tài khoản đã tồn tại trong hệ thống.");
+  }
+
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
@@ -58,6 +81,7 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
   }
 
   saveUserData(userData);
+  localStorage.setItem('isLoggedIn', 'true');
 
   // Trả về mnemonic để hiển thị cho user backup
   return { mnemonic, address };
@@ -72,6 +96,13 @@ export const registerSchool = async (
   phone: string
 ): Promise<CreateWalletResult> => {
   clearOldSession();
+  
+  // Check email uniqueness first
+  const isUnique = await checkUniqueEmail(email);
+  if (!isUnique) {
+    throw new Error("Email hoặc tài khoản đã tồn tại trong hệ thống.");
+  }
+
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
@@ -114,6 +145,7 @@ export const registerSchool = async (
   };
 
   saveUserData(userData);
+  localStorage.setItem('isLoggedIn', 'true');
 
   return { mnemonic, address };
 };
@@ -252,8 +284,7 @@ export const adminImportAndSaveVault = async (privateKeyHex: string, password: s
   const { nonce } = await nonceRes.json();
 
   const encoder = new TextEncoder();
-  const msgHashRaw = await crypto.subtle.digest("SHA-256", encoder.encode(nonce));
-  const msgHash = new Uint8Array(msgHashRaw);
+  const msgHash = sha256(encoder.encode(nonce));
   const msgHex = bytesToHex(msgHash);
 
   const signatureRaw = secp.sign(msgHash, privateKeyBytes, { prehash: false });

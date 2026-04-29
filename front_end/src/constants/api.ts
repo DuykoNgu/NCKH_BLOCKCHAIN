@@ -7,6 +7,7 @@ export const AUTH_SERVER = {
   GET_PENDING_VALIDATORS: '/users/pending_validators',
   APPROVE_VALIDATOR: '/users/approve_validator',
   UPDATE_VAULT: '/users/auth/update_vault',
+  CHECK_UNIQUE: '/users/auth/check_unique',
 } as const;
 
 export const TRANSACTION_SERVER = {

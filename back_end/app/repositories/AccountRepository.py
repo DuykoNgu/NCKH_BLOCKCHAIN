@@ -191,5 +191,16 @@ class AccountRepository:
             logger.error(f"Error deleting account: {e}")
             return False
 
-
-
+    @staticmethod
+    def check_email_exists(email: str) -> bool:
+        """Check if an account with this email already exists"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1 FROM account WHERE email = ?', (email,))
+            row = cursor.fetchone()
+            conn.close()
+            return row is not None
+        except Exception as e:
+            logger.error(f"Error checking email: {e}")
+            return False

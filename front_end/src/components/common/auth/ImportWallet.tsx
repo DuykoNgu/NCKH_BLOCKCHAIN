@@ -100,18 +100,10 @@ const ImportWallet = ({
             <div className="mt-6 flex flex-col items-center gap-3">
               <button 
                 onClick={onClearWallet} 
-                className="text-sm text-primary font-semibold hover:text-primary/80 transition-colors flex items-center gap-2"
-                title="Chuyển đổi giữa các tài khoản đã lưu"
+                className="text-xs text-destructive hover:text-destructive/80 font-semibold transition-colors flex items-center gap-2"
+                title="Xóa dữ liệu thiết bị (để đăng nhập bằng tài khoản khác)"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                Chuyển tài khoản
-              </button>
-              
-              <button 
-                onClick={onBack} 
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                ← Quay lại
+                Xóa dữ liệu thiết bị
               </button>
             </div>
           </div>

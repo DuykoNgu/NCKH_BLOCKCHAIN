@@ -4,8 +4,7 @@ import { ShieldCheck, ArrowRight, Loader2, Lock, Eye, EyeOff, RotateCcw } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { adminUnlockVault, adminClearVault, fetchVault, fetchProfile } from '@/services/authService';
-import { decryptPrivateKey } from '@/utils/cryptoVault';
+import { adminUnlockVault, adminClearVault, adminImportAndSaveVault } from '@/services/authService';
 import saveUserData from '@/utils/saveDataToStorage';
 
 type AdminLoginMode = 'unlock' | 'new-device';
@@ -42,53 +41,32 @@ const AdminLoginPage = () => {
     }
   };
 
-  // Đăng nhập thiết bị mới: lấy vault từ server → giải mã bằng mật khẩu
+  // Đăng nhập thiết bị mới: yêu cầu Private Key và Mật khẩu cục bộ mới
   const handleNewDeviceLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminAddressInput.trim()) { setError('Vui lòng nhập địa chỉ ví Admin'); return; }
-    if (!password) { setError('Vui lòng nhập mật khẩu'); return; }
+    if (!adminAddressInput.trim()) { setError('Vui lòng nhập Mã Private Key'); return; }
+    if (!password) { setError('Vui lòng nhập mật khẩu bảo vệ'); return; }
+    if (password.length < 8) { setError('Mật khẩu phải dài ít nhất 8 ký tự'); return; }
     setIsLoading(true);
     setError('');
     try {
-      // 1. Lấy vault từ server
-      const vaultStr = await fetchVault(adminAddressInput.trim());
-      if (!vaultStr) {
-        throw new Error('Không tìm thấy tài khoản. Kiểm tra lại tên hoặc địa chỉ ví.');
-      }
-
-      const vault = JSON.parse(vaultStr);
-
-      // 2. Giải mã bằng mật khẩu để xác thực
-      const privateKey = await decryptPrivateKey(vault, password);
-      if (!privateKey) throw new Error('Mật khẩu không chính xác.');
-
-      // 3. Lấy profile và kiểm tra quyền admin
-      const profile = await fetchProfile(adminAddressInput.trim());
-      const role = profile?.user?.role;
-      if (role !== 'moet' && role !== 'admin') {
-        throw new Error('Tài khoản này không có quyền quản trị MOET.');
-      }
-
-      // 4. Lưu vault local để lần sau chỉ cần mật khẩu
-      localStorage.setItem('admin_vault', vaultStr);
-      localStorage.setItem('admin_address', adminAddressInput.trim().toLowerCase());
-      localStorage.setItem('isLoggedIn', 'true');
-      saveUserData({ ...profile.user, is_active: '1' });
-
+      await adminImportAndSaveVault(adminAddressInput.trim(), password);
       navigate('/admin');
     } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại.');
+      setError(err.message || 'Đăng nhập thất bại. Kiểm tra lại Private Key.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleClearAndReset = () => {
-    adminClearVault();
-    setAdminAddressInput('');
-    setPassword('');
-    setError('');
-    setMode('new-device');
+    if (window.confirm("CẢNH BÁO: Bạn chuẩn bị xóa Két sắt Admin khỏi thiết bị này. Lần sau đăng nhập, BẮT BUỘC phải dùng Private Key. Tiếp tục?")) {
+      adminClearVault();
+      setAdminAddressInput('');
+      setPassword('');
+      setError('');
+      setMode('new-device');
+    }
   };
 
   return (
@@ -163,8 +141,8 @@ const AdminLoginPage = () => {
                 }
               </Button>
               <button type="button" onClick={handleClearAndReset}
-                className="w-full flex items-center justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1">
-                <RotateCcw size={12} /> Đăng nhập trên thiết bị mới
+                className="w-full flex items-center justify-center gap-1.5 text-xs text-destructive hover:text-destructive/80 transition-colors py-1 mt-4">
+                <RotateCcw size={12} /> Hủy liên kết thiết bị
               </button>
             </form>
           )}
@@ -174,21 +152,21 @@ const AdminLoginPage = () => {
             <form onSubmit={handleNewDeviceLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Tên hoặc Địa chỉ ví Admin
+                  Mã Private Key (64 ký tự)
                 </Label>
                 <Input
-                  id="admin-address"
+                  id="admin-private-key"
                   type="text"
                   value={adminAddressInput}
                   onChange={(e) => setAdminAddressInput(e.target.value)}
-                  placeholder="Bộ Giáo Dục hoặc 0x..."
+                  placeholder="Nhập Private Key để khôi phục..."
                   className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                   autoFocus
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Mật khẩu
+                  Tạo Mật khẩu bảo vệ máy này
                 </Label>
                 <div className="relative">
                   <Input
@@ -196,7 +174,7 @@ const AdminLoginPage = () => {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu..."
+                    placeholder="Mật khẩu ít nhất 8 ký tự..."
                     className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)}
