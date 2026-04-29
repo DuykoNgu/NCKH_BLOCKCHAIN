@@ -30,16 +30,14 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
     """Build and hash a system Transaction for an account operation."""
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
-
-    # Extract public_key from payload if available (for account_register)
-    sender_pubkey = payload.get('public_key', '')
+    sender_pubkey = AccountService.get_account_by_address(sender_address).public_key if sender_address != SYSTEM_ADDRESS else ""
 
     tx = Transaction(
         tx_id=tx_hash,
         tx_hash=tx_hash,
         sender_pubkey=sender_pubkey,      # Get from payload for account operations
-        sender_address=None,              # ALWAYS None for account operations to avoid FK constraint
-        recipient_address=None,           # Set to None to avoid FK constraint
+        sender_address=sender_address,              # ALWAYS None for account operations to avoid FK constraint
+        recipient_address=SYSTEM_ADDRESS,           # Set to None to avoid FK constraint
         payload=payload,
         signature="",              # no signature for server-initiated txs
         timestamp=datetime.datetime.now().timestamp(),
@@ -89,6 +87,7 @@ class AccountService:
         address: str,
         public_key: str,
         role: Role = Role.CLIENT,
+        signature: str = None,
         full_name: str = None,
         tax_id: str = None,
         representative: str = None,
@@ -214,15 +213,11 @@ class AccountService:
             return False, f"Verification error: {str(e)}"
 
     @staticmethod
-    def update_profile(address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
+    def update_profile(account: Account,address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
         """Update account profile (name and avatar)"""
         address = address.lower()
         logger.info(f"Updating profile for address: {address}")
         try:
-            account = AccountRepository.get_account_by_address(address)
-            if not account:
-                logger.warning(f"Profile update failed: Account {address} not found")
-                return False, None, "Account not found"
 
             logger.info(f"Found account: {account.address}. New name: {full_name}")
 

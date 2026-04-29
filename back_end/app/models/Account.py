@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from enum import Enum
-
+import json
 class Role(Enum):
      MOET = "moet"
      VALIDATOR = "validator"
@@ -42,4 +42,64 @@ class Account:
      @staticmethod
      def from_dict(data: Dict[str,Any]):
           return Account(**data)
+
+
+
+class TransactionAcount:
+     def __init__(self, address: str, public_key: str, role: Role, timestamp: float):
+          self.address = address
+          self.public_key = public_key
+          self.role = role
+          self.timestamp = timestamp
+
+     def to_dict(self) -> Dict[str, str]:
+          return {
+               "address": self.address,
+               "public_key": self.public_key,
+               "role": self.role.value if hasattr(self.role, 'value') else str(self.role),
+               "timestamp": self.timestamp
+          }
+     def get_signing_data(self) -> str:
+          data = {
+                "address": self.address,
+               "public_key": self.public_key,
+               "role": self.role.value if hasattr(self.role, 'value') else str(self.role),
+               "timestamp": self.timestamp
+          }
+          return json.dumps(data, sort_keys= True,separators=(',', ':'))
      
+
+class TransactionUpdateAccount:
+     def __init__(self, address: str, full_name: str, avatar_url: str, tax_id: str, representative: str, email: str, phone: str, timestamp: float):
+          self.address = address
+          self.full_name = full_name
+          self.avatar_url = avatar_url
+          self.tax_id = tax_id
+          self.representative = representative
+          self.email = email
+          self.phone = phone
+          self.timestamp = timestamp
+
+     def to_dict(self) -> Dict[str, str]:
+          return {
+               "address": self.address,
+               "full_name": self.full_name,
+               "avatar_url": self.avatar_url,
+               "tax_id": self.tax_id,
+               "representative": self.representative,
+               "email": self.email,
+               "phone": self.phone,
+               "timestamp": self.timestamp
+          }
+     def get_signing_data(self) -> str:
+          data = {
+               "address": self.address,
+               "full_name": self.full_name,
+               "avatar_url": self.avatar_url,
+               "tax_id": self.tax_id,
+               "representative": self.representative,
+               "email": self.email,
+               "phone": self.phone,
+               "timestamp": self.timestamp
+          }
+          return json.dumps(data, sort_keys= True,separators=(',', ':'))

@@ -8,7 +8,7 @@ from app.services.NetworkService import get_network_service
 import sys
 import hashlib
 import json
-
+from app.utils.CryptoUtils import CryptoUtils
 # Add back_end to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -26,7 +26,7 @@ def generate_peer_id(ip: str, port: int) -> str:
     return hashlib.sha256(data).hexdigest()[:16]
 
 
-def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
+def try_update_peer_after_activation(validator_worker, public_key: str,private_key_hex: str) -> None:
     """Try to update peer record in database after validator activation"""
     try:
         logger.info(f"→ [DEBUG] try_update_peer_after_activation called with public_key={public_key[:20] if public_key else 'EMPTY'}...")
@@ -67,7 +67,7 @@ def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
             # Also create an activation transaction for other nodes to sync
             try:
                 logger.info(f"→ [DEBUG] Creating activation transaction...")
-                create_and_broadcast_activation_transaction(node_ip, node_port, public_key)
+                create_and_broadcast_activation_transaction(node_ip, node_port, public_key, private_key_hex)
                 logger.info(f"✓ [DEBUG] Activation transaction completed")
             except Exception as tx_err:
                 logger.warning(f"⚠ Could not create activation transaction: {tx_err}")
@@ -82,7 +82,7 @@ def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
         logger.error(f"✗ [DEBUG] Exception traceback: {traceback.format_exc()}")
 
 
-def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str) -> None:
+def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str, private_key_hex: str) -> None:
     """
     Create a validator activation transaction and broadcast to peers
     This allows other nodes to sync the validator's public_key to their local DB
@@ -105,11 +105,16 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
             "public_key": public_key,
             "timestamp": datetime.datetime.now().timestamp()
         }
-        
+        data_signature = {
+            "sender_address": "system",
+            "recipient_address": "system",
+            "payload": payload,
+            "timestamp": datetime.datetime.now().timestamp()
+        }
         # Hash payload to create tx_hash
         payload_json = json.dumps(payload, sort_keys=True).encode()
         tx_hash = hashlib.sha256(payload_json).hexdigest()
-        
+        signature = CryptoUtils.sign_data(data_signature, private_key_hex)
         # Create transaction object
         tx = Transaction(
             tx_id=tx_hash,
@@ -118,7 +123,7 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
             sender_address="system",
             recipient_address="system",
             payload=payload,
-            signature="",  # System transactions don't need signature
+            signature=signature,  # System transactions don't need signature
             timestamp=datetime.datetime.now().timestamp(),
             block_id=None
         )
@@ -245,7 +250,7 @@ def activate_validator():
             
             # Try to update peer record in database
             public_key = keystore_data.get('public_key', '')
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key,private_key_hex)
             
             return jsonify({
                 'success': True,
