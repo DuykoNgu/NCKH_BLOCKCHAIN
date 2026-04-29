@@ -396,6 +396,40 @@ class BlockChainService:
                 max_transactions = 100  # Default fallback
         
         last_block = blockchain.get_last_block()
+
+        # Committed blocks must be immutable across the network.
+        # Always create a brand new block from the current mempool snapshot.
+        if not blockchain.mempool:
+            return (last_block, False)
+
+        transactions_to_include = blockchain.mempool[:max_transactions]
+
+        for tx in transactions_to_include:
+            BlockChainService.execute_transaction(blockchain, tx)
+
+        merkle_root = BlockService.calculate_merkle_root(transactions_to_include)
+
+        header = BlockHeader(
+            index=last_block.index + 1,
+            pre_hash=last_block.block_hash,
+            merkle_root=merkle_root,
+            validator_pubkey=public_key_hex,
+        )
+
+        block = Block(
+            block_id=f"BLOCK_{header.index}",
+            index=header.index,
+            block_header=header,
+            transactions=transactions_to_include
+        )
+
+        BlockService.sign_block(block, private_key)
+
+        included_tx_hashes = {tx.tx_hash for tx in transactions_to_include}
+        blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+
+        print(f"â†’ Created new block {block.block_id} with {len(transactions_to_include)} transactions")
+        return (block, True)
         current_tx_count = len(last_block.transactions)
         
         # For Genesis block, max is 1 transaction (it starts with 1 system transaction)

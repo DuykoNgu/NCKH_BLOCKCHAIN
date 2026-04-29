@@ -140,8 +140,11 @@ class NetworkService:
     
     def get_block_by_hash(self, block_hash: str) -> Optional[Dict]:
         """Get block data by hash (for responding to INV requests)"""
-        # This should be implemented to query blockchain service
-        # For now, return None
+        from app.repositories.BlockRepository import BlockRepository
+
+        for block in BlockRepository.get_all_blocks():
+            if block.block_hash == block_hash:
+                return block.to_dict()
         return None
     
     def get_current_slot_info(self, total_validators: int) -> Dict:

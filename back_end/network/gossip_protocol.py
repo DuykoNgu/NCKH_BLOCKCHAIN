@@ -525,7 +525,7 @@ class GossipProtocol:
             local_height = len(blockchain.chain) - 1
             block_gap = block.index - local_height
             
-            if block_gap > 0:
+            if block_gap > 1:
                 print(f"⚠️  [GOSSIP] Block gap detected: received block #{block.index} but local height is {local_height} (gap={block_gap})")
                 print(f"→ [GOSSIP] Triggering chain sync to fill {block_gap} missing block(s)...")
                 

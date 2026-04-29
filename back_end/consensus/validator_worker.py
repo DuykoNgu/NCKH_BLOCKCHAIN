@@ -275,7 +275,7 @@ class ValidatorWorker:
                     except:
                         pass
                 
-                if max_peer_height > local_height + 2:
+                if max_peer_height > local_height:
                     print(f"⚠️  Chain gap detected: me={local_height}, peers={max_peer_height}")
                     print(f"→ Syncing chain before mining...")
                     chain_sync = ChainSync(
@@ -332,6 +332,10 @@ class ValidatorWorker:
                 print(f"  Block Size: {block.block_size} transactions")
                 print(f"  Merkle Root: {block.block_header.merkle_root[:32]}...")
                 print(f"  New Block: {is_new_block}")
+
+                if not is_new_block:
+                    print("âš  No new block created, skipping broadcast")
+                    break
                 
                 # Only add block if it's a NEW block (not already in chain)
                 if is_new_block:
@@ -351,7 +355,7 @@ class ValidatorWorker:
                     print(f"✓ Block saved to database")
                     
                     # Broadcast block to P2P network
-                    propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=True)
+                    propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=False)
                     
                     print(f"✓ Block propagated to {propagated} peers")
                 else:
