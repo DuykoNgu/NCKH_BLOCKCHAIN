@@ -6,14 +6,14 @@ const saveUserData = (user: any) => {
     user_id,
     public_key,
     address,
-    vault: typeof vault === 'string' ? vault : JSON.stringify(vault),
+    vault: vault ? (typeof vault === 'string' ? vault : JSON.stringify(vault)) : null,
     role,
     full_name,
     is_active
   };
 
   Object.entries(entriesMap).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== 'null') {
       localStorage.setItem(key, String(value));
     }
   });
@@ -35,7 +35,7 @@ const saveUserData = (user: any) => {
       full_name: finalFullName,
       role: role || (existingAccount ? existingAccount.role : 'client'),
       public_key,
-      vault: typeof vault === 'string' ? vault : JSON.stringify(vault),
+      vault: vault ? (typeof vault === 'string' ? vault : JSON.stringify(vault)) : (existingAccount ? existingAccount.vault : null),
       last_login: new Date().toISOString()
     };
 

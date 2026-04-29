@@ -14,16 +14,16 @@ from app.main import app, init_db
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🚀 Starting EduChain Backend Server")
+    print("[START] Starting EduChain Backend Server")
     print("=" * 60)
     
     # Initialize database
     print("\n[1/2] Initializing database...")
     try:
         init_db()
-        print("✅ Database initialized successfully")
+        print("[OK] Database initialized successfully")
     except Exception as e:
-        print(f"⚠️  Database initialization warning: {e}")
+        print(f"[WARN] Database initialization warning: {e}")
     
     # Start Flask server
     print("\n[2/2] Starting Flask server...")

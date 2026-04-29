@@ -234,6 +234,10 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
 
   console.log(`[LoginWallet] Wallet address: ${address}`);
   const vault = JSON.parse(vaultData);
+  if (!vault || !vault.encrypted || !vault.iv) {
+    console.error('[LoginWallet] Invalid vault structure:', vault);
+    throw new Error('Dữ liệu ví bị lỗi hoặc không hợp lệ. Vui lòng thử Import lại ví.');
+  }
   console.log('[LoginWallet] Vault data parsed successfully');
 
   console.log('[LoginWallet] Decrypting private key');
@@ -244,9 +248,13 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
   try {
     const profile = await fetchProfile(address);
     if (profile && profile.user) {
+      // Chỉ đồng bộ vault nếu server có vault, nếu không thì giữ vault local hiện tại
+      const updatedVault = profile.user.vault || vault;
+      
       saveUserData({
         ...profile.user,
         full_name: profile.user.full_name || "",
+        vault: updatedVault,
         is_active: String(profile.user.is_active)
       });
       console.log(`[authService] Sync success for address: ${address}`);
