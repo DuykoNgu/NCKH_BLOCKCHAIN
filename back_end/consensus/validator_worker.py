@@ -184,6 +184,60 @@ class ValidatorWorker:
         logger.debug(f"→ _should_mine_block(): SKIP - mempool is empty, waiting for transactions")
         return False
     
+    def _should_mine_block_with_thresholds(self) -> bool:
+        """
+        Mine when one of these thresholds is met:
+        - mempool reaches max_transactions_per_block
+        - mempool reaches min_transactions_per_block
+        - oldest pending transaction waits at least max_wait_seconds
+        """
+        mempool_size = len(self.blockchain.mempool)
+        if mempool_size == 0:
+            logger.debug("â†’ _should_mine_block_with_thresholds(): SKIP - mempool is empty")
+            return False
+
+        from network.config_loader import get_config
+        consensus_config = get_config().get_consensus_config()
+        max_tx_per_block = consensus_config.get('max_transactions_per_block', 100)
+        min_tx_per_block = consensus_config.get(
+            'min_transactions_per_block',
+            consensus_config.get('min_transactions_to_mine', 1)
+        )
+        max_wait_seconds = consensus_config.get(
+            'max_wait_seconds',
+            consensus_config.get('mining_timeout_seconds', 30)
+        )
+
+        if mempool_size >= max_tx_per_block:
+            logger.info(
+                f"âœ“ _should_mine_block_with_thresholds(): YES - mempool_size={mempool_size} >= max_transactions_per_block={max_tx_per_block}"
+            )
+            return True
+
+        if mempool_size >= min_tx_per_block:
+            logger.info(
+                f"âœ“ _should_mine_block_with_thresholds(): YES - mempool_size={mempool_size} >= min_transactions_per_block={min_tx_per_block}"
+            )
+            return True
+
+        oldest_tx_timestamp = min(
+            tx.timestamp for tx in self.blockchain.mempool
+            if getattr(tx, 'timestamp', None) is not None
+        )
+        waited_seconds = max(0.0, time.time() - oldest_tx_timestamp)
+
+        if waited_seconds >= max_wait_seconds:
+            logger.info(
+                f"âœ“ _should_mine_block_with_thresholds(): YES - oldest_tx_wait={waited_seconds:.2f}s >= max_wait_seconds={max_wait_seconds}s"
+            )
+            return True
+
+        logger.debug(
+            f"â†’ _should_mine_block_with_thresholds(): SKIP - mempool_size={mempool_size}, "
+            f"min_required={min_tx_per_block}, oldest_wait={waited_seconds:.2f}s/{max_wait_seconds}s"
+        )
+        return False
+
     def _run(self) -> None:
         """Main worker loop - runs in background thread"""
         print(f"🚀 Validator Worker running...")
@@ -199,7 +253,7 @@ class ValidatorWorker:
                 
                 if is_my_turn:
                     
-                    if self._should_mine_block():
+                    if self._should_mine_block_with_thresholds():
                         self.last_mine_attempt_time = time.time()  # Update attempt time
                         logger.info(f"→ [Loop #{loop_count}] MY TURN! Starting to mine block...")
                         self._mine_and_broadcast_block()

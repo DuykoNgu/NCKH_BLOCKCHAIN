@@ -157,6 +157,8 @@ class BlockChainService:
         # Calculate merkle root for genesis block
         merkle_root = BlockService.calculate_merkle_root(genesis_block.transactions)
         genesis_block.block_header.merkle_root = merkle_root
+        genesis_block.block_hash = BlockService.calculate_hash(genesis_block)
+        genesis_block.validator_signature = "GENESIS"
         
         blockchain.chain.append(genesis_block)
         return genesis_block
@@ -407,12 +409,10 @@ class BlockChainService:
         for tx in transactions_to_include:
             BlockChainService.execute_transaction(blockchain, tx)
 
-        merkle_root = BlockService.calculate_merkle_root(transactions_to_include)
-
         header = BlockHeader(
             index=last_block.index + 1,
             pre_hash=last_block.block_hash,
-            merkle_root=merkle_root,
+            merkle_root="",
             validator_pubkey=public_key_hex,
         )
 
@@ -422,6 +422,14 @@ class BlockChainService:
             block_header=header,
             transactions=transactions_to_include
         )
+
+        # Finalize tx fields before calculating merkle root and block signature.
+        for tx in transactions_to_include:
+            tx.block_id = block.block_id
+            if tx.tx_status == "PENDING":
+                tx.tx_status = "COMMITTED"
+
+        block.block_header.merkle_root = BlockService.calculate_merkle_root(block.transactions)
 
         BlockService.sign_block(block, private_key)
 
