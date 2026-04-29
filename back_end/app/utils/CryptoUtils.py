@@ -8,6 +8,31 @@ from app.utils.HashUtils import HashUtils
      
 class CryptoUtils:
     @staticmethod
+    def decompress_public_key(public_key_hex: str) -> str:
+        """
+        Decompress a compressed public key to uncompressed format (65 bytes)
+        Compressed format: 02/03 + 32 bytes (33 bytes total)
+        Uncompressed format: 04 + 32 bytes x + 32 bytes y (65 bytes total)
+        """
+        if len(public_key_hex) == 130:  # 65 bytes * 2 hex chars = 130
+            # Already uncompressed
+            return public_key_hex
+        
+        if len(public_key_hex) == 66:  # 33 bytes * 2 hex chars = 66
+            # Compressed format
+            try:
+                pk_bytes = bytes.fromhex(public_key_hex)
+                # Create VerifyingKey from compressed key
+                vk = VerifyingKey.from_string(pk_bytes[1:], curve=SECP256k1)
+                # Get uncompressed format (04 + x + y)
+                return "04" + vk.to_string().hex()
+            except Exception as e:
+                print(f"Failed to decompress key: {e}")
+                return public_key_hex
+        
+        return public_key_hex
+
+    @staticmethod
     def sign_data(data, private_key_hex: str) -> str:
         """
         Ký dữ liệu bằng private key
@@ -28,12 +53,37 @@ class CryptoUtils:
         data_bytes = _to_bytes(data)
 
         try:
-            vk = VerifyingKey.from_string(bytes.fromhex(public_key_hex), curve=SECP256k1)
-            vk.verify(bytes.fromhex(signature_hex), data_bytes,
+            # Decompress public key if needed
+            pub_key_hex = CryptoUtils.decompress_public_key(public_key_hex)
+            
+            # Extract the key bytes (skip '04' prefix if present)
+            if pub_key_hex.startswith('04'):
+                # Uncompressed: 04 + x (32 bytes) + y (32 bytes) = 65 bytes hex = 130 chars
+                # After removing '04', we have 64 bytes = 128 chars
+                key_bytes = bytes.fromhex(pub_key_hex[2:])  # 64 bytes
+            else:
+                # Assume 64 bytes already
+                key_bytes = bytes.fromhex(pub_key_hex)
+            
+            if len(key_bytes) != 64:
+                raise ValueError(f"Invalid public key length: {len(key_bytes)}, expected 64 bytes")
+            
+            vk = VerifyingKey.from_string(key_bytes, curve=SECP256k1)
+            
+            sig_bytes = bytes.fromhex(signature_hex)
+            print(f"Signature length: {len(sig_bytes)} bytes")
+            import hashlib
+            print(f"DEBUG - Hash BE: {hashlib.sha256(data_bytes).hexdigest()}")
+            vk.verify(sig_bytes, data_bytes,
                       hashfunc=hashlib.sha256, sigdecode=sigdecode_der)
+            print(f"✓ Signature verification PASSED")
             return True
         except Exception as e:
-            print(f"Verification failed: {str(e)}")
+            print(f"✗ Verification failed: {str(e)}")
+            print(f"Data to verify: {data_bytes}")
+            print(f"Signature hex: {signature_hex}")
+            import traceback
+            traceback.print_exc()
             return False
 
     # Key management methods

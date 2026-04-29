@@ -1,6 +1,7 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
 import saveUserData from "@/utils/saveDataToStorage";
 import { generateWallet, restoreWallet, validateMnemonic, bytesToHex } from "@/utils/walletGenerator";
+import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
 import * as secp from "@noble/secp256k1";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -15,6 +16,8 @@ export interface CreateWalletResult {
 export const clearOldSession = () => {
   const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn", "accounts"];
   items.forEach(item => localStorage.removeItem(item));
+  // Xóa password khỏi session storage
+  clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
 
@@ -36,7 +39,7 @@ export const checkUniqueEmail = async (email: string): Promise<boolean> => {
 
 export const createWallet = async (password: string, email: string): Promise<CreateWalletResult> => {
   clearOldSession();
-  
+
   // Check email uniqueness first
   const isUnique = await checkUniqueEmail(email);
   if (!isUnique) {
@@ -71,7 +74,7 @@ export const createWallet = async (password: string, email: string): Promise<Cre
         vault: JSON.stringify(vault)
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Backend registration failed:', errorData);
@@ -81,14 +84,13 @@ export const createWallet = async (password: string, email: string): Promise<Cre
   }
 
   saveUserData(userData);
-  localStorage.setItem('isLoggedIn', 'true');
 
   // Trả về mnemonic để hiển thị cho user backup
   return { mnemonic, address };
 };
 
 export const registerSchool = async (
-  password: string, 
+  password: string,
   schoolName: string,
   taxId: string,
   representative: string,
@@ -96,7 +98,7 @@ export const registerSchool = async (
   phone: string
 ): Promise<CreateWalletResult> => {
   clearOldSession();
-  
+
   // Check email uniqueness first
   const isUnique = await checkUniqueEmail(email);
   if (!isUnique) {
@@ -122,7 +124,7 @@ export const registerSchool = async (
         vault: JSON.stringify(vault)
       }),
     });
-    
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error('Backend school registration failed:', errorData);
@@ -134,7 +136,7 @@ export const registerSchool = async (
     console.error('Network error during school registration:', error);
   }
 
-  const userData: Record<string, any> = {
+  const userData: Record<string, unknown> = {
     user_id: Math.random().toString(36).substr(2, 9),
     public_key: uint8ArrayToHex(publicKey),
     address: address.toLowerCase(),
@@ -145,7 +147,6 @@ export const registerSchool = async (
   };
 
   saveUserData(userData);
-  localStorage.setItem('isLoggedIn', 'true');
 
   return { mnemonic, address };
 };
@@ -217,10 +218,7 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   }
 
   localStorage.setItem('isLoggedIn', 'true');
-  
-  // Sync vault to backend just in case
-  await updateVault(address.toLowerCase(), JSON.stringify(vault));
-  
+
   return { address };
 };
 
@@ -259,7 +257,11 @@ export const loginWallet = async (password: string): Promise<Uint8Array> => {
 
   localStorage.setItem("isLoggedIn", "true");
   console.log('[LoginWallet] Wallet unlocked successfully');
-  
+
+  // Lưu password vào session storage để dùng cho signing
+  savePasswordToSession(password);
+  console.log('[authService] Password saved to session storage');
+
   return privateKey;
 };
 
@@ -381,11 +383,14 @@ export const adminLoginWithPrivateKey = adminImportAndSaveVault;
 
 export const logoutUser = (): void => {
   localStorage.removeItem('isLoggedIn');
+  // Xóa password khỏi session storage khi logout
+  clearPasswordFromSession();
+  console.log('[authService] User logged out, password cleared');
 };
 
 export const updateProfile = async (
-  address: string, 
-  fullName: string, 
+  address: string,
+  fullName: string,
   avatarUrl?: string,
   taxId?: string,
   representative?: string,
@@ -397,9 +402,9 @@ export const updateProfile = async (
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ 
-      address: address.toLowerCase(), 
-      full_name: fullName, 
+    body: JSON.stringify({
+      address: address.toLowerCase(),
+      full_name: fullName,
       avatar_url: avatarUrl,
       tax_id: taxId,
       representative: representative,
@@ -471,7 +476,7 @@ export const getRecentAccounts = (): any[] => {
 export const switchAccount = (address: string): boolean => {
   const accounts = getRecentAccounts();
   const account = accounts.find((a: any) => a.address.toLowerCase() === address.toLowerCase());
-  
+
   if (!account) return false;
 
   // Set as primary keys for flat access
