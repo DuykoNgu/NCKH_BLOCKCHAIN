@@ -30,16 +30,14 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
     """Build and hash a system Transaction for an account operation."""
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
-
-    # Extract public_key from payload if available (for account_register)
-    sender_pubkey = payload.get('public_key', '')
+    sender_pubkey = AccountService.get_account_by_address(sender_address).public_key if sender_address != SYSTEM_ADDRESS else ""
 
     tx = Transaction(
         tx_id=tx_hash,
         tx_hash=tx_hash,
         sender_pubkey=sender_pubkey,      # Get from payload for account operations
-        sender_address=None,              # ALWAYS None for account operations to avoid FK constraint
-        recipient_address=None,           # Set to None to avoid FK constraint
+        sender_address=sender_address,              # ALWAYS None for account operations to avoid FK constraint
+        recipient_address=SYSTEM_ADDRESS,           # Set to None to avoid FK constraint
         payload=payload,
         signature="",              # no signature for server-initiated txs
         timestamp=datetime.datetime.now().timestamp(),
@@ -86,7 +84,15 @@ class AccountService:
 
     @staticmethod
     def register_account(
-        address: str, public_key: str, role: Role = Role.CLIENT
+        address: str,
+        public_key: str,
+        role: Role = Role.CLIENT,
+        signature: str = None,
+        full_name: str = None,
+        tax_id: str = None,
+        representative: str = None,
+        email: str = None,
+        phone: str = None,
     ) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
         try:
@@ -96,16 +102,22 @@ class AccountService:
                 return False, None, "Account already exists"
 
             now = datetime.datetime.now()
-            
+            created_at = now.strftime("%d/%m/%Y %H:%M:%S")
+
             # Default is_active=1 for CLIENT/MOET, is_active=0 for VALIDATOR (pending approval)
             is_active = 0 if role == Role.VALIDATOR else 1
 
             account = Account(
-                address= address,
-                public_key= public_key,
-                role = role,
+                address=address,
+                public_key=public_key,
+                role=role,
                 is_active=is_active,
-                created_at=now.strftime("%d/%m/%Y %H:%M:%S")
+                created_at=created_at,
+                full_name=full_name,
+                tax_id=tax_id,
+                representative=representative,
+                email=email,
+                phone=phone,
             )
 
             # 1. Write to local DB immediately (fast UX)
@@ -126,6 +138,17 @@ class AccountService:
                 "role": role_str,
                 "created_at": created_at,
             }
+            if full_name:
+                payload["full_name"] = full_name
+            if tax_id:
+                payload["tax_id"] = tax_id
+            if representative:
+                payload["representative"] = representative
+            if email:
+                payload["email"] = email
+            if phone:
+                payload["phone"] = phone
+
             tx = _build_account_tx(payload, sender_address=address)
             _submit_tx(tx)
 
@@ -190,15 +213,11 @@ class AccountService:
             return False, f"Verification error: {str(e)}"
 
     @staticmethod
-    def update_profile(address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
+    def update_profile(account: Account,address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
         """Update account profile (name and avatar)"""
         address = address.lower()
         logger.info(f"Updating profile for address: {address}")
         try:
-            account = AccountRepository.get_account_by_address(address)
-            if not account:
-                logger.warning(f"Profile update failed: Account {address} not found")
-                return False, None, "Account not found"
 
             logger.info(f"Found account: {account.address}. New name: {full_name}")
 

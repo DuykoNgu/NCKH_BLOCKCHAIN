@@ -79,18 +79,18 @@ class TransactionService:
                 payload = {}
         
         # Account operation transactions: check for public_key in payload (highest priority)
-        payload_op = payload.get("op") if isinstance(payload, dict) else None
-        if payload_op in ["account_register", "account_update"]:
-            # Account operations don't require signature validation
-            # Just verify that public_key is in payload
-            if payload_op == "account_register":
-                has_pubkey = bool(payload.get("public_key"))
-                if has_pubkey:
-                    return True
-                else:
-                    # Missing public_key in payload
-                    return False
-            return True
+        # payload_op = payload.get("op") if isinstance(payload, dict) else None
+        # if payload_op in ["account_register", "account_update"]:
+        #     # Account operations don't require signature validation
+        #     # Just verify that public_key is in payload
+        #     if payload_op == "account_register":
+        #         has_pubkey = bool(payload.get("public_key"))
+        #         if has_pubkey:
+        #             return True
+        #         else:
+        #             # Missing public_key in payload
+        #             return False
+        #     return True
         
         # System transactions: skip signature validation (sender_address is None or "system")
         is_system_tx = transaction.sender_address is None or transaction.sender_address == "system"
