@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS nft (
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
     tx_id TEXT PRIMARY KEY,
+    sender_pubkey TEXT,
     sender_address TEXT,
     recipient_address TEXT,
 

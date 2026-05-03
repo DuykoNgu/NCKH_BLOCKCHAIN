@@ -97,41 +97,40 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
         
         logger.info("→ Creating activation transaction for broadcast...")
         
+        now_ts = datetime.datetime.now().timestamp()
+        
         # Create activation transaction payload
         payload = {
             "op": "validator_activate",
             "ip_address": ip_address,
             "port": port,
             "public_key": public_key,
-            "timestamp": datetime.datetime.now().timestamp()
+            "timestamp": now_ts
         }
-        data_signature = {
-            "sender_address": "system",
-            "recipient_address": "system",
-            "payload": payload,
-            "timestamp": datetime.datetime.now().timestamp()
-        }
-        # Hash payload to create tx_hash
-        payload_json = json.dumps(payload, sort_keys=True).encode()
-        tx_hash = hashlib.sha256(payload_json).hexdigest()
-        signature = CryptoUtils.sign_data(data_signature, private_key_hex)
+        
         # Create transaction object
         tx = Transaction(
-            tx_id=tx_hash,
-            tx_hash=tx_hash,
             sender_pubkey=public_key,
             sender_address="system",
             recipient_address="system",
             payload=payload,
-            signature=signature,  # System transactions don't need signature
-            timestamp=datetime.datetime.now().timestamp(),
+            timestamp=now_ts,
             block_id=None
         )
         
+        # Sign the transaction using TransactionService (this will also generate tx_id and tx_hash)
+        from app.services.TransactionService import TransactionService
+        TransactionService.sign(tx, private_key_hex)
+        tx_hash = tx.tx_hash
+        
         # Add to mempool
         blockchain = get_blockchain_instance()
-        BlockChainService.add_transaction_to_mempool(blockchain, tx)
-        logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
+        success = BlockChainService.add_transaction_to_mempool(blockchain, tx)
+        if success:
+            logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
+        else:
+            logger.error(f"✗ Failed to add activation transaction to mempool: invalid transaction")
+            return
         
         # Save to database for persistence
         if TransactionRepository.create_transaction(tx):
@@ -331,7 +330,7 @@ def activate_validator_with_key():
             # Still update peer record in database even if already active
             # (peer record might not exist or might not have public_key yet)
             public_key = validator_worker.public_key or ""
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key,private_key_hex)
             
             return jsonify({
                 'success': True,
@@ -356,7 +355,7 @@ def activate_validator_with_key():
             # Try to update peer record in database
             # Get public_key from validator_worker
             public_key = validator_worker.public_key or ""
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key, private_key_hex)
             
             return jsonify({
                 'success': True,
