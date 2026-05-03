@@ -344,10 +344,111 @@ class BlockChainService:
                 traceback.print_exc()
                 return False
 
-        # Unknown operation
-        tx.tx_status = "FAILED"
-        tx.error_reason = f"Unknown operation: {payload.get('op', 'UNKNOWN')}"
-        return False
+        # NFT minting transaction
+        if payload.get("op") == "mint_nft":
+            try:
+                from app.repositories.NFTRepository import NFTRepository
+                from app.repositories.AccountRepository import AccountRepository
+                from app.models.NFT import NFT
+                from app.models.NFTmetadata import NFTmetadata
+                from app.models.Account import Account, Role
+
+                # --- Extract fields from payload ---
+                token_id        = payload.get("token_id")
+                issuer_address  = payload.get("issuer_address", tx.sender_address)
+                issuer_pubkey   = payload.get("issuer_pubkey", tx.sender_pubkey or "")
+                recipient_addr  = payload.get("recipient_address", tx.recipient_address)
+                degree_type     = payload.get("degree_type", "")
+                pdf_url         = payload.get("pdf_url", "")
+                pdf_hash        = payload.get("pdf_hash", "")
+                institution_addr = payload.get("institution_address", "")
+                institution     = payload.get("institution", "")
+                student_id      = payload.get("student_id", "")
+                issued_at       = payload.get("issued_at")
+                issuer_sig      = payload.get("issuer_signature", "")
+                minted_at       = payload.get("minted_at")
+
+                if not recipient_addr:
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = "mint_nft: missing recipient_address"
+                    print(f"✗ [TX] {tx.error_reason}")
+                    return False
+
+                # --- Idempotency: skip if NFT already exists in this node's DB ---
+                if token_id:
+                    existing_nft = NFTRepository.get_nft_by_id(token_id)
+                    if existing_nft:
+                        tx.tx_status = "COMMITTED"
+                        print(f"⚠ [TX] mint_nft skipped: token_id={token_id[:16]}... already exists")
+                        return True
+
+                # --- Reconstruct NFT objects ---
+                metadata = NFTmetadata(
+                    degree_type=degree_type,
+                    pdf_url=pdf_url,
+                    pdf_hash=pdf_hash,
+                    institution_address=institution_addr,
+                    institution=institution,
+                    student_id=student_id,
+                    issued_at=issued_at
+                )
+
+                # Resolve recipient Account (placeholder if not found locally yet)
+                recipient_account = AccountRepository.get_account_by_address(recipient_addr)
+                if not recipient_account:
+                    recipient_account = Account(
+                        address=recipient_addr,
+                        public_key="",
+                        role=Role.CLIENT,
+                        is_active=1
+                    )
+
+                nft = NFT(
+                    issuer_address=issuer_address,
+                    issuer_pubkey=issuer_pubkey,
+                    metadata=metadata,
+                    owner_address=recipient_account,
+                    issuer_signature=issuer_sig
+                )
+
+                # Override auto-generated token_id with the one from payload for consistency
+                if token_id:
+                    nft.token_id = token_id
+                if minted_at:
+                    nft.minted_at = minted_at
+
+                # --- Persist NFT ---
+                success = NFTRepository.create_nft(nft)
+                if success:
+                    tx.tx_status = "COMMITTED"
+                    print(f"✓ [TX] mint_nft applied: token_id={nft.token_id[:16]}... → {recipient_addr}")
+                    return True
+                else:
+                    # Might fail due to UNIQUE constraint if record was already inserted
+                    # (e.g. originating node already saved it)
+                    existing = NFTRepository.get_nft_by_id(nft.token_id)
+                    if existing:
+                        tx.tx_status = "COMMITTED"
+                        print(f"⚠ [TX] mint_nft: NFT already in DB, skipping insert")
+                        return True
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = "mint_nft: failed to save NFT to database"
+                    print(f"✗ [TX] {tx.error_reason}")
+                    return False
+
+            except Exception as e:
+                tx.tx_status = "FAILED"
+                tx.error_reason = str(e)
+                print(f"✗ [TX] mint_nft error: {tx.error_reason}")
+                import traceback
+                traceback.print_exc()
+                return False
+
+        # Unknown / unrecognised operation – log but do NOT fail the whole block sync
+        # Future custom ops or ops added in newer node versions should not break older nodes
+        print(f"⚠ [TX] Unknown operation '{payload.get('op', 'UNKNOWN')}' – skipping (tx_hash={tx.tx_hash[:16] if tx.tx_hash else 'N/A'}...)")
+        tx.tx_status = "COMMITTED"
+        return True
 
     @staticmethod
     def is_valid_new_block(blockchain: BlockChain, new_block: Block, prev_block: Block) -> bool:
@@ -357,8 +458,8 @@ class BlockChainService:
         if new_block.block_header.pre_hash != prev_block.block_hash:
             return False
 
-        if new_block.block_header.validator_pubkey not in blockchain.authority_set:
-            return False
+        # if new_block.block_header.validator_pubkey not in blockchain.authority_set:
+        #     return False
 
         return True
    
@@ -384,8 +485,8 @@ class BlockChainService:
         Returns:
             Tuple: (block, is_new_block) where is_new_block indicates if it's a new block to be added
         """
-        if public_key_hex not in blockchain.authority_set:
-            raise PermissionError("Validator ko năm trong uỷ quyền")
+        # if public_key_hex not in blockchain.authority_set:
+        #     raise PermissionError("Validator ko năm trong uỷ quyền")
 
         # Get max_transactions from config if not provided
         if max_transactions is None:

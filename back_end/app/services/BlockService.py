@@ -20,10 +20,20 @@ class BlockService:
         if not transactions:
             return ""
 
-        tx_hashes = [
-            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode())
-            for tx in transactions
-        ]
+        tx_hashes = []
+        for tx in transactions:
+            # Chuẩn hoá dữ liệu để luôn đảm bảo tính nhất quán (Canonical JSON)
+            # Loại bỏ các khoảng trắng mặc định, sắp xếp keys theo thứ tự Alphabet
+            tx_dict = tx.to_dict()
+            
+            # Đảm bảo các field rỗng thay vì bị None/null
+            if tx_dict.get('error_reason') is None:
+                tx_dict['error_reason'] = ""
+            if tx_dict.get('sender_address') is None:
+                tx_dict['sender_address'] = "system"
+                
+            canonical_json = json.dumps(tx_dict, sort_keys=True, separators=(',', ':'))
+            tx_hashes.append(HashUtils.hash_sha256(canonical_json.encode()))
 
         while len(tx_hashes) > 1:
             temp = []

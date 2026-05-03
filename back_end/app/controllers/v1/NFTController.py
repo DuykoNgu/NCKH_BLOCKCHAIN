@@ -80,24 +80,45 @@ def create_nft():
         from app.services.NetworkService import get_network_service
         from app.blockchain_instance import get_blockchain_instance
         
-        # Create transaction payload
+        # Create NFT object first to get the canonical token_id
+        nft_pre = NFTService.create_nft(
+            issuer_address=issuer.address,
+            issuer_pubkey=issuer.public_key,
+            metadata=metadata,
+            recipient=recipient,
+            issuer_signature=data['signature']
+        )
+
+        # Create transaction payload – include ALL fields so peer nodes can
+        # reconstruct and persist the NFT when they execute this transaction.
         tx = Transaction(
             sender_pubkey=issuer.public_key,
             sender_address=issuer.address,
             recipient_address=recipient.address,
             payload={
                 "op": "mint_nft",
+                # --- core identification ---
+                "token_id": nft_pre.token_id,
+                "issuer_address": issuer.address,
+                "issuer_pubkey": issuer.public_key,
+                "recipient_address": recipient.address,
+                # --- metadata (all fields) ---
                 "degree_type": data['degree_type'],
+                "pdf_url": data['pdf_url'],
                 "pdf_hash": data['pdf_hash'],
-                "institution_address": data['institution_address']
+                "institution_address": data['institution_address'],
+                "institution": data.get('institution', ''),
+                "student_id": data.get('student_id', ''),
+                "issued_at": issued_at,
+                # --- signature ---
+                "issuer_signature": data['signature'],
+                "minted_at": nft_pre.minted_at,
             }
         )
-        
-        # Sign transaction (need issuer's private key - should be passed or retrieved securely)
-        # For now, we'll calculate tx_hash without signing
-        # In production, you should sign the transaction with issuer's private key
+
+        # Calculate tx_hash (no private-key signing needed for NFT tx at this stage)
         tx.tx_hash = TransactionService.calculate_hash(tx)
-        tx.tx_id = tx.tx_hash  # Use hash as ID for now
+        tx.tx_id = tx.tx_hash
         
         # Add to mempool
         blockchain = get_blockchain_instance()
@@ -120,29 +141,22 @@ def create_nft():
             print(f"⚠ Warning: Failed to propagate transaction: {e}")
             # Continue even if propagation fails
         
-        # Create NFT
-        nft = NFTService.create_nft(
-            issuer_address=issuer.address,
-            issuer_pubkey=issuer.public_key,
-            metadata=metadata,
-            recipient=recipient,
-            issuer_signature=data['signature']
-        )
-        # Sign and save NFT using NFTService
-        success = NFTRepository.create_nft(nft)
+        # 💾 Save NFT to the LOCAL node's database right away.
+        # Peer nodes will create their own record via execute_transaction when the block syncs.
+        success = NFTRepository.create_nft(nft_pre)
         
         if success:
             return jsonify({
                 "message": "NFT created successfully",
                 "success": True,
-                "token_id": nft.token_id,
+                "token_id": nft_pre.token_id,
                 "tx_hash": tx.tx_hash,
                 "nft": {
-                    "token_id": nft.token_id,
-                    "issuer_pubkey": nft.issuer_pubkey,
+                    "token_id": nft_pre.token_id,
+                    "issuer_pubkey": nft_pre.issuer_pubkey,
                     "recipient_address": recipient.address,
-                    "is_valid": nft.is_valid,
-                    "minted_at": nft.minted_at
+                    "is_valid": nft_pre.is_valid,
+                    "minted_at": nft_pre.minted_at
                 }
             }), 201
         else:

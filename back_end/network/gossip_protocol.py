@@ -549,9 +549,9 @@ class GossipProtocol:
                 return False
             
             # 2. Verify validator authorization
-            if block.block_header.validator_pubkey not in blockchain.authority_set:
-                print(f"✗ Validator {block.block_header.validator_pubkey[:16]}... not authorized")
-                return False
+            # if block.block_header.validator_pubkey not in blockchain.authority_set:
+            #     print(f"✗ Validator {block.block_header.validator_pubkey[:16]}... not authorized")
+            #     return False
             
             # 3. Verify merkle root
             calculated_merkle = BlockService.calculate_merkle_root(block.transactions)

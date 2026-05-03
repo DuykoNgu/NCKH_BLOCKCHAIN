@@ -165,9 +165,21 @@ class ChainSync:
                 print(f"✗ Block #{block.index}: merkle root mismatch")
                 return False
             
-            # 4. Add to blockchain WITHOUT executing transactions
-            # (synced blocks are already committed on network)
-            print(f"→ Adding block #{block.index} to chain (skipping transaction execution)")
+            # 4. CRITICAL FIX: Execute transactions to update blockchain state
+            # This is ESSENTIAL for data sync! All nodes MUST execute transactions
+            # when receiving blocks to ensure consistent state across the network
+            print(f"→ [SYNC] Executing {len(block.transactions)} transactions from block #{block.index}...")
+            execution_errors = 0
+            for tx in block.transactions:
+                success = BlockChainService.execute_transaction(self.blockchain, tx)
+                if not success:
+                    print(f"  ⚠ Transaction execution failed: {tx.tx_hash[:8]}... (op={tx.payload.get('op') if isinstance(tx.payload, dict) else 'UNKNOWN'})")
+                    execution_errors += 1
+            
+            if execution_errors > 0:
+                print(f"⚠️  [SYNC] {execution_errors}/{len(block.transactions)} transaction executions failed")
+                
+            print(f"→ Adding block #{block.index} to chain")
             self.blockchain.chain.append(block)
             
             # 5. Remove synced transactions from mempool
