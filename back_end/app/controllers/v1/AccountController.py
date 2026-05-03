@@ -61,6 +61,7 @@ def register():
 
     success, account, message = AccountService.register_account(
         address, public_key, role, signature,
+        reg_timestamp=data.get('timestamp'),
         full_name=full_name,
         tax_id=tax_id,
         representative=representative,

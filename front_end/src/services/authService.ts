@@ -130,7 +130,7 @@ export const registerSchool = async (
         public_key: uint8ArrayToHex(publicKey),
         role: "validator",
         signature,
-        timestamp,
+        timestamp
       }),
     });
     

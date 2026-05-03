@@ -463,6 +463,15 @@ class GossipProtocol:
             
             # Add to blockchain mempool
             blockchain = get_blockchain_instance()
+            
+            # ── For account_register: execute the operation first so the account exists
+            # in this node's DB before we try to save the TX (which has a FK on sender_address).
+            # execute_transaction() is idempotent: safely skips if account already exists.
+            if payload_op == "account_register":
+                from app.services.BlockChainService import BlockChainService as BCS
+                BCS.execute_transaction(blockchain, tx)
+                print(f"→ [gossip] Executed account_register for {tx.sender_address} before saving TX")
+            
             if BlockChainService.add_transaction_to_mempool(blockchain, tx):
                 print(f"✓ Transaction {tx_hash[:8]}... added to mempool")
             else:

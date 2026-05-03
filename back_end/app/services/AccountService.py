@@ -97,6 +97,7 @@ class AccountService:
         public_key: str,
         role: Role = Role.CLIENT,
         signature: str = None,
+        reg_timestamp = None,   # ← timestamp from the frontend request (needed to verify sig)
         full_name: str = None,
         tax_id: str = None,
         representative: str = None,
@@ -147,6 +148,10 @@ class AccountService:
                 "role": role_str,
                 "created_at": created_at,
             }
+            # MUST include the original timestamp so is_valid() can reconstruct
+            # the exact signing data that the frontend signed
+            if reg_timestamp is not None:
+                payload["timestamp"] = reg_timestamp
             if full_name:
                 payload["full_name"] = full_name
             if tax_id:

@@ -78,6 +78,37 @@ class TransactionRepository:
                     logger.error(f"✗ FOREIGN KEY Constraint Error for TX {transaction.tx_hash[:16]}...")
                     logger.error(f"  SQL Values: tx_id={transaction.tx_id[:16]}, sender_addr={sender_addr}, recipient_addr={transaction.recipient_address}, block_id={block_id}")
                     logger.error(f"  Check: Does account '{sender_addr}' exist? Does block '{block_id}' exist?")
+                    
+                    # ── Safety fallback: retry with sender_address=NULL ─────────────
+                    # The schema allows NULL (ON DELETE SET NULL). This handles the race
+                    # condition where the TX arrives before the account is created on
+                    # this node (e.g. account_register gossip received out of order).
+                    if sender_addr is not None and conn is not None:
+                        try:
+                            cursor.execute('''
+                                INSERT OR IGNORE INTO transactions 
+                                (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (
+                                transaction.tx_id,
+                                transaction.tx_hash,
+                                transaction.sender_pubkey,
+                                None,                      # ← NULL instead of unknown address
+                                transaction.recipient_address,
+                                dumps(transaction.payload),
+                                transaction.signature,
+                                transaction.timestamp,
+                                block_id,
+                                transaction.tx_status,
+                                transaction.error_reason
+                            ))
+                            if should_close:
+                                conn.commit()
+                                conn.close()
+                            logger.warning(f"⚠ TX {transaction.tx_hash[:16]}... saved with sender_address=NULL (account not yet in DB)")
+                            return True
+                        except Exception as fallback_e:
+                            logger.error(f"✗ Fallback save also failed: {fallback_e}")
                 
                 logger.error(f"✗ Error creating transaction {transaction.tx_hash[:16]}...: {e}")
                 if should_close:
