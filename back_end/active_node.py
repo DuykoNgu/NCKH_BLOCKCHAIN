@@ -377,56 +377,7 @@ class NodeActivator:
             traceback.print_exc()
             return {'success_count': 0, 'failed_count': 0, 'results': [], 'error': str(e)}
     
-    def create_activation_transaction(self, private_key: str) -> Optional[object]:
-        """
-        Create an activation transaction to be added to the mempool.
-        
-        This transaction represents the node activation in the blockchain
-        and can be included in blocks for consensus tracking.
-        
-        Args:
-            private_key: Node's private key (hex format)
-            
-        Returns:
-            Transaction object or None if failed
-        """
-        self.print_section("Step 6: Creating Activation Transaction")
-        
-        try:
-            # Get node address from public key
-            node_address = CryptoUtils.get_address_from_pubkey(self.public_key)
-            
-            self.print_info(f"Creating activation transaction for {node_address}...")
-            
-            tx = NodeActivationService.create_activation_transaction(
-                node_id=self.public_key,
-                ip=os.getenv('NODE_IP', '127.0.0.1'),
-                port=int(os.getenv('NODE_PORT', '5000')),
-                sender_address=node_address,
-                private_key=private_key
-            )
-            
-            if tx:
-                self.print_success(f"Activation transaction created: {tx.tx_id[:32]}...")
-                self.print_info(f"Transaction will be added to mempool for next block")
-                
-                # Try to add to mempool
-                success = NodeActivationService.add_activation_to_mempool(tx)
-                if success:
-                    self.print_success("Transaction added to mempool")
-                    return tx
-                else:
-                    self.print_warning("Failed to add transaction to mempool")
-                    return tx  # Return anyway, some error occurred
-            else:
-                self.print_warning("Failed to create activation transaction")
-                return None
-                
-        except Exception as e:
-            self.print_warning(f"Error creating activation transaction: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
+    # Redundant method removed to avoid duplicate transactions with wrong format
     
     def display_summary(self) -> None:
         """Display activation summary"""
@@ -512,9 +463,6 @@ class NodeActivator:
                 if seed_nodes and self.private_key:
                     # Broadcast signed activation to seed nodes
                     self.broadcast_signed_activation(self.private_key, seed_nodes)
-                    
-                    # Create activation transaction for mempool
-                    self.create_activation_transaction(self.private_key)
             else:
                 self.print_info("Network config not found - skipping signed broadcast")
         

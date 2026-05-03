@@ -9,8 +9,8 @@ import time
 logger = get_logger(__name__)
 
 BASE_TRANSACTION_SELECT = """
-    SELECT tx_hash, sender_address, recipient_address, 
-           payload, signature, timestamp, block_id
+    SELECT tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, 
+           payload, signature, timestamp, block_id, tx_status, error_reason
     FROM transactions
 """
 class TransactionRepository:
@@ -44,11 +44,12 @@ class TransactionRepository:
                 
                 cursor.execute('''
                     INSERT OR IGNORE INTO transactions 
-                    (tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     transaction.tx_id,
                     transaction.tx_hash, 
+                    transaction.sender_pubkey,
                     sender_addr,
                     transaction.recipient_address, 
                     dumps(transaction.payload), 
@@ -210,13 +211,17 @@ class TransactionRepository:
         
         try:
             return Transaction(
-                tx_hash=row[0],
-                sender_address=row[1],
-                recipient_address=row[2],
-                payload=json.loads(row[3]) if row[3] else {},
-                signature=row[4],
-                timestamp=row[5],
-                block_id=row[6]
+                tx_id=row[0],
+                tx_hash=row[1],
+                sender_pubkey=row[2],
+                sender_address=row[3] if row[3] is not None else "system",
+                recipient_address=row[4],
+                payload=json.loads(row[5]) if row[5] else {},
+                signature=row[6],
+                timestamp=row[7],
+                block_id=row[8],
+                tx_status=row[9] if len(row) > 9 else "PENDING",
+                error_reason=row[10] if len(row) > 10 else ""
             )
         except Exception as e:
             print(f"Error parsing transaction row: {e}")

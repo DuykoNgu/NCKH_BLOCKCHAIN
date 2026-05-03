@@ -82,15 +82,21 @@ class BlockService:
     @staticmethod
     def sign_block(block: Block, private_key_hex: str) -> str:
         """Ký block bằng ECDSA SECP256k1"""
+        print("SIGN BLOCK", block.to_dict())
+        print("PRIVATE KEY", private_key_hex)
         message = BlockService.get_signing_data(block)
         block.validator_signature = CryptoUtils.sign_data(message, private_key_hex)
         block.block_hash = BlockService.calculate_hash(block)
+        
         return block.validator_signature
 
     # Xác thực chữ ký block
     @staticmethod
     def verify_block(block: Block, public_key_hex: str) -> bool:
         """Xác thực chữ ký block"""
+        if block.index == 0 and block.validator_signature == "GENESIS":
+            return True
+            
         message = BlockService.get_signing_data(block)
         return CryptoUtils.verify_signature(message, block.validator_signature, public_key_hex)
 
