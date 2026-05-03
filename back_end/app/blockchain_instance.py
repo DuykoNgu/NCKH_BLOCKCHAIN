@@ -2,7 +2,7 @@
 Blockchain Singleton Instance Manager
 Provides global access to the blockchain instance for P2P network integration
 """
-from typing import Optional
+from typing import Optional, List
 from app.models.BlockChain import BlockChain
 
 
@@ -73,46 +73,13 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
         
         if existing_genesis:
             print(f"✓ Genesis block already exists in database (index={existing_genesis.index})")
-            # Load genesis block with all its transactions
-            blockchain.chain.append(existing_genesis)
             blockchain.super_validator_pubkey = super_validator_pubkey
             blockchain.authority_set.add(super_validator_pubkey)
             
-            # Load genesis transactions if available
-            try:
-                from app.database.connection import get_connection
-                conn = get_connection()
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT tx_id, tx_hash, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason
-                    FROM transactions
-                    WHERE block_id = ?
-                ''', ("GENESIS",))
-                tx_rows = cursor.fetchall()
-                conn.close()
-                
-                if tx_rows:
-                    import json
-                    from app.models.Transaction import Transaction
-                    for row in tx_rows:
-                        tx = Transaction(
-                            tx_id=row[0],
-                            tx_hash=row[1],
-                            sender_address=row[2],
-                            recipient_address=row[3],
-                            payload=json.loads(row[4]) if row[4] else {},
-                            signature=row[5],
-                            timestamp=row[6],
-                            block_id=row[7],
-                            tx_status=row[8],
-                            error_reason=row[9]
-                        )
-                        # Add to genesis block transactions if not already there
-                        if not any(t.tx_hash == tx.tx_hash for t in existing_genesis.transactions):
-                            existing_genesis.transactions.append(tx)
-                    print(f"✓ Loaded {len(tx_rows)} genesis transaction(s) from database")
-            except Exception as e:
-                print(f"⚠ Warning: Could not load genesis transactions: {e}")
+            # 🔥 Load FULL chain from DB (not just genesis) to restore RAM state on restart
+            print("→ Loading full chain from database into memory...")
+            load_chain_from_db(blockchain)
+            print(f"✓ Chain restored: {len(blockchain.chain)} block(s) loaded from DB")
             
             return blockchain
         
@@ -366,6 +333,78 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
         import traceback
         traceback.print_exc()
         return None
+
+
+def load_chain_from_db(blockchain: BlockChain) -> int:
+    """
+    Load all blocks from DB into blockchain.chain (RAM).
+    Called on node restart so that get_local_height() returns the correct
+    persisted height instead of 0.
+    
+    Returns:
+        Number of blocks loaded
+    """
+    from app.repositories.BlockRepository import BlockRepository
+    
+    try:
+        # Query all block IDs ordered by index
+        from app.database.connection import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT block_id FROM block ORDER BY index_num ASC')
+        rows = cursor.fetchall()
+        conn.close()
+        
+        if not rows:
+            print("⚠ No blocks found in DB to load")
+            return 0
+        
+        # Clear chain and reload entirely from DB
+        blockchain.chain.clear()
+        loaded = 0
+        
+        for (block_id,) in rows:
+            block = BlockRepository.get_block_by_id(block_id)
+            if block:
+                blockchain.chain.append(block)
+                loaded += 1
+            else:
+                print(f"⚠ Could not load block_id={block_id} from DB, stopping chain load")
+                break
+        
+        print(f"✓ load_chain_from_db: loaded {loaded} block(s) from DB (height={loaded - 1})")
+        return loaded
+    
+    except Exception as e:
+        print(f"✗ load_chain_from_db error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 0
+
+
+def get_local_db_height() -> int:
+    """
+    Get the current blockchain height by querying the database directly.
+    This is the reliable source of truth — works even after node restart
+    when blockchain.chain may not be fully loaded.
+    
+    Returns:
+        Height (max index_num) or -1 if no blocks exist
+    """
+    try:
+        from app.database.connection import get_connection
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT MAX(index_num) FROM block')
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row and row[0] is not None:
+            return int(row[0])
+        return -1
+    except Exception as e:
+        print(f"✗ get_local_db_height error: {e}")
+        return -1
 
 
 def reset_blockchain() -> None:

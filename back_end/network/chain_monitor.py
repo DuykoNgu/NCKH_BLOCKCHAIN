@@ -72,13 +72,49 @@ class ChainMonitor:
         print(f"[ChainMonitor] Initialized (interval={check_interval}s, gap_threshold={self.block_gap_threshold})")
     
     def get_local_height(self) -> int:
-        """Get current local blockchain height"""
+        """
+        Get current local blockchain height.
+        
+        Priority:
+        1. Query DB directly (MAX index_num) - the reliable persistent source
+        2. If RAM chain is behind DB (e.g. after restart), reload chain from DB
+        3. Fallback to RAM chain length if DB query fails
+        """
         try:
-            self.local_height = len(self.blockchain.chain) - 1
+            from app.database.connection import get_connection
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT MAX(index_num) FROM block')
+            row = cursor.fetchone()
+            conn.close()
+            
+            if row and row[0] is not None:
+                db_height = int(row[0])
+            else:
+                db_height = -1
+            
+            # Check if RAM chain is out-of-sync with DB (e.g. after restart)
+            ram_height = len(self.blockchain.chain) - 1
+            if db_height > ram_height:
+                print(f"[ChainMonitor] ⚠️  RAM chain ({ram_height}) lags behind DB ({db_height}), reloading from DB...")
+                try:
+                    from app.blockchain_instance import load_chain_from_db
+                    load_chain_from_db(self.blockchain)
+                    print(f"[ChainMonitor] ✅ Chain reloaded: RAM height now {len(self.blockchain.chain) - 1}")
+                except Exception as reload_err:
+                    print(f"[ChainMonitor] ✗ Could not reload chain from DB: {reload_err}")
+            
+            self.local_height = db_height
             return self.local_height
+        
         except Exception as e:
-            print(f"✗ [ChainMonitor] Error getting local height: {e}")
-            return 0
+            print(f"✗ [ChainMonitor] Error getting local height from DB: {e}")
+            # Fallback to RAM
+            try:
+                self.local_height = len(self.blockchain.chain) - 1
+                return self.local_height
+            except Exception:
+                return 0
     
     def query_peer_block_info(self, peer: Peer) -> Optional[int]:
         """
@@ -172,15 +208,13 @@ class ChainMonitor:
         Returns:
             List of missing block indices
         """
-        local_height = self.get_local_height()
+        local_height = self.get_local_height()  # Uses DB-based height
         missing_blocks = []
         
         # Get blocks we know we're missing
         if self.max_height > local_height:
             for idx in range(local_height + 1, min(self.max_height + 1, local_height + 100)):
-                # Check if we have this block
-                if idx >= len(self.blockchain.chain):
-                    missing_blocks.append(idx)
+                missing_blocks.append(idx)
         
         return missing_blocks
     

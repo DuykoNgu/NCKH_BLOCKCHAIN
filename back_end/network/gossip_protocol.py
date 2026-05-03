@@ -522,7 +522,14 @@ class GossipProtocol:
             blockchain = get_blockchain_instance()
             
             # ⚡ CHECK FOR BLOCK GAP AND TRIGGER SYNC
-            local_height = len(blockchain.chain) - 1
+            # Use DB height as reliable source of truth (RAM may be stale after restart)
+            try:
+                from app.blockchain_instance import get_local_db_height
+                local_height = get_local_db_height()
+                if local_height < 0:
+                    local_height = len(blockchain.chain) - 1
+            except Exception:
+                local_height = len(blockchain.chain) - 1
             block_gap = block.index - local_height
             
             if block_gap > 1:

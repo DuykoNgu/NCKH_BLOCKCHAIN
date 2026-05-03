@@ -8,7 +8,7 @@ from app.core.config import SECRET_KEY, REDIS_HOST, REDIS_PORT, REDIS_DB
 import uuid
 from app.models.Account import Role, TransactionAcount, TransactionUpdateAccount
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
-from app.utils import CryptoUtils
+from app.utils.CryptoUtils import CryptoUtils
 from utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 logger = get_logger(__name__)

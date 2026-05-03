@@ -120,12 +120,13 @@ def start_periodic_sync_heartbeat(interval_seconds: int = 10):
                 
                 from app.services.NetworkService import get_network_service
                 from network.chain_sync import ChainSync
+                from app.blockchain_instance import get_local_db_height
                 
                 service = get_network_service()
                 blockchain = get_blockchain_instance()
                 
-                # Check if we're behind peers
-                local_height = len(blockchain.chain) - 1
+                # Use DB height as source of truth (avoids RAM reset after restart)
+                local_height = get_local_db_height()
                 
                 # Query random peers for their height
                 active_peers = service.peer_manager.get_active_peers()

@@ -6,12 +6,10 @@ import { AUTH_SERVER } from "@/constants/api";
 import * as secp from "@noble/secp256k1";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hmac } from "@noble/hashes/hmac.js";
-import { usePassword,  } from '@/hooks/usePassword';
+import { getPasswordFromSession, isPasswordSaved } from '@/hooks/usePassword';
 import { signDataWithBytes } from "@/utils/signatureUtils";
-import { useState, useRef } from 'react';
 secp.hashes.sha256 = (msg) => sha256(msg);
 secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
-const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
 export interface CreateWalletResult {
   mnemonic: string;
   address: string;
@@ -33,7 +31,6 @@ export const clearOldSession = () => {
   clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
-const { getPassword, hasPassword } = usePassword();
 export const createWallet = async (password: string): Promise<CreateWalletResult> => {
   clearOldSession();
   // Tạo ví mới với seed phrase (BIP39)
@@ -111,6 +108,18 @@ export const registerSchool = async (
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
 
+  // Tạo chữ ký giống như createWallet
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signingDataRaw = {
+    address: address.toLowerCase(),
+    public_key: uint8ArrayToHex(publicKey),
+    role: "validator",
+    timestamp,
+  };
+  const sortedSigningData = sortObjectKeys(signingDataRaw);
+  const signingDataStr = JSON.stringify(sortedSigningData);
+  const signature = signDataWithBytes(signingDataStr, privateKey);
+
   // Đăng ký với Backend
   try {
     const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
@@ -119,7 +128,9 @@ export const registerSchool = async (
       body: JSON.stringify({
         address: address.toLowerCase(),
         public_key: uint8ArrayToHex(publicKey),
-        role: "validator"
+        role: "validator",
+        signature,
+        timestamp,
       }),
     });
     
@@ -329,15 +340,14 @@ export const updateProfile = async (
   email?: string,
   phone?: string
 ) => {
-  if (!hasPassword()) {
-      setResult({
+  if (!isPasswordSaved()) {
+      return {
         success: false,
         message: 'Mật khẩu ví không tìm thấy. Vui lòng đăng nhập lại.',
-      });
-      return;
+      };
     }
 
-  const password = getPassword();
+  const password = getPasswordFromSession();
         if (!password) {
           throw new Error('Mật khẩu ví không tìm thấy');
         }

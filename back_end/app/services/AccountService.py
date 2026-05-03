@@ -27,19 +27,28 @@ SYSTEM_ADDRESS = "system"
 
 
 def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Transaction:
-    """Build and hash a system Transaction for an account operation."""
+    """Build and hash a system Transaction for an account operation.
+    
+    NOTE: tx.signature is intentionally left EMPTY for account_register /
+    account_update transactions.  The user's proof-of-ownership signature is
+    stored inside payload["signature"].  TransactionService.is_valid() knows
+    how to verify that field separately.
+    """
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
-    sender_pubkey = AccountService.get_account_by_address(sender_address).public_key if sender_address != SYSTEM_ADDRESS else ""
+    sender_pubkey = ""
+    if sender_address != SYSTEM_ADDRESS:
+        acc = AccountService.get_account_by_address(sender_address)
+        sender_pubkey = acc.public_key if acc else ""
 
     tx = Transaction(
         tx_id=tx_hash,
         tx_hash=tx_hash,
-        sender_pubkey=sender_pubkey,      # Get from payload for account operations
-        sender_address=sender_address,              # ALWAYS None for account operations to avoid FK constraint
-        recipient_address=SYSTEM_ADDRESS,           # Set to None to avoid FK constraint
+        sender_pubkey=sender_pubkey,
+        sender_address=sender_address,
+        recipient_address=SYSTEM_ADDRESS,
         payload=payload,
-        signature="",              # no signature for server-initiated txs
+        signature="",          # ← always empty; proof is in payload["signature"]
         timestamp=datetime.datetime.now().timestamp(),
     )
     return tx
@@ -148,6 +157,9 @@ class AccountService:
                 payload["email"] = email
             if phone:
                 payload["phone"] = phone
+            if signature:
+                payload["signature"] = signature
+
 
             tx = _build_account_tx(payload, sender_address=address)
             _submit_tx(tx)
