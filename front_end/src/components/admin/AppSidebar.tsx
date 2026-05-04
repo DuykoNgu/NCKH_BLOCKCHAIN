@@ -13,7 +13,6 @@ import {
 import { NavLink } from "@/components/admin/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useWallet } from "@/hooks/useWallet";
 import {
   Sidebar,
   SidebarContent,
@@ -27,16 +26,14 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
 import { hasRoutePermission } from "@/constants/permissions";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { role } = useAuth();
-  const { lock } = useWallet();
+  const { role, logout } = useAuth();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { role } = useAuth();
 
 
   const isActive = (path: string) => location.pathname === path;
@@ -146,7 +143,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleLogout}
+          onClick={logout}
           className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3"
         >
           <LogOut className="h-4 w-4" />

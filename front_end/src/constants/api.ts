@@ -4,6 +4,9 @@ export const AUTH_SERVER = {
   WALLET_NONCE: '/users/auth/get_nonce',
   PROFILE_UPDATE: '/users/profile/update',
   GET_ALL: '/users/all',
+  GET_PROFILE: '/users/profile/:address',
+  GET_PENDING_VALIDATORS: '/users/validators/pending',
+  APPROVE_VALIDATOR: '/users/validators/approve',
 } as const;
 
 export const TRANSACTION_SERVER = {

@@ -109,7 +109,11 @@ def verify():
     try:
         account = AccountService.get_account_by_address(address)
         if not account:
-            return jsonify({"status":"fail", "message":"account not found"}), 404
+            return jsonify({
+                "status": "fail", 
+                "message": f"Account {address} not found in database. Please register first.",
+                "code": "ACCOUNT_NOT_FOUND"
+            }), 404
         
         public_key = account.public_key
 

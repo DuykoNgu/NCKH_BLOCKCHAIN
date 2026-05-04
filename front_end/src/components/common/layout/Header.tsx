@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 
 export const Header = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, fullName, role } = useAuth();
 
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">

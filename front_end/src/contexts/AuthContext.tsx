@@ -11,6 +11,7 @@ interface AuthContextType {
   login: (userData: any) => void;
   logout: () => void;
   isLoading: boolean;
+  isPendingApproval: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [fullName, setFullName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
 
   useEffect(() => {
     // Khởi tạo trạng thái từ localStorage
@@ -47,6 +49,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           role: savedRole || 'client',
           public_key: savedPublicKey
         });
+        
+        // Kiểm tra nếu là validator và chưa được active
+        const savedIsActive = localStorage.getItem("is_active");
+        if (savedRole === "validator" && savedIsActive === "0") {
+          setIsPendingApproval(true);
+        } else {
+          setIsPendingApproval(false);
+        }
       }
     }
     setIsLoading(false);
@@ -69,6 +79,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setFullName(userData.full_name || "");
     setAvatarUrl(userData.avatar_url || "");
     setUser(userData);
+    
+    if (userData.role === "validator" && userData.is_active === "0") {
+      setIsPendingApproval(true);
+      localStorage.setItem("is_active", "0");
+    } else {
+      setIsPendingApproval(false);
+      localStorage.setItem("is_active", "1");
+    }
   };
 
   const logout = () => {
@@ -91,7 +109,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       avatarUrl, 
       login, 
       logout,
-      isLoading
+      isLoading,
+      isPendingApproval
     }}>
       {children}
     </AuthContext.Provider>

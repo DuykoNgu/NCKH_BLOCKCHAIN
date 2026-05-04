@@ -133,7 +133,7 @@ def init_db():
     
     # Individual Migrations/Check columns
     tables_to_check = {
-        "account": ["full_name", "avatar_url"],
+        "account": ["full_name", "avatar_url", "tax_id", "representative", "email", "phone"],
         "nft": ["owner_address", "issuer_pubkey", "issuer_address", "issuer_signature"]
     }
     

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Copy, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Copy, GraduationCap, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,11 +82,11 @@ export default function DashboardContent() {
   const pendingNfts = totalNfts - verifiedNfts;
   const todayTxCount = transactions.length;
 
-  const dashboardStats = [
-    { label: "Tổng NFT phát hành", value: totalNfts.toLocaleString(), icon: "GraduationCap", color: "text-primary" },
-    { label: "Đã xác thực", value: verifiedNfts.toLocaleString(), icon: "Shield", color: "text-green-400" },
-    { label: "Đang chờ / Đã thu hồi", value: pendingNfts.toLocaleString(), icon: "Clock", color: "text-yellow-400" },
-    { label: "Tổng giao dịch", value: todayTxCount.toLocaleString(), icon: "Activity", color: "text-accent" },
+  const statCards = [
+    { label: "Tổng NFT phát hành", value: totalNfts.toLocaleString(), icon: GraduationCap, color: "text-primary" },
+    { label: "Đã xác thực", value: verifiedNfts.toLocaleString(), icon: CheckCircle2, color: "text-green-400" },
+    { label: "Đang chờ / Đã thu hồi", value: pendingNfts.toLocaleString(), icon: Clock, color: "text-yellow-400" },
+    { label: "Tổng giao dịch", value: todayTxCount.toLocaleString(), icon: Activity, color: "text-accent" },
   ];
 
   const recentDegrees = nfts.slice(0, 5).map((nft) => ({
@@ -173,9 +173,8 @@ export default function DashboardContent() {
         </motion.div>
       )}
 
-      {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => (
+        {statCards.map((stat: any) => (
           <Card key={stat.label} className="glass-card hover:border-primary/30 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">

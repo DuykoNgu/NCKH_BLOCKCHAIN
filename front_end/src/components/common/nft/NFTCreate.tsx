@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { FileText, Send, Loader2, CheckCircle, AlertCircle, Key } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { FileText, Send, Loader2, CheckCircle, AlertCircle, Key, X, Upload } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NFTService } from '@/services/nftService';
 import { calculateHashHex, signData } from '@/utils/cryptoUtils';
 import { decryptPrivateKey } from '@/utils/cryptoVault';
+import { calculatePdfHash } from '@/utils/signatureUtils';
+import { useStorage } from '@/hooks/useStorage';
+import { toast } from 'sonner';
 
 interface NFTCreateProps {
   account: string;
@@ -27,12 +30,16 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
   const [password, setPassword] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadPDF, uploading: pdfUploading } = useStorage();
   
   const [formData, setFormData] = useState({
     issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
+    pdf_hash: '',
     institution_address: '',
     recipient_address: account,
   });
@@ -43,63 +50,46 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
 
     // Validate file type
     if (!file.type.includes('pdf')) {
-      clearPdfError();
+      toast.error('Vui lòng chọn file PDF');
       setSelectedFile(null);
-      setFormData({ ...formData, pdf_url: '' });
-      setPdfHash('');
+      setFormData({ ...formData, pdf_url: '', pdf_hash: '' });
+
       return;
     }
-    const hash = '';
+    
     setSelectedFile(file);
 
     // Calculate PDF hash
     try {
       const buffer = await file.arrayBuffer();
       const hash = await calculatePdfHash(buffer);
-      setPdfHash(hash);
-    } catch (error) {
-      console.error('Failed to calculate PDF hash:', error);
-      setResult({
-        success: false,
-        message: 'Lỗi tính toán hash PDF',
-      });
-      return;
-    }
 
-    // Auto upload when file selected
-    try {
-      clearPdfError();
+      
+      // Auto upload when file selected
+      toast.info('Đang tải file lên...');
       const url = await uploadPDF(file, {
         folder: 'nft-certificates',
         tags: ['nft', 'certificate'],
       });
       setFormData({ ...formData, pdf_url: url, pdf_hash: hash });
+      toast.success('Đã tải file lên thành công');
     } catch (error) {
-      console.error('Upload PDF failed:', error);
+      console.error('File processing failed:', error);
+      toast.error('Lỗi xử lý file');
       setSelectedFile(null);
-      setPdfHash('');
+
     }
   };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
-    setPdfHash('');
+
     setFormData({ ...formData, pdf_url: '', pdf_hash: '' });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-    clearPdfError();
   };
-const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
-  const sortedObj = {} as T;
-  const keys = Object.keys(obj).sort() as Array<keyof T>;
 
-  keys.forEach((key) => {
-    sortedObj[key] = obj[key];
-  });
-
-  return sortedObj;
-};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -111,11 +101,11 @@ const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
       return;
     }
 
-    // Kiểm tra password đã được lưu từ lúc đăng nhập
-    if (!hasPassword()) {
+    // Kiểm tra password (có thể lấy từ session storage nếu đã lưu)
+    if (!password) {
       setResult({
         success: false,
-        message: 'Mật khẩu ví không tìm thấy. Vui lòng đăng nhập lại.',
+        message: 'Vui lòng nhập mật khẩu ví để ký số',
       });
       return;
     }
@@ -169,6 +159,7 @@ const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
           student_id: '',
           degree_type: '',
           pdf_url: '',
+          pdf_hash: '',
           institution_address: '',
           recipient_address: account,
         });
@@ -282,6 +273,61 @@ const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
               required
               className="bg-background/50 font-mono text-sm"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Chứng chỉ PDF</Label>
+            <div 
+              onClick={() => !pdfUploading && fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                selectedFile 
+                  ? 'border-primary/50 bg-primary/5' 
+                  : 'border-border hover:border-primary/30 hover:bg-secondary/30'
+              } ${pdfUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".pdf"
+                className="hidden"
+              />
+              
+              {pdfUploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Đang tải lên...</p>
+                </>
+              ) : selectedFile ? (
+                <>
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground truncate max-w-[200px]">{selectedFile.name}</p>
+                    <p className="text-[10px] text-muted-foreground">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); handleRemoveFile(); }}
+                    className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <X className="w-3 h-3 mr-1" /> Gỡ bỏ
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                    <Upload className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground">Nhấp để chọn hoặc kéo thả</p>
+                    <p className="text-[10px] text-muted-foreground">Chỉ chấp nhận file PDF (tối đa 10MB)</p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="pt-4 border-t border-border/30">

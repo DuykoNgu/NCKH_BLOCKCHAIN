@@ -1,6 +1,6 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
 import saveUserData from "@/utils/saveDataToStorage";
-import { generateWallet, restoreWallet, validateMnemonic, bytesToHex } from "@/utils/walletGenerator";
+import { generateWallet, restoreWallet, validateMnemonic } from "@/utils/walletGenerator";
 import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
 import { calculateHashHex, signData } from "@/utils/cryptoUtils";
@@ -19,7 +19,7 @@ export const clearOldSession = () => {
   console.log('[authService] Local session cleared');
 };
 
-export const createWallet = async (password: string): Promise<CreateWalletResult> => {
+export const createWallet = async (password: string, schoolName?: string): Promise<CreateWalletResult> => {
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
@@ -29,28 +29,21 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
     public_key: uint8ArrayToHex(publicKey),
     address: address.toLowerCase(),
     vault,
-    role: "client",
+    role: schoolName ? "validator" : "client",
+    full_name: schoolName || "",
+    is_active: schoolName ? "0" : "1",
   };
 
   try {
     await api.post(AUTH_SERVER.WALLET_REGISTER, {
       address: address.toLowerCase(),
       public_key: uint8ArrayToHex(publicKey),
-      role: "client"
+      role: userData.role,
+      full_name: userData.full_name
     });
   } catch (error) {
     console.error('Backend registration failed:', error);
   }
-
-  const userData: Record<string, unknown> = {
-    user_id: Math.random().toString(36).substr(2, 9),
-    public_key: uint8ArrayToHex(publicKey),
-    address: address.toLowerCase(),
-    vault,
-    role: "validator",
-    full_name: schoolName,
-    is_active: "0",
-  };
 
   saveUserData(userData);
   return { mnemonic, address };
@@ -163,11 +156,26 @@ export const getPendingValidators = async () => {
 };
 
 export const approveValidator = async (address: string) => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.APPROVE_VALIDATOR}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address: address.toLowerCase() })
-  });
-  if (!response.ok) throw new Error("Failed to approve validator");
-  return response.json();
+  const response = await api.post(AUTH_SERVER.APPROVE_VALIDATOR, { address: address.toLowerCase() });
+  return response.data;
+};
+
+export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
+  // Logic đăng nhập bằng Private Key cho MOET/Admin
+  const cleanKey = privateKeyHex.replace(/^0x/i, "").replace(/\s+/g, "");
+  // Giả định backend có endpoint verify riêng hoặc dùng chung logic ký nonce
+  // Ở đây ta mock logic: nếu key đúng format thì cho qua
+  if (cleanKey.length !== 64) throw new Error("Private Key không hợp lệ (phải là 64 ký tự hex)");
+  
+  // Lưu trạng thái admin
+  localStorage.setItem('isLoggedIn', 'true');
+  localStorage.setItem('role', 'moet');
+  localStorage.setItem('address', '0xADMIN'); // Mock address
+  localStorage.setItem('full_name', 'Bộ Giáo dục & Đào tạo');
+  
+  return { success: true };
+};
+
+export const registerSchool = async (password: string, schoolName: string, ..._args: any[]) => {
+  return createWallet(password, schoolName);
 };

@@ -64,6 +64,9 @@ export default function Degrees() {
     university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address) : "-",
     date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
     status: getNftStatus(nft),
+    recipient_name: nft.metadata?.student_id || "-",
+    metadata: nft.metadata,
+    is_valid: nft.is_valid !== false,
   }));
 
   const filtered = degrees.filter((d) => {
@@ -72,8 +75,7 @@ export default function Degrees() {
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || 
                       degreeType.toLowerCase().includes(search.toLowerCase());
     
-    const status = d.is_valid ? "verified" : "revoked";
-    const matchStatus = filterStatus === "all" || status === filterStatus;
+    const matchStatus = filterStatus === "all" || d.status === filterStatus;
     
     return matchSearch && matchStatus;
   });

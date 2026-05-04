@@ -54,8 +54,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+  const formatDate = (date: string | number) => {
+    return new Date(date).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

@@ -8,5 +8,6 @@ export const useAuth = () => {
     isAdmin: context.role === "admin" || context.role === "moet",
     isValidator: context.role === "validator",
     isUser: context.role === "client",
+    isPendingApproval: context.isPendingApproval,
   };
 };
