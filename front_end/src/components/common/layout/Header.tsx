@@ -1,8 +1,10 @@
-import { ShieldCheck } from "lucide-react"
-import { useAuth } from "@/hooks/useAuth"
+import { ShieldCheck, Info, LayoutDashboard } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/useAuth";
+import { Link } from "react-router-dom";
 
 export const Header = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, fullName, role } = useAuth();
 
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
@@ -12,15 +14,29 @@ export const Header = () => {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gradient">EduChain</span>
+            <div>
+              <span className="text-xl font-bold text-gradient block leading-none mb-1">EduChain</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Blockchain Verify</span>
+            </div>
           </div>
 
-          <Button asChild variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
-            <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer">
-              <Info className="w-4 h-4" />
-              Giới thiệu dự án
-            </a>
-          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+              <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer">
+                <Info className="w-4 h-4" />
+                Giới thiệu dự án
+              </a>
+            </Button>
+
+            {isAdmin && (
+              <Button asChild variant="ghost" size="sm" className="flex items-center gap-2 text-primary hover:bg-primary/10 transition-colors">
+                <Link to="/admin">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Quản trị hệ thống
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4">

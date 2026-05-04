@@ -6,10 +6,8 @@ interface SignatureResponse {
   api_key: string;
   cloud_name: string;
   folder: string;
-  tags?: string; // Thêm trường tags nếu Backend trả về
+  tags?: string;
 }
-
-
 
 export interface UploadOptions {
   folder?: string;
@@ -19,11 +17,8 @@ export interface UploadOptions {
 
 class StorageService {
   private apiClient: AxiosInstance;
-  private backendUrl: string;
-  private cloudinaryUrl = 'https://api.cloudinary.com/v1_1';
 
   constructor(backendUrl: string = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api/v1') {
-    this.backendUrl = backendUrl;
     this.apiClient = axios.create({
       baseURL: backendUrl,
       timeout: 30000,
@@ -81,7 +76,7 @@ class StorageService {
     // 4. Xác định resourceType
     // Với PDF/Doc nên dùng 'raw', với ảnh dùng 'image'. 
     // Nếu không chắc, bạn có thể truyền từ options hoặc dùng 'auto'
-    const resourceType =  'raw'; 
+    const resourceType = options.resourceType || 'auto'; 
     
     // URL upload của Cloudinary
     const uploadUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/${resourceType}/upload`;
@@ -92,9 +87,9 @@ class StorageService {
     });
 
     return uploadResponse.data.secure_url;
-  } catch (error: unknown) {
-    console.error('Chi tiết lỗi Cloudinary:', (error as { response?: { data?: unknown } }).response?.data || (error as { message?: string }).message);
-    throw new Error(`Upload thất bại: ${(error as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message || (error as { message?: string }).message}`);
+  } catch (error: any) {
+    console.error('Chi tiết lỗi Cloudinary:', error.response?.data || error.message);
+    throw new Error(`Upload thất bại: ${error.response?.data?.error?.message || error.message}`);
   }
 }
 

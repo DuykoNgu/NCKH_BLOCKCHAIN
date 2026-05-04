@@ -1,19 +1,51 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Shield, Bell, Globe, Key, Save } from "lucide-react";
+import { Shield, Bell, Globe, Key, Save, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { NetworkService } from "@/services/networkService";
+import type { NetworkStats } from "@/services/networkService";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 export default function Settings() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<NetworkStats | null>(null);
+
+  const apiUrl = import.meta.env.VITE_API_URL || "http://127.0.0.1:5000/api/v1";
+  const walletAddress = localStorage.getItem("address") || "";
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const statsRes = await NetworkService.getNetworkStats();
+        setStats(statsRes);
+      } catch (err) {
+        console.error("Settings fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
   const handleSave = () => toast.success("Đã lưu cài đặt!");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Đang tải cài đặt...</span>
+      </div>
+    );
+  }
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-3xl">
@@ -31,42 +63,46 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Mạng lưới</Label>
-              <Select defaultValue="mainnet">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mainnet">Ethereum Mainnet</SelectItem>
-                  <SelectItem value="goerli">Goerli Testnet</SelectItem>
-                  <SelectItem value="sepolia">Sepolia Testnet</SelectItem>
-                  <SelectItem value="polygon">Polygon</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input value="EduChain (Private PoA)" disabled />
             </div>
             <div className="space-y-2">
-              <Label>RPC URL</Label>
-              <Input defaultValue="https://mainnet.infura.io/v3/..." />
+              <Label>Backend API URL</Label>
+              <Input value={apiUrl} disabled />
             </div>
-            <div className="space-y-2">
-              <Label>Chain ID</Label>
-              <Input defaultValue="1" disabled />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Slot Duration</Label>
+                <Input value={`${stats?.slot_duration || 5} giây`} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>Validators</Label>
+                <Input value={stats?.validator_peers?.toString() || "0"} disabled />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>NTP Sync</Label>
+                <Input value={stats?.is_time_synced ? "✅ Synced" : "❌ Not Synced"} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>Whitelist</Label>
+                <Input value={stats?.whitelist_enabled ? "Enabled" : "Disabled"} disabled />
+              </div>
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Contract */}
+      {/* Wallet */}
       <motion.div variants={item}>
         <Card className="glass-card">
           <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2"><Key className="h-5 w-5 text-primary" />Smart Contract</CardTitle>
+            <CardTitle className="font-display text-lg flex items-center gap-2"><Key className="h-5 w-5 text-primary" />Ví & Bảo mật</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Contract Address</Label>
-              <Input defaultValue="0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b" />
-            </div>
-            <div className="space-y-2">
-              <Label>IPFS Gateway</Label>
-              <Input defaultValue="https://ipfs.io/ipfs/" />
+              <Label>Địa chỉ ví hiện tại</Label>
+              <Input value={walletAddress || "Chưa đăng nhập"} disabled />
             </div>
           </CardContent>
         </Card>

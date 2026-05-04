@@ -1,11 +1,15 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Copy, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Copy, GraduationCap, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { adminService, type DashboardStats, type NetworkInfo, type RecentNFT, type RecentTransaction } from "@/services/adminService";
-import { useAuth } from "@/hooks/useAuth";
+import { NFTService } from "@/services/nftService";
+import { TransactionService } from "@/services/transactionService";
+import { BlockService } from "@/services/blockService";
+import type { NFT } from "@/services/nftService";
+import type { TransactionInfo } from "@/services/transactionService";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -24,35 +28,52 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
+function formatTimeAgo(timestamp: number): string {
+  const now = Date.now() / 1000;
+  const diff = now - timestamp;
+  if (diff < 60) return `${Math.floor(diff)} giây trước`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
+  return `${Math.floor(diff / 86400)} ngày trước`;
+}
+
+function truncateHash(hash: string, start = 6, end = 4): string {
+  if (!hash || hash.length <= start + end) return hash || '-';
+  return `${hash.slice(0, start)}...${hash.slice(-end)}`;
+}
+
 export default function DashboardContent() {
-  const { address: adminAddress } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [network, setNetwork] = useState<NetworkInfo | null>(null);
-  const [recentNfts, setRecentNfts] = useState<RecentNFT[]>([]);
-  const [recentTxs, setRecentTxs] = useState<RecentTransaction[]>([]);
+  const [nfts, setNfts] = useState<NFT[]>([]);
+  const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
+  const [blockCount, setBlockCount] = useState(0);
+  const [latestBlockIndex, setLatestBlockIndex] = useState<string>("-");
+
+  const walletAddress = localStorage.getItem("address") || "";
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        setLoading(true);
-        const [statsRes, activitiesRes] = await Promise.all([
-          adminService.getStats(),
-          adminService.getRecentActivities()
+        const [nftRes, txRes, blockCountRes, latestBlockRes] = await Promise.allSettled([
+          NFTService.getAllNFTs(),
+          TransactionService.getAllTransactions(),
+          BlockService.countBlocks(),
+          BlockService.getLatestBlock(),
         ]);
-        
-        setStats(statsRes.stats);
-        setNetwork(statsRes.network);
-        setRecentNfts(activitiesRes.recent_nfts);
-        setRecentTxs(activitiesRes.recent_transactions);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-        toast.error("Không thể tải dữ liệu dashboard");
+
+        if (nftRes.status === "fulfilled") setNfts(nftRes.value.nfts || []);
+        if (txRes.status === "fulfilled") setTransactions(txRes.value.transactions || []);
+        if (blockCountRes.status === "fulfilled") setBlockCount(blockCountRes.value.total_blocks || 0);
+        if (latestBlockRes.status === "fulfilled" && latestBlockRes.value.block) {
+          setLatestBlockIndex(`#${latestBlockRes.value.block.index}`);
+        }
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -61,11 +82,11 @@ export default function DashboardContent() {
   const pendingNfts = totalNfts - verifiedNfts;
   const todayTxCount = transactions.length;
 
-  const dashboardStats = [
-    { label: "Tổng NFT phát hành", value: totalNfts.toLocaleString(), icon: "GraduationCap", color: "text-primary" },
-    { label: "Đã xác thực", value: verifiedNfts.toLocaleString(), icon: "Shield", color: "text-green-400" },
-    { label: "Đang chờ / Đã thu hồi", value: pendingNfts.toLocaleString(), icon: "Clock", color: "text-yellow-400" },
-    { label: "Tổng giao dịch", value: todayTxCount.toLocaleString(), icon: "Activity", color: "text-accent" },
+  const statCards = [
+    { label: "Tổng NFT phát hành", value: totalNfts.toLocaleString(), icon: GraduationCap, color: "text-primary" },
+    { label: "Đã xác thực", value: verifiedNfts.toLocaleString(), icon: CheckCircle2, color: "text-green-400" },
+    { label: "Đang chờ / Đã thu hồi", value: pendingNfts.toLocaleString(), icon: Clock, color: "text-yellow-400" },
+    { label: "Tổng giao dịch", value: todayTxCount.toLocaleString(), icon: Activity, color: "text-accent" },
   ];
 
   const recentDegrees = nfts.slice(0, 5).map((nft) => ({
@@ -84,26 +105,18 @@ export default function DashboardContent() {
   }));
 
   const copyAddress = () => {
-    if (adminAddress) {
-      navigator.clipboard.writeText(adminAddress);
-      toast.success("Đã sao chép địa chỉ ví!");
-    }
+    navigator.clipboard.writeText(walletAddress);
+    toast.success("Đã sao chép địa chỉ ví!");
   };
 
   if (loading) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
+      <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Đang tải dữ liệu...</span>
       </div>
     );
   }
-
-  const statCards = [
-    { label: "Tổng NFT phát hành", value: stats?.total_nfts || 0, icon: GraduationCap, color: "text-primary", change: "+0%" },
-    { label: "Đã xác thực", value: stats?.verified_nfts || 0, icon: Shield, color: "text-green-400", change: "+0%" },
-    { label: "Yêu cầu chờ duyệt", value: stats?.pending_validators || 0, icon: Clock, color: "text-yellow-400", change: "Mới" },
-    { label: "Giao dịch hôm nay", value: stats?.transactions_today || 0, icon: Activity, color: "text-accent", change: "+0%" },
-  ];
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -119,66 +132,55 @@ export default function DashboardContent() {
             <div className="flex items-center gap-2">
               <Activity className="h-3 w-3 text-green-400" />
               <span className="text-muted-foreground">Mạng:</span>
-              <span className="text-foreground font-medium">{network?.name}</span>
+              <span className="text-foreground font-medium">EduChain</span>
             </div>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Gas:</span>
-              <span className="text-foreground font-medium">{network?.gas_price}</span>
+              <span className="text-muted-foreground">Blocks:</span>
+              <span className="text-foreground font-medium">{blockCount}</span>
             </div>
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Block:</span>
-              <span className="text-primary font-mono">#{stats?.total_blocks}</span>
+              <span className="text-muted-foreground">Latest:</span>
+              <span className="text-primary font-mono">{latestBlockIndex}</span>
             </div>
           </div>
         </div>
       </motion.div>
 
       {/* Wallet Header */}
-      <motion.div variants={item}>
-        <Card className="gradient-border overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Ví quản trị (MOET)</p>
-                <div className="flex items-center gap-2">
-                  <h2 className="font-display text-lg font-semibold text-foreground">
-                    {adminAddress ? `${adminAddress.slice(0, 10)}...${adminAddress.slice(-6)}` : "Đang tải..."}
-                  </h2>
-                  <button onClick={copyAddress} className="text-muted-foreground hover:text-primary transition-colors">
-                    <Copy className="h-4 w-4" />
-                  </button>
-                  <button className="text-muted-foreground hover:text-primary transition-colors">
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
+      {walletAddress && (
+        <motion.div variants={item}>
+          <Card className="gradient-border overflow-hidden">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Ví quản trị</p>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-lg font-semibold text-foreground">{walletAddress.slice(0, 10)}...{walletAddress.slice(-6)}</h2>
+                    <button onClick={copyAddress} className="text-muted-foreground hover:text-primary transition-colors">
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">NFTs sở hữu</p>
+                  <p className="font-display text-2xl font-bold gradient-text">{totalNfts}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Trạng thái Node</p>
-                <p className="font-display text-2xl font-bold gradient-text">{network?.status === 'active' ? 'Đang hoạt động' : 'Ngoại tuyến'}</p>
-                <p className="text-xs text-muted-foreground truncate max-w-[200px]" title={stats?.latest_block_hash}>
-                  Lớp băm cuối: {stats?.latest_block_hash.slice(0, 20)}...
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
-      {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat) => (
+        {statCards.map((stat: any) => (
           <Card key={stat.label} className="glass-card hover:border-primary/30 transition-colors">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className={`h-9 w-9 rounded-lg bg-secondary flex items-center justify-center ${stat.color}`}>
                   <stat.icon className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-green-400 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3" />
-                  {stat.change}
-                </span>
               </div>
               <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
               <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
@@ -200,33 +202,35 @@ export default function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {recentNfts.length > 0 ? recentNfts.map((deg) => {
-                  const sc = statusConfig[deg.status] || statusConfig.verified;
-                  return (
-                    <div key={deg.id} className="flex items-center justify-between px-6 py-3 hover:bg-secondary/30 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                          <GraduationCap className="h-4 w-4 text-primary" />
+              {recentDegrees.length === 0 ? (
+                <div className="px-6 py-8 text-center text-muted-foreground text-sm">Chưa có NFT nào được phát hành</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {recentDegrees.map((deg) => {
+                    const sc = statusConfig[deg.status] || statusConfig.pending;
+                    return (
+                      <div key={deg.id} className="flex items-center justify-between px-6 py-3 hover:bg-secondary/30 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                            <GraduationCap className="h-4 w-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{deg.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{deg.degree} • {deg.university}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{deg.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{deg.degree} • {deg.university}</p>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <Badge variant="outline" className={sc.className}>
+                            <sc.icon className="h-3 w-3 mr-1" />
+                            {sc.label}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground hidden sm:inline">{deg.date}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <Badge variant="outline" className={sc.className}>
-                          <sc.icon className="h-3 w-3 mr-1" />
-                          {sc.label}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground hidden sm:inline">{deg.date}</span>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="p-8 text-center text-muted-foreground">Không có dữ liệu bằng cấp</div>
-                )}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -238,19 +242,20 @@ export default function DashboardContent() {
               <CardTitle className="font-display text-lg">Giao dịch gần đây</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {recentTxs.length > 0 ? recentTxs.map((tx) => (
-                <div key={tx.hash} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{tx.type}</p>
-                    <p className="text-xs text-muted-foreground">{tx.time}</p>
+              {recentTxs.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground text-sm">Chưa có giao dịch nào</div>
+              ) : (
+                recentTxs.map((tx) => (
+                  <div key={tx.hash} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{tx.type}</p>
+                      <p className="text-xs text-muted-foreground">{tx.time}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-mono text-primary">{tx.hash}</p>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-mono text-primary">{tx.hash}</p>
-                    <p className="text-xs text-muted-foreground">{tx.gas}</p>
-                  </div>
-                </div>
-              )) : (
-                <div className="p-8 text-center text-muted-foreground">Không có giao dịch</div>
+                ))
               )}
             </CardContent>
           </Card>

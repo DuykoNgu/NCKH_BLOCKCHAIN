@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { steps } from "@/data-review-mock";
+import { steps } from "@/constants/landingData";
 
 const ProcessSection = () => {
   const ref = useRef(null);
@@ -39,7 +39,7 @@ const ProcessSection = () => {
           />
 
           <div className="space-y-16">
-            {steps.map((step, index) => (
+            {steps.map((step: any, index: number) => (
               <motion.div
                 key={index}
                 className="relative flex items-start gap-8 pl-16"

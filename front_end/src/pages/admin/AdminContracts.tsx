@@ -1,136 +1,166 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FileCode, Shield, Activity, Copy, ExternalLink, Search, Filter, CheckCircle2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FileCheck, Shield, Blocks, CheckCircle2, Loader2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-
-const contracts = [
-  { id: "0x1", name: "AccountManager", type: "Core", version: "1.0.0", status: "active", lastUpdate: "1 ngày trước", address: "0x0000000000000000000000000000000000000001" },
-  { id: "0x2", name: "NFTDegree", type: "Asset", version: "1.2.0", status: "active", lastUpdate: "2 giờ trước", address: "0x0000000000000000000000000000000000000002" },
-  { id: "0x3", name: "ValidatorRegistry", type: "Governance", version: "1.0.1", status: "active", lastUpdate: "5 giờ trước", address: "0x0000000000000000000000000000000000000003" },
-];
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NetworkService } from "@/services/networkService";
+import { BlockService } from "@/services/blockService";
+import { NFTService } from "@/services/nftService";
+import type { NetworkStats } from "@/services/networkService";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-export default function ContractsPage() {
-  const copyAddress = (addr: string) => {
-    navigator.clipboard.writeText(addr);
-    toast.success("Đã sao chép địa chỉ hợp đồng!");
-  };
+export default function BlockchainInfo() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<NetworkStats | null>(null);
+  const [blockCount, setBlockCount] = useState(0);
+  const [nftCount, setNftCount] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [statsRes, countRes, nftRes] = await Promise.allSettled([
+          NetworkService.getNetworkStats(),
+          BlockService.countBlocks(),
+          NFTService.getAllNFTs(),
+        ]);
+
+        if (statsRes.status === "fulfilled") setStats(statsRes.value);
+        if (countRes.status === "fulfilled") setBlockCount(countRes.value.total_blocks || 0);
+        if (nftRes.status === "fulfilled") setNftCount(nftRes.value.total || 0);
+      } catch (err) {
+        console.error("Blockchain info fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Đang tải thông tin blockchain...</span>
+      </div>
+    );
+  }
+
+  const blockchainInfo = [
+    ["Blockchain", "EduChain (Private PoA)"],
+    ["Consensus", "Proof of Authority (Round-Robin)"],
+    ["Slot Duration", `${stats?.slot_duration || 5} giây`],
+    ["Cryptography", "ECDSA secp256k1 + SHA256"],
+    ["Total Blocks", blockCount.toString()],
+    ["Total NFTs", nftCount.toString()],
+    ["Total Peers", stats?.total_peers?.toString() || "0"],
+    ["Active Validators", stats?.validator_peers?.toString() || "0"],
+    ["Whitelist", stats?.whitelist_enabled ? "Enabled" : "Disabled"],
+    ["NTP Sync", stats?.is_time_synced ? "Synced" : "Not Synced"],
+    ["NTP Offset", `${stats?.ntp_offset?.toFixed(3) || "0.000"}s`],
+  ];
+
+  const chainFeatures = [
+    { name: "createGenesisBlock", type: "write" as const, params: "(super_validator_pubkey)", desc: "Khởi tạo block đầu tiên cho blockchain" },
+    { name: "mineBlock", type: "write" as const, params: "(validator_pubkey, private_key)", desc: "Đào block mới từ mempool transactions" },
+    { name: "addTransaction", type: "write" as const, params: "(tx_data)", desc: "Thêm giao dịch vào mempool" },
+    { name: "mintNFT", type: "write" as const, params: "(issuer, metadata, recipient)", desc: "Tạo NFT bằng cấp mới" },
+    { name: "verifyNFT", type: "read" as const, params: "(token_id)", desc: "Xác minh chữ ký NFT trên blockchain" },
+    { name: "getBlock", type: "read" as const, params: "(block_id)", desc: "Lấy thông tin block theo ID" },
+    { name: "getPeers", type: "read" as const, params: "()", desc: "Lấy danh sách peers trong mạng P2P" },
+    { name: "getSlotInfo", type: "read" as const, params: "(total_validators)", desc: "Lấy thông tin slot consensus hiện tại" },
+  ];
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
       <motion.div variants={item}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-2xl font-bold text-foreground">Hợp đồng thông minh</h2>
-            <p className="text-sm text-muted-foreground mt-1">Quản lý và giám sát các smart contract cốt lõi của hệ thống</p>
-          </div>
-          <Button className="gap-2">
-            <FileCode className="h-4 w-4" />
-            Triển khai mới
-          </Button>
-        </div>
+        <h2 className="font-display text-2xl font-bold text-foreground">Blockchain Info</h2>
+        <p className="text-sm text-muted-foreground mt-1">Thông tin cấu hình và trạng thái mạng EduChain</p>
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: "Tổng hợp đồng", value: contracts.length, icon: FileCode, color: "text-primary" },
-          { label: "Đang hoạt động", value: "3", icon: Shield, color: "text-green-400" },
-          { label: "Tổng tương tác", value: "1,637", icon: Activity, color: "text-accent" },
-        ].map((stat) => (
-          <Card key={stat.label} className="glass-card">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={`h-10 w-10 rounded-lg bg-secondary flex items-center justify-center ${stat.color}`}>
-                <stat.icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold font-display text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </motion.div>
-
-      <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Tìm kiếm hợp đồng..." className="pl-9" />
-        </div>
-        <Button variant="outline" className="gap-2">
-          <Filter className="h-4 w-4" />
-          Lọc
-        </Button>
-      </motion.div>
-
+      {/* Header Card */}
       <motion.div variants={item}>
-        <Card className="glass-card overflow-hidden">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tên hợp đồng</TableHead>
-                  <TableHead>Loại</TableHead>
-                  <TableHead className="hidden md:table-cell">Địa chỉ</TableHead>
-                  <TableHead className="hidden sm:table-cell">Phiên bản</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contracts.map((contract) => (
-                  <TableRow key={contract.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-lg bg-secondary flex items-center justify-center">
-                          <FileCode className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{contract.name}</p>
-                          <p className="text-xs text-muted-foreground">{contract.lastUpdate}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-[10px] uppercase font-bold">
-                        {contract.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {contract.address.slice(0, 6)}...{contract.address.slice(-4)}
-                        </span>
-                        <button onClick={() => copyAddress(contract.address)} className="text-muted-foreground hover:text-primary">
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      <span className="text-xs font-mono">v{contract.version}</span>
-                    </TableCell>
-                    <TableCell>
+        <Card className="gradient-border overflow-hidden">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row justify-between gap-6">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center glow-effect">
+                    <FileCheck className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-xl font-bold text-foreground">EduChain</h3>
                       <Badge variant="outline" className="bg-green-400/10 text-green-400 border-green-400/20">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                        Active
+                        <CheckCircle2 className="h-3 w-3 mr-1" />Active
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Proof of Authority • Private Blockchain</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-secondary/30 text-center">
+                  <p className="text-2xl font-bold font-display gradient-text">{blockCount}</p>
+                  <p className="text-xs text-muted-foreground">Blocks</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/30 text-center">
+                  <p className="text-2xl font-bold font-display gradient-text">{nftCount}</p>
+                  <p className="text-xs text-muted-foreground">NFTs</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      {/* Tabs */}
+      <motion.div variants={item}>
+        <Tabs defaultValue="functions" className="space-y-4">
+          <TabsList className="bg-secondary/50">
+            <TabsTrigger value="functions"><Blocks className="h-4 w-4 mr-2" />API Functions</TabsTrigger>
+            <TabsTrigger value="info"><Shield className="h-4 w-4 mr-2" />Thông tin</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="functions">
+            <Card className="glass-card">
+              <CardHeader className="pb-3"><CardTitle className="font-display text-lg">Blockchain API Functions</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {chainFeatures.map((fn) => (
+                  <div key={fn.name} className="flex items-start justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <code className="text-sm font-mono font-semibold text-foreground">{fn.name}</code>
+                        <Badge variant="outline" className={fn.type === "read" ? "bg-primary/10 text-primary border-primary/20 text-xs" : "bg-accent/10 text-accent border-accent/20 text-xs"}>
+                          {fn.type}
+                        </Badge>
+                      </div>
+                      <code className="text-xs text-muted-foreground font-mono">{fn.params}</code>
+                      <p className="text-xs text-muted-foreground mt-1">{fn.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="info">
+            <Card className="glass-card">
+              <CardHeader className="pb-3"><CardTitle className="font-display text-lg">Thông tin Blockchain</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {blockchainInfo.map(([label, value]) => (
+                  <div key={label} className="flex justify-between items-center p-3 rounded-lg bg-secondary/30">
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    <span className="text-sm font-mono text-foreground">{value}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </motion.div>
     </motion.div>
   );

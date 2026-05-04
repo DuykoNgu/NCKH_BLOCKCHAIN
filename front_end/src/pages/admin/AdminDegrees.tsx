@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
+import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,40 +10,50 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { adminService } from "@/services/adminService";
+import { NFTService } from "@/services/nftService";
+import type { NFT } from "@/services/nftService";
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
   pending: { label: "Đang chờ", icon: Clock, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
-  rejected: { label: "Từ chối", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
-  revoked: { label: "Đã thu hồi", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
+  rejected: { label: "Đã thu hồi", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
+function truncateHash(hash: string, start = 8, end = 6): string {
+  if (!hash || hash.length <= start + end) return hash || '-';
+  return `${hash.slice(0, start)}...${hash.slice(-end)}`;
+}
+
+function getNftStatus(nft: NFT): string {
+  if (nft.is_valid === false) return "rejected";
+  if (nft.issuer_signature) return "verified";
+  return "pending";
+}
+
 export default function Degrees() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [mintOpen, setMintOpen] = useState(false);
-  const [degrees, setDegrees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchDegrees = async () => {
-    try {
-      setLoading(true);
-      const data = await adminService.getAllNFTs();
-      setDegrees(data.nfts || []);
-    } catch (error) {
-      console.error("Failed to fetch degrees:", error);
-      toast.error("Không thể tải danh sách bằng cấp");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [nfts, setNfts] = useState<NFT[]>([]);
 
   useEffect(() => {
-    fetchDegrees();
+    const fetchNFTs = async () => {
+      setLoading(true);
+      try {
+        const res = await NFTService.getAllNFTs();
+        setNfts(res.nfts || []);
+      } catch (err) {
+        console.error("Failed to fetch NFTs:", err);
+        toast.error("Không thể tải danh sách bằng cấp");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNFTs();
   }, []);
 
   const degrees = nfts.map((nft) => ({
@@ -54,6 +64,9 @@ export default function Degrees() {
     university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address) : "-",
     date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
     status: getNftStatus(nft),
+    recipient_name: nft.metadata?.student_id || "-",
+    metadata: nft.metadata,
+    is_valid: nft.is_valid !== false,
   }));
 
   const filtered = degrees.filter((d) => {
@@ -62,16 +75,24 @@ export default function Degrees() {
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || 
                       degreeType.toLowerCase().includes(search.toLowerCase());
     
-    const status = d.is_valid ? "verified" : "revoked";
-    const matchStatus = filterStatus === "all" || status === filterStatus;
+    const matchStatus = filterStatus === "all" || d.status === filterStatus;
     
     return matchSearch && matchStatus;
   });
 
   const handleMint = () => {
-    toast.success("Hệ thống hiện tại yêu cầu Trường đại học tự Mint. Admin chỉ có quyền quản lý và thu hồi.");
+    toast.info("Tính năng Mint NFT cần được thực hiện qua API với chữ ký số");
     setMintOpen(false);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Đang tải bằng cấp NFT...</span>
+      </div>
+    );
+  }
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -92,13 +113,6 @@ export default function Degrees() {
               <DialogTitle className="font-display">Cấp bằng NFT mới</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
-              <div className="p-4 rounded-lg bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-sm">
-                Lưu ý: Theo quy trình nghiệp vụ, bằng cấp sẽ được trực tiếp các Trường đại học (Validator) khởi tạo và ký duyệt.
-              </div>
-              <div className="space-y-2">
-                <Label>Họ và tên sinh viên</Label>
-                <Input placeholder="Nhập họ tên..." />
-              </div>
               <div className="space-y-2">
                 <Label>Loại bằng cấp</Label>
                 <Select>
@@ -111,7 +125,15 @@ export default function Degrees() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleMint} className="w-full">Khởi tạo yêu cầu</Button>
+              <div className="space-y-2">
+                <Label>PDF URL</Label>
+                <Input placeholder="https://example.com/cert.pdf" />
+              </div>
+              <div className="space-y-2">
+                <Label>Địa chỉ ví sinh viên (recipient)</Label>
+                <Input placeholder="0x..." />
+              </div>
+              <Button onClick={handleMint} className="w-full">Mint NFT</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -125,7 +147,7 @@ export default function Degrees() {
               <GraduationCap className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{degrees.length}</p>
+              <p className="text-2xl font-bold font-display text-foreground">{nfts.length}</p>
               <p className="text-xs text-muted-foreground">Tổng NFT</p>
             </div>
           </CardContent>
@@ -158,7 +180,7 @@ export default function Degrees() {
       <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Tìm kiếm theo tên, loại bằng..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Tìm kiếm theo loại bằng cấp..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-full sm:w-[180px]">
@@ -168,7 +190,8 @@ export default function Degrees() {
           <SelectContent>
             <SelectItem value="all">Tất cả</SelectItem>
             <SelectItem value="verified">Đã xác thực</SelectItem>
-            <SelectItem value="revoked">Đã thu hồi</SelectItem>
+            <SelectItem value="pending">Đang chờ</SelectItem>
+            <SelectItem value="rejected">Đã thu hồi</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>
@@ -181,55 +204,49 @@ export default function Degrees() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Token ID</TableHead>
-                  <TableHead>Sinh viên</TableHead>
-                  <TableHead className="hidden md:table-cell">Bằng cấp</TableHead>
-                  <TableHead className="hidden lg:table-cell">Cơ sở cấp</TableHead>
-                  <TableHead className="hidden sm:table-cell">Ngày cấp</TableHead>
+                  <TableHead>Loại bằng</TableHead>
+                  <TableHead className="hidden md:table-cell">Tổ chức</TableHead>
+                  <TableHead className="hidden sm:table-cell">Ngày</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loading ? (
+                {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                        <span>Đang tải dữ liệu...</span>
-                      </div>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      {nfts.length === 0 ? "Chưa có NFT nào được phát hành" : "Không tìm thấy kết quả"}
                     </TableCell>
                   </TableRow>
-                ) : filtered.map((deg) => {
-                  const status = deg.is_valid ? "verified" : "revoked";
-                  const sc = statusConfig[status];
-                  const dateStr = deg.minted_at ? new Date(deg.minted_at * 1000).toLocaleDateString("vi-VN") : "N/A";
-                  
-                  return (
-                    <TableRow key={deg.token_id}>
-                      <TableCell className="font-mono text-primary text-xs">{deg.token_id.slice(0, 8)}...</TableCell>
-                      <TableCell className="font-medium text-foreground">{deg.recipient_name || deg.owner_address || "N/A"}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">{deg.metadata?.degree_type}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">{deg.metadata?.institution_address}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">{dateStr}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={sc.className}>
-                          <sc.icon className="h-3 w-3 mr-1" />
-                          {sc.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                ) : (
+                  filtered.map((deg) => {
+                    const sc = statusConfig[deg.status] || statusConfig.pending;
+                    return (
+                      <TableRow key={deg.id}>
+                        <TableCell className="font-mono text-primary text-sm">{deg.tokenId}</TableCell>
+                        <TableCell className="font-medium text-foreground">{deg.degree}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{deg.university}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">{deg.date}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={sc.className}>
+                            <sc.icon className="h-3 w-3 mr-1" />
+                            {sc.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </CardContent>
