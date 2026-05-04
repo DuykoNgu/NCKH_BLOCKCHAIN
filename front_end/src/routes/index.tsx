@@ -8,6 +8,7 @@ const ROUTES = {
 } as const;
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
 const MockLogin = lazy(() => import('@/pages/MockLogin'));
 const Home = lazy(() => import('@/pages/Home'));
 const PublicVerify = lazy(() => import('@/pages/PublicVerify'));
@@ -24,6 +25,7 @@ const AdminStudents = lazy(() => import('@/pages/admin/AdminStudents'));
 const AdminContracts = lazy(() => import('@/pages/admin/AdminContracts'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminNetwork = lazy(() => import('@/pages/admin/AdminNetwork'));
+const AdminValidators = lazy(() => import('@/pages/admin/AdminValidators'));
 
 
 export const router = createBrowserRouter([
@@ -39,7 +41,7 @@ export const router = createBrowserRouter([
   },
   {
     path: ROUTES.HOME,
-    element: <ProtectedRoute allowedRoles={['admin', 'client']}><Home /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'client', 'validator', 'moet']}><Home /></ProtectedRoute>,
     errorElement: <NotFoundPage />,
   },
   {
@@ -52,6 +54,10 @@ export const router = createBrowserRouter([
     errorElement: <NotFoundPage />,
   },
   {
+    path: '/moet-login',
+    element: <AdminLoginPage />,
+  },
+  {
     path: '/unauthorized',
     element: <UnauthorizedPage />,
   },
@@ -61,11 +67,12 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>,
+    element: <ProtectedRoute allowedRoles={['admin', 'moet']}><AdminLayout /></ProtectedRoute>,
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <AdminIndex /> },
       { path: 'degrees', element: <AdminDegrees /> },
+      { path: 'validators', element: <AdminValidators /> },
       { path: 'verify', element: <AdminVerify /> },
       { path: 'transactions', element: <AdminTransactions /> },
       { path: 'students', element: <AdminStudents /> },

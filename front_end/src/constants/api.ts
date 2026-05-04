@@ -3,6 +3,7 @@ export const AUTH_SERVER = {
   WALLET_REGISTER: '/users/auth/register',
   WALLET_NONCE: '/users/auth/get_nonce',
   PROFILE_UPDATE: '/users/profile/update',
+  GET_ALL: '/users/all',
 } as const;
 
 export const TRANSACTION_SERVER = {

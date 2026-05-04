@@ -7,15 +7,12 @@ export const useAuth = () => {
   const avatarUrl = localStorage.getItem("avatar_url");
 
   const address = localStorage.getItem("address");
+  const isActive = localStorage.getItem("is_active") === "1";
 
   return {
-    isLoggedIn,
-    role,
-    fullName,
-    avatarUrl,
-    address,
-    isAdmin: role === "admin" || role === "moet",
-    isValidator: role === "validator",
-    isUser: role === "client",
+    ...context,
+    isAdmin: context.role === "admin" || context.role === "moet",
+    isValidator: context.role === "validator",
+    isUser: context.role === "client",
   };
 };

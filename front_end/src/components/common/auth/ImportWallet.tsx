@@ -8,10 +8,12 @@ interface ImportWalletProps {
   isLoading: boolean;
   showPassword: boolean;
   password: string;
+  currentAddress?: string | null;
   onPasswordChange: (password: string) => void;
   onTogglePassword: () => void;
   onLogin: () => void;
   onBack: () => void;
+  onClearWallet: () => void;
 }
 
 const ImportWallet = ({
@@ -19,10 +21,12 @@ const ImportWallet = ({
   isLoading,
   showPassword,
   password,
+  currentAddress,
   onPasswordChange,
   onTogglePassword,
   onLogin,
   onBack,
+  onClearWallet,
 }: ImportWalletProps) => {
   return (
     <div className="relative z-10 w-full max-w-md mx-4">
@@ -33,9 +37,16 @@ const ImportWallet = ({
             </div>
 
             <h2 className="font-display text-xl font-bold text-foreground mb-1">Chào mừng trở lại</h2>
-            <p className="text-sm text-muted-foreground mb-6 text-center">
-              Nhập mật khẩu để truy cập tài khoản của bạn
+            <p className="text-sm text-muted-foreground mb-4 text-center">
+              Mở khóa ví để truy cập hệ thống
             </p>
+
+            {currentAddress && (
+              <div className="mb-6 p-3 bg-secondary/30 rounded-xl w-full border border-border/30">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Địa chỉ ví hiện tại:</p>
+                <code className="text-[11px] text-primary font-mono break-all">{currentAddress}</code>
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg w-full">
@@ -45,7 +56,7 @@ const ImportWallet = ({
 
             <div className="space-y-4 w-full">
               <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu</Label>
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu mở khóa</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
@@ -66,20 +77,35 @@ const ImportWallet = ({
 
               <Button
                 onClick={onLogin}
-                disabled={isLoading || !password || password.length < 8}
+                disabled={isLoading || !password || password.length < 8 || !currentAddress}
                 className="w-full h-12 rounded-xl font-display font-semibold text-sm"
               >
-                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                {isLoading ? 'Đang mở khóa...' : 'Mở khóa ví'}
                 <ArrowRight size={16} className="ml-2" />
               </Button>
+              {!currentAddress && (
+                <p className="text-[10px] text-destructive text-center mt-2 px-2">
+                  Dữ liệu ví đã bị xóa hoặc không tìm thấy. Vui lòng quay lại để tạo/nhập ví mới.
+                </p>
+              )}
             </div>
 
-            <button 
-              onClick={onBack} 
-              className="mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Tạo tài khoản mới
-            </button>
+            <div className="mt-6 flex flex-col items-center gap-3">
+              <button 
+                onClick={onClearWallet} 
+                className="text-sm text-primary font-medium hover:underline transition-colors"
+                title="Xóa ví cũ khỏi trình duyệt"
+              >
+                Dùng tài khoản khác
+              </button>
+              
+              <button 
+                onClick={onBack} 
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Quay lại
+              </button>
+            </div>
           </div>
         </div>
       </div>

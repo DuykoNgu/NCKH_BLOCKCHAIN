@@ -9,6 +9,8 @@ from app.controllers.v1.NFTController import nft_bp
 from app.controllers.v1.TransactionController import transaction_bp
 from app.controllers.v1.AuthController import auth_bp
 from app.controllers.v1.AccountController import user_bp
+from app.controllers.v1.AdminController import admin_bp
+from app.controllers.v1.StorageController import storage_bp
 from app.database.database import init_db
 
 
@@ -24,6 +26,10 @@ def create_app():
     app.register_blueprint(transaction_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(storage_bp)
+    
+    
     
     return app
 
