@@ -1,90 +1,93 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Search, Plus, UserCheck, GraduationCap, Eye } from "lucide-react";
+import { User, Search, GraduationCap, ShieldCheck, Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "sonner";
-import { students } from "@/data/admin/mockData";
+import { NFTService } from "@/services/nftService";
+import type { NFT } from "@/services/nftService";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-export default function Students() {
+// Derive a unique student list from NFT data (group by owner_address)
+function groupByOwner(nfts: NFT[]) {
+  const map = new Map<string, { address: string; nfts: NFT[] }>();
+  for (const nft of nfts) {
+    const addr = nft.recipient_address || "";
+    if (!addr) continue;
+    if (!map.has(addr)) map.set(addr, { address: addr, nfts: [] });
+    map.get(addr)!.nfts.push(nft);
+  }
+  return Array.from(map.values());
+}
+
+export default function StudentsPage() {
   const [search, setSearch] = useState("");
-  const [addOpen, setAddOpen] = useState(false);
+  const [allNFTs, setAllNFTs] = useState<NFT[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const data = await NFTService.getAllNFTs();
+        setAllNFTs(data.nfts || []);
+      } catch (e) {
+        console.error("Failed to fetch NFTs:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, []);
+
+  const students = groupByOwner(allNFTs);
 
   const filtered = students.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()) || s.id.toLowerCase().includes(search.toLowerCase()) || s.major.toLowerCase().includes(search.toLowerCase())
+    s.address.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleAdd = () => { toast.success("Đã thêm sinh viên mới!"); setAddOpen(false); };
+  const totalWithNFT = students.filter((s) => s.nfts.some((n) => n.is_valid)).length;
+  const totalWithout = students.filter((s) => !s.nfts.some((n) => n.is_valid)).length;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">Quản lý Sinh viên</h2>
-          <p className="text-sm text-muted-foreground mt-1">Danh sách sinh viên và trạng thái bằng cấp NFT</p>
-        </div>
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Thêm sinh viên</Button>
-          </DialogTrigger>
-          <DialogContent className="glass-card border-border">
-            <DialogHeader><DialogTitle className="font-display">Thêm sinh viên mới</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Mã sinh viên</Label><Input placeholder="SV00X" /></div>
-                <div className="space-y-2"><Label>Họ và tên</Label><Input placeholder="Nhập họ tên..." /></div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2"><Label>Email</Label><Input type="email" placeholder="email@edu.vn" /></div>
-                <div className="space-y-2"><Label>Số điện thoại</Label><Input placeholder="09..." /></div>
-              </div>
-              <div className="space-y-2"><Label>Ngành học</Label><Input placeholder="Nhập ngành học..." /></div>
-              <div className="space-y-2">
-                <Label>Trường đại học</Label>
-                <Select><SelectTrigger><SelectValue placeholder="Chọn trường" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bkhn">ĐH Bách Khoa HN</SelectItem>
-                    <SelectItem value="ktqd">ĐH Kinh Tế QD</SelectItem>
-                    <SelectItem value="hlu">ĐH Luật Hà Nội</SelectItem>
-                    <SelectItem value="nuce">ĐH Xây Dựng</SelectItem>
-                    <SelectItem value="hmu">ĐH Y Hà Nội</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleAdd} className="w-full">Thêm sinh viên</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <motion.div variants={item}>
+        <h2 className="font-display text-2xl font-bold text-foreground">Quản lý Sinh viên</h2>
+        <p className="text-sm text-muted-foreground mt-1">Danh sách người dùng đã nhận bằng cấp trong hệ thống</p>
       </motion.div>
 
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-card"><CardContent className="p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center"><Users className="h-5 w-5 text-primary" /></div>
-          <div><p className="text-2xl font-bold font-display text-foreground">{students.length}</p><p className="text-xs text-muted-foreground">Tổng sinh viên</p></div>
-        </CardContent></Card>
-        <Card className="glass-card"><CardContent className="p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-green-400/20 flex items-center justify-center"><UserCheck className="h-5 w-5 text-green-400" /></div>
-          <div><p className="text-2xl font-bold font-display text-foreground">{students.filter(s => s.status === "graduated").length}</p><p className="text-xs text-muted-foreground">Đã tốt nghiệp</p></div>
-        </CardContent></Card>
-        <Card className="glass-card"><CardContent className="p-4 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-accent/20 flex items-center justify-center"><GraduationCap className="h-5 w-5 text-accent" /></div>
-          <div><p className="text-2xl font-bold font-display text-foreground">{students.reduce((s, st) => s + st.nftCount, 0)}</p><p className="text-xs text-muted-foreground">NFT đã phát hành</p></div>
-        </CardContent></Card>
+        {[
+          { label: "Tổng tài khoản có bằng", value: students.length, icon: User, color: "text-primary" },
+          { label: "Đang có bằng hợp lệ", value: totalWithNFT, icon: GraduationCap, color: "text-green-400" },
+          { label: "Bằng đã thu hồi / Không có", value: totalWithout, icon: AlertCircle, color: "text-accent" },
+        ].map((stat) => (
+          <Card key={stat.label} className="glass-card">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-lg bg-secondary flex items-center justify-center ${stat.color}`}>
+                <stat.icon className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold font-display text-foreground">{stat.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </motion.div>
 
       <motion.div variants={item} className="flex gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Tìm kiếm sinh viên..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input
+            placeholder="Tìm kiếm theo địa chỉ ví..."
+            className="pl-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </motion.div>
 
@@ -94,37 +97,79 @@ export default function Students() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mã SV</TableHead>
-                  <TableHead>Họ tên</TableHead>
-                  <TableHead className="hidden md:table-cell">Ngành</TableHead>
-                  <TableHead className="hidden lg:table-cell">Trường</TableHead>
-                  <TableHead className="hidden sm:table-cell">Niên khóa</TableHead>
-                  <TableHead>NFT</TableHead>
-                  <TableHead>Trạng thái</TableHead>
+                  <TableHead>Địa chỉ ví</TableHead>
+                  <TableHead className="hidden md:table-cell">Bằng cấp đang giữ</TableHead>
+                  <TableHead className="hidden sm:table-cell">Trạng thái</TableHead>
                   <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-mono text-primary text-sm">{s.id}</TableCell>
-                    <TableCell>
-                      <div><p className="font-medium text-foreground">{s.name}</p><p className="text-xs text-muted-foreground hidden sm:block">{s.email}</p></div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">{s.major}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-muted-foreground">{s.university}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">{s.year}</TableCell>
-                    <TableCell><Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{s.nftCount}</Badge></TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={s.status === "graduated" ? "bg-green-400/10 text-green-400 border-green-400/20" : "bg-yellow-400/10 text-yellow-400 border-yellow-400/20"}>
-                        {s.status === "graduated" ? "Tốt nghiệp" : "Đang học"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-32 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                        <span>Đang tải dữ liệu...</span>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
+                      Chưa có sinh viên nào trong hệ thống
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.map((student) => {
+                  const validNFTs = student.nfts.filter((n) => n.is_valid);
+                  const hasValid = validNFTs.length > 0;
+                  const shortAddr = `${student.address.slice(0, 8)}...${student.address.slice(-6)}`;
+
+                  return (
+                    <TableRow key={student.address}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
+                            <User className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-mono text-foreground">{shortAddr}</p>
+                            <p className="text-xs text-muted-foreground">{student.nfts.length} văn bằng tổng</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="space-y-1">
+                          {validNFTs.slice(0, 2).map((nft) => (
+                            <p key={nft.token_id} className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              • {nft.metadata?.degree_type || "Chứng chỉ"}
+                            </p>
+                          ))}
+                          {validNFTs.length > 2 && (
+                            <p className="text-xs text-muted-foreground">+{validNFTs.length - 2} bằng khác</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge
+                          variant="outline"
+                          className={
+                            hasValid
+                              ? "bg-green-400/10 text-green-400 border-green-400/20"
+                              : "bg-destructive/10 text-destructive border-destructive/20"
+                          }
+                        >
+                          <ShieldCheck className="h-3 w-3 mr-1" />
+                          {hasValid ? `${validNFTs.length} hợp lệ` : "Không có bằng hợp lệ"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

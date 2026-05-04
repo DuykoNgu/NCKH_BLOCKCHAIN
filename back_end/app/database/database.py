@@ -133,6 +133,26 @@ def init_db():
           pass
           
      try:
+          cursor.execute("ALTER TABLE account ADD COLUMN tax_id TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN representative TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN email TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN phone TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
           cursor.execute("ALTER TABLE nft ADD COLUMN owner_address TEXT")
      except sqlite3.OperationalError:
           pass

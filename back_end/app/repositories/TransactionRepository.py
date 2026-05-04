@@ -139,7 +139,7 @@ class TransactionRepository:
             
             # Sử dụng biến BASE_TRANSACTION_SELECT đã thống nhất ở các hàm trước
             # Toán tử BETWEEN giúp truy vấn ngắn gọn và tối ưu hơn >= AND <=
-            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
+            query = f"{BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
             
             cursor.execute(query, (start_timestamp, end_timestamp))
             rows = cursor.fetchall()
