@@ -6,13 +6,24 @@ import { AUTH_SERVER } from "@/constants/api";
 import * as secp from "@noble/secp256k1";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hmac } from "@noble/hashes/hmac.js";
+import { getPasswordFromSession, isPasswordSaved } from '@/hooks/usePassword';
+import { signDataWithBytes } from "@/utils/signatureUtils";
 secp.hashes.sha256 = (msg) => sha256(msg);
 secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
 export interface CreateWalletResult {
   mnemonic: string;
   address: string;
 }
+  const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
+    const sortedObj = {} as T;
+    const keys = Object.keys(obj).sort() as Array<keyof T>;
 
+    keys.forEach((key) => {
+      sortedObj[key] = obj[key];
+    });
+
+    return sortedObj;
+  };
 export const clearOldSession = () => {
   const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn"];
   items.forEach(item => localStorage.removeItem(item));
@@ -20,7 +31,6 @@ export const clearOldSession = () => {
   clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
-
 export const createWallet = async (password: string): Promise<CreateWalletResult> => {
   clearOldSession();
   // Tạo ví mới với seed phrase (BIP39)
@@ -39,16 +49,29 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
     is_active: "1",
   };
 
+  const signingDataaa = {
+      address: address.toLowerCase(),
+      public_key: uint8ArrayToHex(publicKey),
+      role: "client",
+      timestamp:  Math.floor(Date.now() / 1000)
+  };
+  const sortedMetadata = sortObjectKeys(signingDataaa);
+
+  const signingData = JSON.stringify(sortedMetadata);
+  const signature = signDataWithBytes(signingData, privateKey);
+  const requestData = {
+      signature: signature,
+      timestamp : signingDataaa.timestamp,   
+      address: address.toLowerCase(),
+      public_key: uint8ArrayToHex(publicKey),
+      role: "client"
+  }
   // Đăng ký với Backend
   try {
     const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "client"
-      }),
+      body: JSON.stringify(requestData),
     });
     
     if (!response.ok) {
@@ -85,6 +108,18 @@ export const registerSchool = async (
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
 
+  // Tạo chữ ký giống như createWallet
+  const timestamp = Math.floor(Date.now() / 1000);
+  const signingDataRaw = {
+    address: address.toLowerCase(),
+    public_key: uint8ArrayToHex(publicKey),
+    role: "validator",
+    timestamp,
+  };
+  const sortedSigningData = sortObjectKeys(signingDataRaw);
+  const signingDataStr = JSON.stringify(sortedSigningData);
+  const signature = signDataWithBytes(signingDataStr, privateKey);
+
   // Đăng ký với Backend
   try {
     const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
@@ -93,7 +128,9 @@ export const registerSchool = async (
       body: JSON.stringify({
         address: address.toLowerCase(),
         public_key: uint8ArrayToHex(publicKey),
-        role: "validator"
+        role: "validator",
+        signature,
+        timestamp
       }),
     });
     
@@ -303,12 +340,47 @@ export const updateProfile = async (
   email?: string,
   phone?: string
 ) => {
+  if (!isPasswordSaved()) {
+      return {
+        success: false,
+        message: 'Mật khẩu ví không tìm thấy. Vui lòng đăng nhập lại.',
+      };
+    }
+
+  const password = getPasswordFromSession();
+        if (!password) {
+          throw new Error('Mật khẩu ví không tìm thấy');
+        }
+  
+        // Get private key from vault using password
+        const vault = localStorage.getItem('vault');
+        if (!vault) {
+          throw new Error('Không tìm thấy ví trong hệ thống');
+        }
+  
+        const vaultData = JSON.parse(vault);
+  const privateKeyBytes = await decryptPrivateKey(vaultData, password);
+  const signingMetadata = {
+    address: address.toLowerCase(),
+    full_name: fullName,
+    avatar_url: avatarUrl || '',
+    tax_id: taxId || '',
+    representative: representative || '',
+    email: email || '',
+    phone: phone || '',
+    timestamp: Math.floor(Date.now() / 1000)
+  };
+
+  const sortedMetadata = sortObjectKeys(signingMetadata);
+  const signingData = JSON.stringify(sortedMetadata);
+  const signature = signDataWithBytes(signingData, privateKeyBytes);
   const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.PROFILE_UPDATE}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ 
+      signature: signature,
       address: address.toLowerCase(), 
       full_name: fullName, 
       avatar_url: avatarUrl,

@@ -9,7 +9,7 @@
         "peer_timeout": 120
     },
     "seed_nodes": [
-        {
+              {
             "name": "Node A (Local)",
             "ip": "127.0.0.1",
             "port": 5001,
@@ -42,6 +42,8 @@
         "block_time": 5,
         "validator_rotation": true,
         "max_transactions_per_block": 100,
+        "min_transactions_per_block": 10,
+        "max_wait_seconds": 3,
         "min_transactions_to_mine": 1,
         "mining_timeout_seconds": 30
     },
@@ -50,5 +52,11 @@
         "algorithm": "AES-256-GCM",
         "kdf": "PBKDF2-HMAC-SHA256",
         "kdf_iterations": 100000
+    },
+    "monitor": {
+        "enabled": true,
+        "check_interval": 30,
+        "block_gap_threshold": 1,
+        "auto_sync_enabled": true
     }
 }

@@ -64,7 +64,9 @@ class NetworkConfig:
     def get_consensus_config(self) -> Dict[str, Any]:
         """Get consensus configuration"""
         return self.config.get('consensus', {})
-    
+    def get_monitor_config(self) -> Dict[str, Any]:
+        return self.config.get('monitor', {})
+        
     def get_slot_duration(self) -> int:
         """Get slot duration in seconds"""
         consensus = self.get_consensus_config()

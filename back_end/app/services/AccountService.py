@@ -27,37 +27,60 @@ SYSTEM_ADDRESS = "system"
 
 
 def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Transaction:
-    """Build and hash a system Transaction for an account operation."""
+    """Build and hash a system Transaction for an account operation.
+    
+    NOTE: tx.signature is intentionally left EMPTY for account_register /
+    account_update transactions.  The user's proof-of-ownership signature is
+    stored inside payload["signature"].  TransactionService.is_valid() knows
+    how to verify that field separately.
+    """
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
+    sender_pubkey = ""
+    if sender_address != SYSTEM_ADDRESS:
+        acc = AccountService.get_account_by_address(sender_address)
+        sender_pubkey = acc.public_key if acc else ""
 
     tx = Transaction(
         tx_id=tx_hash,
         tx_hash=tx_hash,
-        sender_pubkey="",          # system-initiated, no user pubkey needed
+        sender_pubkey=sender_pubkey,
         sender_address=sender_address,
         recipient_address=SYSTEM_ADDRESS,
         payload=payload,
-        signature="",              # no signature for server-initiated txs
+        signature="",          # ← always empty; proof is in payload["signature"]
         timestamp=datetime.datetime.now().timestamp(),
     )
     return tx
 
 
 def _submit_tx(tx: Transaction) -> None:
-    """Push tx into mempool and broadcast to peers (best-effort)."""
+    """Push tx into mempool, save to database, and broadcast to peers (best-effort)."""
     try:
         from app.services.BlockChainService import BlockChainService
+        from app.repositories.TransactionRepository import TransactionRepository
 
         blockchain = get_blockchain_instance()
-        # add_transaction_to_mempool accepts txs with empty signature as system txs
-        BlockChainService.add_transaction_to_mempool(blockchain, tx)
-        logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        
+        tx_hashes_in_mempool = {t.tx_hash for t in blockchain.mempool}
+        if tx.tx_hash in tx_hashes_in_mempool:
+            logger.info(f"[AccountService] TX already in mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        else:
+            # add_transaction_to_mempool accepts txs with empty signature as system txs
+            BlockChainService.add_transaction_to_mempool(blockchain, tx)
+            logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+
+
+        if TransactionRepository.create_transaction(tx):
+            logger.info(f"[AccountService] TX saved to database: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+        else:
+            logger.warning(f"[AccountService] Failed to save TX to database: {tx.tx_hash[:16]}...")
 
         # Gossip to peers so they add it to their mempool too (reduces latency)
         try:
             net = get_network_service()
-            net.broadcast_transaction(tx.to_dict())
+            peers_notified = net.broadcast_transaction(tx.to_dict())
+            logger.info(f"[AccountService] TX broadcasted to {peers_notified} peers: {tx.tx_hash[:16]}...")
         except Exception as net_err:
             logger.warning(f"[AccountService] broadcast_transaction failed (non-fatal): {net_err}")
 
@@ -70,7 +93,16 @@ class AccountService:
 
     @staticmethod
     def register_account(
-        address: str, public_key: str, role: Role = Role.CLIENT
+        address: str,
+        public_key: str,
+        role: Role = Role.CLIENT,
+        signature: str = None,
+        reg_timestamp = None,   # ← timestamp from the frontend request (needed to verify sig)
+        full_name: str = None,
+        tax_id: str = None,
+        representative: str = None,
+        email: str = None,
+        phone: str = None,
     ) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
         try:
@@ -80,16 +112,22 @@ class AccountService:
                 return False, None, "Account already exists"
 
             now = datetime.datetime.now()
-            
+            created_at = now.strftime("%d/%m/%Y %H:%M:%S")
+
             # Default is_active=1 for CLIENT/MOET, is_active=0 for VALIDATOR (pending approval)
             is_active = 0 if role == Role.VALIDATOR else 1
 
             account = Account(
-                address= address,
-                public_key= public_key,
-                role = role,
+                address=address,
+                public_key=public_key,
+                role=role,
                 is_active=is_active,
-                created_at=now.strftime("%d/%m/%Y %H:%M:%S")
+                created_at=created_at,
+                full_name=full_name,
+                tax_id=tax_id,
+                representative=representative,
+                email=email,
+                phone=phone,
             )
 
             # 1. Write to local DB immediately (fast UX)
@@ -110,6 +148,24 @@ class AccountService:
                 "role": role_str,
                 "created_at": created_at,
             }
+            # MUST include the original timestamp so is_valid() can reconstruct
+            # the exact signing data that the frontend signed
+            if reg_timestamp is not None:
+                payload["timestamp"] = reg_timestamp
+            if full_name:
+                payload["full_name"] = full_name
+            if tax_id:
+                payload["tax_id"] = tax_id
+            if representative:
+                payload["representative"] = representative
+            if email:
+                payload["email"] = email
+            if phone:
+                payload["phone"] = phone
+            if signature:
+                payload["signature"] = signature
+
+
             tx = _build_account_tx(payload, sender_address=address)
             _submit_tx(tx)
 
@@ -174,15 +230,11 @@ class AccountService:
             return False, f"Verification error: {str(e)}"
 
     @staticmethod
-    def update_profile(address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
+    def update_profile(account: Account,address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
         """Update account profile (name and avatar)"""
         address = address.lower()
         logger.info(f"Updating profile for address: {address}")
         try:
-            account = AccountRepository.get_account_by_address(address)
-            if not account:
-                logger.warning(f"Profile update failed: Account {address} not found")
-                return False, None, "Account not found"
 
             logger.info(f"Found account: {account.address}. New name: {full_name}")
 

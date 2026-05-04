@@ -20,10 +20,26 @@ class BlockService:
         if not transactions:
             return ""
 
-        tx_hashes = [
-            HashUtils.hash_sha256(json.dumps(tx.to_dict()).encode())
-            for tx in transactions
-        ]
+        tx_hashes = []
+        for tx in transactions:
+            # CRITICAL FIX: Only hash the "transaction core" fields
+            # Exclude: block_id, tx_status, error_reason (these are metadata added after creation)
+            # This ensures merkle root stays consistent whether calculated at creation or at sync
+            tx_core = {
+                "tx_id": tx.tx_id,
+                "tx_hash": tx.tx_hash,
+                "sender_pubkey": tx.sender_pubkey,
+                "sender_address": tx.sender_address if tx.sender_address is not None else "system",
+                "recipient_address": tx.recipient_address,
+                "payload": tx.payload,
+                "signature": tx.signature,
+                "timestamp": tx.timestamp
+            }
+                
+            # Chuẩn hoá dữ liệu để luôn đảm bảo tính nhất quán (Canonical JSON)
+            # Loại bỏ các khoảng trắng mặc định, sắp xếp keys theo thứ tự Alphabet
+            canonical_json = json.dumps(tx_core, sort_keys=True, separators=(',', ':'))
+            tx_hashes.append(HashUtils.hash_sha256(canonical_json.encode()))
 
         while len(tx_hashes) > 1:
             temp = []
@@ -41,18 +57,27 @@ class BlockService:
     
     @staticmethod
     def get_signing_data(block: Block) -> bytes:
-        """Lấy data để ký block (không bao gồm signature)"""
-        # Convert transactions to serializable format
+        """Lấy data để ký block (không bao gồm signature)
+        
+        CRITICAL: Must use SAME transaction fields as calculate_merkle_root()
+        to ensure block_hash is consistent across nodes.
+        Excludes: block_id, tx_status, error_reason (metadata added after creation)
+        """
+        # Convert transactions to serializable format using CORE fields only
         tx_list = []
         for tx in block.transactions:
             if isinstance(tx, Transaction):
+                # ✅ Must match calculate_merkle_root() - use core fields only
                 tx_list.append({
                     "tx_id": tx.tx_id,
-                    "sender_address": tx.sender_address,
+                    "tx_hash": tx.tx_hash,
+                    "sender_pubkey": tx.sender_pubkey,
+                    "sender_address": tx.sender_address if tx.sender_address is not None else "system",
                     "recipient_address": tx.recipient_address,
                     "payload": tx.payload,
-                    "timestamp": tx.timestamp,
-                    "block_id": tx.block_id
+                    "signature": tx.signature,
+                    "timestamp": tx.timestamp
+                    # ✅ EXCLUDED: block_id, tx_status, error_reason
                 })
             else:
                 tx_list.append(tx)
@@ -82,15 +107,21 @@ class BlockService:
     @staticmethod
     def sign_block(block: Block, private_key_hex: str) -> str:
         """Ký block bằng ECDSA SECP256k1"""
+        print("SIGN BLOCK", block.to_dict())
+        print("PRIVATE KEY", private_key_hex)
         message = BlockService.get_signing_data(block)
         block.validator_signature = CryptoUtils.sign_data(message, private_key_hex)
         block.block_hash = BlockService.calculate_hash(block)
+        
         return block.validator_signature
 
     # Xác thực chữ ký block
     @staticmethod
     def verify_block(block: Block, public_key_hex: str) -> bool:
         """Xác thực chữ ký block"""
+        if block.index == 0 and block.validator_signature == "GENESIS":
+            return True
+            
         message = BlockService.get_signing_data(block)
         return CryptoUtils.verify_signature(message, block.validator_signature, public_key_hex)
 

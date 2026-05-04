@@ -1,12 +1,13 @@
 import sqlite3
 import os
-from app.database.database import DB_PATH
+from app.database import database
 
 def get_connection():
     """Get database connection with proper timeout and isolation level"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0, check_same_thread=False)
+    conn = sqlite3.connect(database.DB_PATH, timeout=60.0, check_same_thread=False)
     # Set WAL mode for better concurrency
     conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=60000')  # 60 second busy timeout
     conn.execute('PRAGMA foreign_keys=ON')
     return conn
 

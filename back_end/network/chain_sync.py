@@ -62,7 +62,7 @@ class ChainSync:
         Find the peer with the longest chain
         
         Returns:
-            Tuple of (peer, height) or None if no peers available
+            Tuple of (peer, height) or None if no peers available with longer chain
         """
         active_peers = self.peer_manager.get_active_peers()
         
@@ -73,18 +73,16 @@ class ChainSync:
         best_peer = None
         best_height = self.get_local_height()
         
-        for peer in active_peers:
-            height = self.query_peer_height(peer)
-            if height is not None and height > best_height:
-                best_peer = peer
-                best_height = height
-                print(f"  Found peer {peer.ip_address}:{peer.port} "
-                      f"with height {height}")
-        
-        if best_peer:
+        valid_peers = [(p, self.query_peer_height(p)) for p in active_peers]
+        better_peers = [(p,h) for p,h in valid_peers if h is not None and h > self.get_local_height()]
+        if better_peers:
+            best_peer, best_height = max(better_peers, key=lambda x: x[1])
+            print(f"Found peer {best_peer.ip_address}:{best_peer.port} with height {best_height}")
             return (best_peer, best_height)
         
+        print("⚠ No peers with longer chain available")
         return None
+    
     
     def download_blocks(self, peer: Peer, start_index: int, end_index: int, 
                         timeout: int = 30) -> Optional[List[Dict]]:
@@ -142,6 +140,13 @@ class ChainSync:
             # Parse block
             block = Block.from_dict(block_data)
             
+            # 0. Check if block already exists (skip duplicates)
+            if len(self.blockchain.chain) > 0:
+                local_height = len(self.blockchain.chain) - 1
+                if block.index <= local_height:
+                    print(f"⚠ Block #{block.index} already exists in chain (local height: {local_height})")
+                    return True  # Not an error, just already have this block
+            
             # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):
                 print(f"✗ Block #{block.index}: invalid signature")
@@ -162,15 +167,41 @@ class ChainSync:
                 print(f"✗ Block #{block.index}: merkle root mismatch")
                 return False
             
-            # 4. Add to blockchain
-            BlockChainService.add_block(self.blockchain, block)
+            # 4. CRITICAL FIX: Execute transactions to update blockchain state
+            # This is ESSENTIAL for data sync! All nodes MUST execute transactions
+            # when receiving blocks to ensure consistent state across the network
+            print(f"→ [SYNC] Executing {len(block.transactions)} transactions from block #{block.index}...")
+            execution_errors = 0
+            for tx in block.transactions:
+                success = BlockChainService.execute_transaction(self.blockchain, tx)
+                if not success:
+                    print(f"  ⚠ Transaction execution failed: {tx.tx_hash[:8]}... (op={tx.payload.get('op') if isinstance(tx.payload, dict) else 'UNKNOWN'})")
+                    execution_errors += 1
             
-            # 5. Save to database
+            if execution_errors > 0:
+                print(f"⚠️  [SYNC] {execution_errors}/{len(block.transactions)} transaction executions failed")
+                
+            print(f"→ Adding block #{block.index} to chain")
+            self.blockchain.chain.append(block)
+            
+            # 5. Remove synced transactions from mempool
+            included_tx_hashes = {tx.tx_hash for tx in block.transactions}
+            self.blockchain.mempool = [tx for tx in self.blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+            
+            # 6. Save to database
             try:
                 BlockRepository.create_block(block)
                 for tx in block.transactions:
-                    tx.block_id = block.block_id
-                    TransactionRepository.create_transaction(tx)
+                    if not tx.block_id:
+                        tx.block_id = block.block_id
+                        tx.tx_status = "COMMITTED"
+                    
+                    # Check if tx already exists (idempotent)
+                    existing_tx = TransactionRepository.get_transaction_by_hash(tx.tx_hash)
+                    if not existing_tx:
+                        TransactionRepository.create_transaction(tx)
+                    elif not existing_tx.block_id:
+                        TransactionRepository.update_transaction_block_id(tx.tx_hash, block.block_id)
             except Exception as db_err:
                 print(f"⚠ Block #{block.index}: saved to chain but DB error: {db_err}")
             

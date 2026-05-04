@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS nft (
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
     tx_id TEXT PRIMARY KEY,
+    sender_pubkey TEXT,
     sender_address TEXT,
     recipient_address TEXT,
 
@@ -71,7 +72,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT,
     payload TEXT,
     block_id TEXT,
-    FOREIGN KEY (sender_address) REFERENCES account(address),
+    tx_status TEXT DEFAULT 'PENDING',  -- 'PENDING', 'COMMITTED', 'FAILED'
+    error_reason TEXT,  -- Error message if tx_status = 'FAILED'
+    FOREIGN KEY (sender_address) REFERENCES account(address) ON DELETE SET NULL,
     FOREIGN KEY (block_id) REFERENCES block(block_id)
 );
 
@@ -172,10 +175,30 @@ def init_db():
           cursor.execute("ALTER TABLE nft ADD COLUMN issuer_signature TEXT")
      except sqlite3.OperationalError:
           pass
+     
+     # Migration: Convert "system" sender_address to NULL for existing system transactions
+     try:
+          cursor.execute("""
+               UPDATE transactions 
+               SET sender_address = NULL 
+               WHERE sender_address = 'system'
+          """)
+          rows_updated = cursor.rowcount
+          if rows_updated > 0:
+               print(f"✓ Migrated {rows_updated} system transactions (converted sender_address='system' to NULL)")
+     except sqlite3.Error as e:
+          print(f"⚠ Migration warning: {e}")
           
      conn.commit()
      cursor.close()
      print(f"Database initialized successfully at {DB_PATH}")
+     
+     # Run database migrations (e.g., add new columns)
+     try:
+          from app.database.migrations import run_all_migrations
+          run_all_migrations()
+     except Exception as e:
+          print(f"⚠️  Migrations warning: {e}")
      
 if __name__ == "__main__":
      init_db()
