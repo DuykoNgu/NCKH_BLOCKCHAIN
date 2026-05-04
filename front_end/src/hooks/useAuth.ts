@@ -1,21 +1,12 @@
-import type { UserRole } from "@/types/auth";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 export const useAuth = () => {
-  const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-  const role = localStorage.getItem("role") as UserRole | null;
-  const fullName = localStorage.getItem("full_name");
-  const avatarUrl = localStorage.getItem("avatar_url");
-
-  const address = localStorage.getItem("address");
+  const context = useAuthContext();
 
   return {
-    isLoggedIn,
-    role,
-    fullName,
-    avatarUrl,
-    address,
-    isAdmin: role === "admin" || role === "moet",
-    isValidator: role === "validator",
-    isUser: role === "client",
+    ...context,
+    isAdmin: context.role === "admin" || context.role === "moet",
+    isValidator: context.role === "validator",
+    isUser: context.role === "client",
   };
 };

@@ -1,4 +1,4 @@
-"""
+﻿"""
 NTP Time Synchronization for EduChain
 Ensures accurate time synchronization for slot-based PoA consensus
 """
@@ -36,7 +36,7 @@ class NTPClient:
             offset = response.offset
             return offset
         except Exception as e:
-            print(f"✗ Failed to query NTP server {server}: {e}")
+            print(f"[FAIL] Failed to query NTP server {server}: {e}")
             return None
     
     def get_ntp_time(self, use_multiple_servers: bool = True) -> Tuple[float, float]:
@@ -52,7 +52,7 @@ class NTPClient:
                 offset = self.query_ntp_server(server)
                 if offset is not None:
                     offsets.append(offset)
-                    print(f"✓ NTP {server}: offset = {offset:.3f}s")
+                    print(f"[OK] NTP {server}: offset = {offset:.3f}s")
         else:
             # Query only first server
             offset = self.query_ntp_server(self.ntp_servers[0])
@@ -60,7 +60,7 @@ class NTPClient:
                 offsets.append(offset)
         
         if not offsets:
-            print("✗ Failed to query any NTP servers, using local time")
+            print("[FAIL] Failed to query any NTP servers, using local time")
             return time.time(), 0.0
         
         # Use median offset for robustness
@@ -87,11 +87,11 @@ class NTPClient:
         if self.cached_offset is not None:
             time_since_sync = current_time - self.last_sync_time
             if time_since_sync < self.sync_interval:
-                print(f"✓ Using cached NTP offset: {self.cached_offset:.3f}s (synced {time_since_sync:.0f}s ago)")
+                print(f"[OK] Using cached NTP offset: {self.cached_offset:.3f}s (synced {time_since_sync:.0f}s ago)")
                 return self.cached_offset
         
         # Need fresh sync
-        print("→ Synchronizing with NTP servers...")
+        print("-> Synchronizing with NTP servers...")
         _, offset = self.get_ntp_time()
         
         return offset
@@ -113,7 +113,7 @@ class NTPClient:
             print(f"⚠ This may cause consensus issues in PoA!")
             return False
         
-        print(f"✓ Time synchronized: offset = {offset:.3f}s (within {self.max_offset}s)")
+        print(f"[OK] Time synchronized: offset = {offset:.3f}s (within {self.max_offset}s)")
         return True
 
 
@@ -251,9 +251,9 @@ def verify_time_synchronization() -> bool:
     ntp_time = ntp_client.get_synchronized_time()
     offset = ntp_time - local_time
     
-    print(f"\n✓ Local time: {time.ctime(local_time)}")
-    print(f"✓ NTP time:   {time.ctime(ntp_time)}")
-    print(f"✓ Offset:     {offset:.3f} seconds")
+    print(f"\n[OK] Local time: {time.ctime(local_time)}")
+    print(f"[OK] NTP time:   {time.ctime(ntp_time)}")
+    print(f"[OK] Offset:     {offset:.3f} seconds")
     
     return True
 
@@ -290,3 +290,5 @@ if __name__ == "__main__":
         # Wait for next slot
         if i < 4:
             timer.wait_for_next_slot()
+
+

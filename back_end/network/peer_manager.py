@@ -1,4 +1,4 @@
-"""
+﻿"""
 Peer Manager for EduChain P2P Network
 Handles peer discovery, connection management, and health checks
 """
@@ -109,9 +109,9 @@ class PeerManager:
                 peer.last_seen = row['last_seen'] or time.time()
                 self.peers[peer.peer_id] = peer
             
-            print(f"✓ Loaded {len(self.peers)} peers from database")
+            print(f"[OK] Loaded {len(self.peers)} peers from database")
         except sqlite3.Error as e:
-            print(f"✗ Error loading peers: {e}")
+            print(f"[FAIL] Error loading peers: {e}")
         finally:
             conn.close()
     
@@ -138,7 +138,7 @@ class PeerManager:
             conn.commit()
             return True
         except sqlite3.Error as e:
-            print(f"✗ Error saving peer: {e}")
+            print(f"[FAIL] Error saving peer: {e}")
             return False
         finally:
             conn.close()
@@ -162,7 +162,7 @@ class PeerManager:
         # Validate against whitelist if enabled
         if self.config.is_whitelist_enabled() and public_key:
             if not self.is_peer_authorized(public_key):
-                print(f"✗ Peer {ip_address}:{port} not in whitelist")
+                print(f"[FAIL] Peer {ip_address}:{port} not in whitelist")
                 return None
         
         # Create and save peer
@@ -170,7 +170,7 @@ class PeerManager:
         self.peers[peer_id] = peer
         self.save_peer_to_db(peer)
         
-        print(f"✓ Added peer: {ip_address}:{port} ({node_type})")
+        print(f"[OK] Added peer: {ip_address}:{port} ({node_type})")
         return peer
     
     def is_peer_authorized(self, public_key: str) -> bool:
@@ -185,7 +185,7 @@ class PeerManager:
             peer.status = "INACTIVE"
             self.save_peer_to_db(peer)
             del self.peers[peer_id]
-            print(f"✓ Removed peer: {peer_id}")
+            print(f"[OK] Removed peer: {peer_id}")
             return True
         return False
     
@@ -245,12 +245,12 @@ class PeerManager:
                     if peer:
                         discovered_peers.append(peer)
                 
-                print(f"✓ Discovered {len(discovered_peers)} peers from {seed_node['name']}")
+                print(f"[OK] Discovered {len(discovered_peers)} peers from {seed_node['name']}")
             else:
-                print(f"✗ Failed to discover peers from {seed_node['name']}: HTTP {response.status_code}")
+                print(f"[FAIL] Failed to discover peers from {seed_node['name']}: HTTP {response.status_code}")
         
         except requests.exceptions.RequestException as e:
-            print(f"✗ Error connecting to seed node {seed_node['name']}: {e}")
+            print(f"[FAIL] Error connecting to seed node {seed_node['name']}: {e}")
         
         return discovered_peers
     
@@ -264,7 +264,7 @@ class PeerManager:
         total_discovered = 0
         
         for seed_node in seed_nodes:
-            print(f"\n→ Connecting to seed node: {seed_node['name']}")
+            print(f"\n-> Connecting to seed node: {seed_node['name']}")
             
             # Add seed node itself as a peer
             seed_peer = self.add_peer(
@@ -279,8 +279,8 @@ class PeerManager:
                 discovered = self.discover_peers_from_seed(seed_node)
                 total_discovered += len(discovered)
         
-        print(f"\n✓ Bootstrap complete: {total_discovered} peers discovered")
-        print(f"✓ Total active peers: {len(self.get_active_peers())}")
+        print(f"\n[OK] Bootstrap complete: {total_discovered} peers discovered")
+        print(f"[OK] Total active peers: {len(self.get_active_peers())}")
         
         return total_discovered
     
@@ -332,10 +332,10 @@ class PeerManager:
                     peer.last_seen = row['last_seen'] or time.time()
                     self.peers[peer_id] = peer
                 else:
-                    print(f"✗ Peer {peer_id} not found")
+                    print(f"[FAIL] Peer {peer_id} not found")
                     return False
             except sqlite3.Error as e:
-                print(f"✗ Error loading peer: {e}")
+                print(f"[FAIL] Error loading peer: {e}")
                 return False
             finally:
                 conn.close()
@@ -354,14 +354,14 @@ class PeerManager:
         # Add to whitelist if configured
         if self.config.is_whitelist_enabled() and peer.public_key:
             # TODO: Add logic to update whitelist configuration
-            print(f"✓ Added peer {peer_id} public key to whitelist")
+            print(f"[OK] Added peer {peer_id} public key to whitelist")
         
         # Save to database
         if self.save_peer_to_db(peer):
-            print(f"✓ Peer {peer_id} approved and activated")
+            print(f"[OK] Peer {peer_id} approved and activated")
             return True
         else:
-            print(f"✗ Failed to save peer {peer_id}")
+            print(f"[FAIL] Failed to save peer {peer_id}")
             return False
     
     def get_peer_list_for_api(self) -> List[Dict]:
@@ -387,3 +387,5 @@ if __name__ == "__main__":
     print("\n=== Active Peers ===")
     for peer in manager.get_active_peers():
         print(f"  - {peer.ip_address}:{peer.port} ({peer.node_type})")
+
+

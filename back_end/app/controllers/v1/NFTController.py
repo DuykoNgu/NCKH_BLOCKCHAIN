@@ -104,7 +104,7 @@ def create_nft():
         try:
             network_service = get_network_service()
             propagated = network_service.broadcast_transaction(tx.to_dict())
-            print(f"✓ Transaction propagated to {propagated} peers")
+            print(f"[OK] Transaction propagated to {propagated} peers")
         except Exception as e:
             print(f"⚠ Warning: Failed to propagate transaction: {e}")
             # Continue even if propagation fails

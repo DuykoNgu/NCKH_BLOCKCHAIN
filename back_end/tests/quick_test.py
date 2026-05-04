@@ -1,4 +1,4 @@
-"""
+﻿"""
 Quick NFT Performance Test
 Simplified version for quick testing with configurable NFT count
 """
@@ -103,9 +103,9 @@ def quick_test(num_nfts: int = 10):
         
         if resp.status_code == 201:
             success_count += 1
-            print(f"  ✓ NFT {i+1}/{num_nfts} minted")
+            print(f"  [OK] NFT {i+1}/{num_nfts} minted")
         else:
-            print(f"  ✗ NFT {i+1}/{num_nfts} failed: {resp.json().get('error', 'Unknown')}")
+            print(f"  [FAIL] NFT {i+1}/{num_nfts} failed: {resp.json().get('error', 'Unknown')}")
     
     elapsed = time.time() - start_time
     
@@ -127,3 +127,4 @@ if __name__ == "__main__":
         print("\n⚠️  Test interrupted")
     except Exception as e:
         print(f"\n❌ Error: {e}")
+

@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { FileText, Send, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, Send, Loader2, CheckCircle, AlertCircle, Key } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NFTService } from '@/services/nftService';
-import type { CreateNFTRequest } from '@/services/nftService';
+import { calculateHashHex, signData } from '@/utils/cryptoUtils';
+import { decryptPrivateKey } from '@/utils/cryptoVault';
 
 interface NFTCreateProps {
   account: string;
@@ -25,12 +26,14 @@ const degreeTypes = [
 export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
-  const [formData, setFormData] = useState<CreateNFTRequest>({
+  const [password, setPassword] = useState('');
+  
+  const [formData, setFormData] = useState({
     issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
-    institution: '',
+    institution_address: '',
     recipient_address: account,
   });
 
@@ -40,32 +43,65 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     setResult(null);
 
     try {
-      const response = await NFTService.createNFT(formData);
+      // 1. Lấy Vault từ Storage để giải mã Private Key
+      const vaultData = localStorage.getItem("vault");
+      if (!vaultData) throw new Error("Không tìm thấy ví trên thiết bị này.");
+      
+      const vault = JSON.parse(vaultData);
+      let privateKey: Uint8Array;
+      
+      try {
+        privateKey = await decryptPrivateKey(vault, password);
+      } catch (err) {
+        throw new Error("Mật khẩu không chính xác.");
+      }
+
+      // 2. Tính toán Hash của dữ liệu bằng cấp (Mock pdf_hash từ URL nếu không có file thực tế)
+      // Trong thực tế, nên hash nội dung file PDF. Ở đây ta hash URL + metadata.
+      const pdf_hash = calculateHashHex(formData.pdf_url + formData.degree_type + formData.student_id);
+
+      // 3. Chuẩn bị metadata để ký (Giống logic trong NFTmetadata.py của Backend)
+      // Nội dung ký: degree_type + pdf_url + pdf_hash + institution_address
+      const messageToSign = formData.degree_type + formData.pdf_url + pdf_hash + formData.institution_address;
+      
+      // 4. Thực hiện ký số
+      const signature = await signData(messageToSign, privateKey);
+
+      // 5. Gửi yêu cầu Mint lên Backend
+      const requestData = {
+        ...formData,
+        pdf_hash,
+        signature,
+      };
+
+      const response = await NFTService.createNFT(requestData);
+      
       if (response.success) {
         setResult({
           success: true,
-          message: 'Chứng chỉ số đã được cấp phát thành công!',
+          message: 'Chứng chỉ số đã được cấp phát và ghi vào Blockchain thành công!',
           tokenId: response.token_id,
         });
-        // Reset form
+        // Reset form (trừ password)
         setFormData({
           issuer_id: '',
           student_id: '',
           degree_type: '',
           pdf_url: '',
-          institution: '',
+          institution_address: '',
           recipient_address: account,
         });
+        setPassword('');
       } else {
         setResult({
           success: false,
           message: response.error || 'Có lỗi xảy ra khi cấp phát chứng chỉ',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       setResult({
         success: false,
-        message: 'Không thể kết nối đến server',
+        message: error.message || 'Không thể kết nối đến server',
       });
     } finally {
       setIsLoading(false);
@@ -80,8 +116,8 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             <FileText className="w-5 h-5 text-white" />
           </div>
           <div>
-            <CardTitle className="text-lg">Cấp phát Chứng chỉ số</CardTitle>
-            <CardDescription>Lưu trữ chứng chỉ mới lên hệ thống EduChain</CardDescription>
+            <CardTitle className="text-lg">Cấp phát Chứng chỉ số (Mint NFT)</CardTitle>
+            <CardDescription>Dữ liệu sẽ được ký số bằng Private Key của bạn trước khi gửi lên Blockchain</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -132,12 +168,12 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="institution">Tổ chức/Trường</Label>
+            <Label htmlFor="institution_address">Tổ chức/Trường (Địa chỉ)</Label>
             <Input
-              id="institution"
+              id="institution_address"
               placeholder="VD: Harvard University"
-              value={formData.institution}
-              onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+              value={formData.institution_address}
+              onChange={(e) => setFormData({ ...formData, institution_address: e.target.value })}
               required
               className="bg-background/50"
             />
@@ -157,7 +193,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="recipient_address">Địa chỉ định danh người nhận</Label>
+            <Label htmlFor="recipient_address">Địa chỉ ví Sinh viên</Label>
             <Input
               id="recipient_address"
               placeholder="0x..."
@@ -166,6 +202,27 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
               required
               className="bg-background/50 font-mono text-sm"
             />
+          </div>
+
+          <div className="pt-4 border-t border-border/30">
+            <div className="space-y-2">
+              <Label htmlFor="password" title="Cần mật khẩu để giải mã Private Key thực hiện ký số">Xác nhận bằng Mật khẩu ví</Label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Nhập mật khẩu ví của bạn"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-background/50 pl-10"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                * Private Key sẽ được giải mã tạm thời để ký dữ liệu và không bao giờ rời khỏi trình duyệt.
+              </p>
+            </div>
           </div>
 
           {result && (
@@ -187,7 +244,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
                 </p>
                 {result.tokenId && (
                   <p className="text-xs text-muted-foreground mt-1 font-mono">
-                    Mã số chứng chỉ: {result.tokenId}
+                    Mã số chứng chỉ (Token ID): {result.tokenId}
                   </p>
                 )}
               </div>
@@ -202,12 +259,12 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang tạo...
+                Đang xác thực và ký số...
               </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Cấp phát Chứng chỉ
+                Cấp phát Chứng chỉ (Sign & Mint)
               </>
             )}
           </Button>

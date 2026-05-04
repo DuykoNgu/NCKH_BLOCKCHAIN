@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { problems } from "@/data-review-mock";
+import { problems } from "@/constants/landingData";
 
 const ProblemSection = () => {
   const ref = useRef(null);
@@ -27,7 +27,7 @@ const ProblemSection = () => {
         </motion.h2>
 
         <div className="space-y-12">
-          {problems.map((problem, index) => (
+          {problems.map((problem: any, index: number) => (
             <motion.div
               key={index}
               className="flex items-start gap-6 md:gap-10 p-8 bg-card border border-border"

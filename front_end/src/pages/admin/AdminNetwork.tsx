@@ -1,9 +1,12 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Network, Server, Activity, Clock, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi } from "lucide-react";
+import { Network, Server, Activity, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { nodes, networkStats, syncHistory } from "@/data/admin/mockData";
+import { NetworkService } from "@/services/networkService";
+import { BlockService } from "@/services/blockService";
+import type { PeerInfo, NetworkStats, SlotInfo } from "@/services/networkService";
+import type { BlockInfo } from "@/services/blockService";
 
 const container = {
   hidden: {},
@@ -16,21 +19,62 @@ const item = {
 };
 
 const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  active: { label: "Hoạt động", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
-  maintenance: { label: "Bảo trì", icon: AlertCircle, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
-  inactive: { label: "Ngừng hoạt động", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
-};
-
-// Icon component map
-const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Server,
-  Activity,
-  Clock,
+  ACTIVE: { label: "Hoạt động", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
+  PENDING: { label: "Đang chờ", icon: AlertCircle, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
+  INACTIVE: { label: "Ngừng hoạt động", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 export default function NetworkPage() {
-  const activeNodes = nodes.filter(n => n.status === "active").length;
-  const syncProgress = (nodes[0].blockNumber / 19412847) * 100;
+  const [loading, setLoading] = useState(true);
+  const [peers, setPeers] = useState<PeerInfo[]>([]);
+  const [stats, setStats] = useState<NetworkStats | null>(null);
+  const [slotInfo, setSlotInfo] = useState<SlotInfo | null>(null);
+  const [recentBlocks, setRecentBlocks] = useState<BlockInfo[]>([]);
+  const [blockCount, setBlockCount] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [peersRes, statsRes, slotRes, blocksRes, countRes] = await Promise.allSettled([
+          NetworkService.getPeers(),
+          NetworkService.getNetworkStats(),
+          NetworkService.getSlotInfo(),
+          BlockService.getAllBlocks(1, 5),
+          BlockService.countBlocks(),
+        ]);
+
+        if (peersRes.status === "fulfilled") setPeers(Array.isArray(peersRes.value) ? peersRes.value : []);
+        if (statsRes.status === "fulfilled") setStats(statsRes.value);
+        if (slotRes.status === "fulfilled") setSlotInfo(slotRes.value);
+        if (blocksRes.status === "fulfilled") setRecentBlocks(blocksRes.value.blocks || []);
+        if (countRes.status === "fulfilled") setBlockCount(countRes.value.total_blocks || 0);
+      } catch (err) {
+        console.error("Network fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-3 text-muted-foreground">Đang tải thông tin mạng...</span>
+      </div>
+    );
+  }
+
+  const activePeers = peers.filter(p => p.status === "ACTIVE").length;
+
+  const networkStatsDisplay = [
+    { label: "Tổng Peers", value: stats?.total_peers?.toString() || peers.length.toString(), icon: Server, color: "text-primary" },
+    { label: "Peers hoạt động", value: stats?.active_peers?.toString() || activePeers.toString(), icon: Activity, color: "text-green-400" },
+    { label: "Validators", value: stats?.validator_peers?.toString() || "0", icon: Server, color: "text-blue-400" },
+    { label: "Tổng Blocks", value: blockCount.toString(), icon: HardDrive, color: "text-accent" },
+  ];
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -45,12 +89,14 @@ export default function NetworkPage() {
                 </div>
                 <div>
                   <h2 className="font-display text-lg sm:text-xl font-bold text-foreground">Quản lý mạng</h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Theo dõi và quản lý các node trong mạng lưới blockchain</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Theo dõi và quản lý các node trong mạng lưới EduChain</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 ml-auto">
-                <div className="h-2.5 w-2.5 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-xs sm:text-sm text-green-400 font-medium">Ethereum Mainnet</span>
+                <div className={`h-2.5 w-2.5 rounded-full ${stats?.is_time_synced ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`} />
+                <span className={`text-xs sm:text-sm ${stats?.is_time_synced ? 'text-green-400' : 'text-yellow-400'} font-medium`}>
+                  EduChain {stats?.is_time_synced ? "Synced" : "Not Synced"}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -59,8 +105,8 @@ export default function NetworkPage() {
 
       {/* Network Stats */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {networkStats.map((stat) => {
-          const IconComponent = iconMap[stat.icon] || Server;
+        {networkStatsDisplay.map((stat) => {
+          const IconComponent = stat.icon;
           return (
             <Card key={stat.label} className="glass-card">
               <CardContent className="p-4">
@@ -78,117 +124,117 @@ export default function NetworkPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Nodes List */}
+        {/* Peers List */}
         <motion.div variants={item} className="lg:col-span-2">
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="font-display text-lg flex items-center gap-2">
                   <Server className="h-4 w-4 text-primary" />
-                  Danh sách Node
+                  Danh sách Peers
                 </CardTitle>
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                  {activeNodes}/{nodes.length} đang hoạt động
+                  {activePeers}/{peers.length} đang hoạt động
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {nodes.map((node) => {
-                  const sc = statusConfig[node.status];
-                  return (
-                    <div key={node.id} className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                          node.status === 'active' ? 'bg-green-400/20' : 'bg-yellow-400/20'
-                        }`}>
-                          <Server className={`h-5 w-5 ${node.status === 'active' ? 'text-green-400' : 'text-yellow-400'}`} />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground">{node.name}</p>
-                          <p className="text-xs text-muted-foreground">{node.type} • Latency: {node.latency}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 shrink-0">
-                        <div className="text-right hidden sm:block">
-                          <p className="text-xs text-muted-foreground">Block</p>
-                          <p className="text-xs font-mono text-primary">#{node.blockNumber.toLocaleString()}</p>
-                        </div>
-                        <div className="text-right hidden md:block">
-                          <p className="text-xs text-muted-foreground">Uptime</p>
-                          <p className="text-xs text-green-400">{node.uptime}</p>
+              {peers.length === 0 ? (
+                <div className="px-6 py-8 text-center text-muted-foreground text-sm">Chưa có peer nào kết nối</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {peers.map((peer) => {
+                    const sc = statusConfig[peer.status] || statusConfig.PENDING;
+                    return (
+                      <div key={peer.peer_id} className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+                            peer.status === 'ACTIVE' ? 'bg-green-400/20' : 'bg-yellow-400/20'
+                          }`}>
+                            <Server className={`h-5 w-5 ${peer.status === 'ACTIVE' ? 'text-green-400' : 'text-yellow-400'}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{peer.ip_address}:{peer.port}</p>
+                            <p className="text-xs text-muted-foreground">{peer.node_type} • ID: {peer.peer_id.slice(0, 8)}...</p>
+                          </div>
                         </div>
                         <Badge variant="outline" className={sc.className}>
                           <sc.icon className="h-3 w-3 mr-1" />
                           {sc.label}
                         </Badge>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Network Status */}
         <motion.div variants={item} className="space-y-4">
-          {/* Sync Status */}
+          {/* Consensus Info */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="font-display text-lg flex items-center gap-2">
                 <Zap className="h-4 w-4 text-primary" />
-                Trạng thái đồng bộ
+                Consensus PoA
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between text-xs mb-2">
-                  <span className="text-muted-foreground">Đồng bộ hóa</span>
-                  <span className="text-foreground font-medium">{syncProgress.toFixed(1)}%</span>
-                </div>
-                <Progress value={syncProgress} className="h-2" />
-              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg bg-secondary/50">
                   <div className="flex items-center gap-2 mb-1">
                     <HardDrive className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Block Height</span>
+                    <span className="text-xs text-muted-foreground">Current Slot</span>
                   </div>
-                  <p className="text-sm font-mono font-bold text-foreground">#19,412,847</p>
+                  <p className="text-sm font-mono font-bold text-foreground">#{slotInfo?.current_slot || "-"}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-secondary/50">
                   <div className="flex items-center gap-2 mb-1">
                     <Wifi className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Kết nối</span>
+                    <span className="text-xs text-muted-foreground">Leader</span>
                   </div>
-                  <p className="text-sm font-bold text-green-400">8 Peers</p>
+                  <p className="text-sm font-bold text-green-400">Validator #{slotInfo?.leader_index ?? "-"}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-secondary/50">
+                  <span className="text-xs text-muted-foreground">Slot Duration</span>
+                  <p className="text-sm font-bold text-foreground">{slotInfo?.slot_duration || stats?.slot_duration || 5}s</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50">
+                  <span className="text-xs text-muted-foreground">NTP Offset</span>
+                  <p className="text-sm font-bold text-foreground">{stats?.ntp_offset?.toFixed(3) || "0.000"}s</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Sync History */}
+          {/* Recent Blocks */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="font-display text-lg flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
-                Lịch sử đồng bộ
+                Blocks gần đây
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {syncHistory.map((sync, idx) => (
-                <div key={idx} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-secondary/30 transition-colors">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3 w-3 text-green-400" />
-                    <span className="text-muted-foreground">{sync.time}</span>
+              {recentBlocks.length === 0 ? (
+                <div className="py-4 text-center text-muted-foreground text-sm">Chưa có block nào</div>
+              ) : (
+                recentBlocks.map((block) => (
+                  <div key={block.block_id} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-secondary/30 transition-colors">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3 w-3 text-green-400" />
+                      <span className="font-mono text-primary">#{block.index}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-muted-foreground">{block.transactions_count} tx</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-primary">{sync.block}</span>
-                    <span className="text-muted-foreground">{sync.txCount} tx</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </motion.div>

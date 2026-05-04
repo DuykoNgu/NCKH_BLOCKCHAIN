@@ -1,4 +1,4 @@
-"""
+﻿"""
 Network Service for EduChain
 Business logic for P2P network operations
 """
@@ -32,18 +32,18 @@ class NetworkService:
         # Step 1: Verify time synchronization
         print("\n[1/3] Verifying time synchronization...")
         if not verify_time_synchronization():
-            print("✗ Time synchronization check failed")
+            print("[FAIL] Time synchronization check failed")
             return False
         
         # Step 2: Bootstrap network
         print("\n[2/3] Bootstrapping P2P network...")
         discovered = self.bootstrap_network()
-        print(f"✓ Network bootstrap complete: {discovered} peers discovered")
+        print(f"[OK] Network bootstrap complete: {discovered} peers discovered")
         
         # Step 3: Initial health check
         print("\n[3/3] Performing initial health check...")
         alive, dead = self.peer_manager.health_check_all_peers()
-        print(f"✓ Health check complete: {alive} alive, {dead} dead")
+        print(f"[OK] Health check complete: {alive} alive, {dead} dead")
         
         self.is_initialized = True
         
@@ -59,7 +59,7 @@ class NetworkService:
     
     def sync_peers(self) -> int:
         """Synchronize peer list with network"""
-        print("→ Synchronizing peer list...")
+        print("-> Synchronizing peer list...")
         
         # Get current active peers
         active_peers = self.peer_manager.get_active_peers()
@@ -82,7 +82,7 @@ class NetworkService:
             discovered = self.peer_manager.discover_peers_from_seed(seed_node_format)
             total_discovered += len(discovered)
         
-        print(f"✓ Peer sync complete: {total_discovered} new peers discovered")
+        print(f"[OK] Peer sync complete: {total_discovered} new peers discovered")
         return total_discovered
     
     def validate_peer(self, public_key: str) -> bool:
@@ -220,3 +220,5 @@ if __name__ == "__main__":
         slot_info = service.get_current_slot_info(3)
         for key, value in slot_info.items():
             print(f"{key}: {value}")
+
+
