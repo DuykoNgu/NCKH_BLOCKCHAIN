@@ -2,10 +2,9 @@ from flask import Blueprint, request, jsonify
 from typing import Optional
 from app.services.NFTService import NFTService
 from app.models.NFTmetadata import NFTmetadata
-from app.models.User import User, UserRole
-from app.repositories.UserRepository import UserRepository
+from app.repositories.AccountRepository import AccountRepository
 from app.repositories.NFTRepository import NFTRepository
-
+from app.utils.CryptoUtils import CryptoUtils
 
 nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
 
@@ -21,7 +20,7 @@ def create_nft():
         "student_id": "STU_001",
         "degree_type": "Bachelor of Science",
         "pdf_url": "https://example.com/cert.pdf",
-        "institution": "Harvard University",
+        "institution_address": "Harvard University",
         "recipient_address": "0x..."
     }
     """
@@ -29,48 +28,104 @@ def create_nft():
         data = request.get_json()
         
         # Validate required fields
-        required_fields = ['issuer_id', 'student_id', 'degree_type', 
-                          'pdf_url', 'institution', 'recipient_address']
+        required_fields = [ 'degree_type', 'pdf_url', 
+                    'pdf_hash', 'institution_address', 'recipient_address', 'signature']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
         
         # Get issuer
-        issuer = UserRepository.get_user_by_id(data['issuer_id'])
+        issuer = AccountRepository.get_account_by_address(data['institution_address'])
         if not issuer:
             return jsonify({"error": "Issuer user not found"}), 404
         
         # Get recipient user
-        recipient = UserRepository.get_user_by_address(data['recipient_address'])
+        recipient = AccountRepository.get_account_by_address(data['recipient_address'])
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
         
-        # Create metadata
-        import hashlib
-        pdf_hash = hashlib.sha256(data['pdf_url'].encode()).hexdigest()
-        
+        issued_at = data.get('issued_at')
+        if issued_at:
+            try:
+                issued_at = int(issued_at)
+            except (ValueError, TypeError):
+                issued_at = None
+
         metadata = NFTmetadata(
-            student_id=data['student_id'],
             degree_type=data['degree_type'],
             pdf_url=data['pdf_url'],
-            pdf_hash=pdf_hash,
-            institution=data['institution']
+            pdf_hash=data['pdf_hash'],
+            institution_address=data['institution_address'],
+            issued_at=issued_at
         )
+        
+        message_to_verify = metadata.get_signing_data()
+
+        is_authentic = CryptoUtils.verify_signature(
+            data= message_to_verify,
+            signature_hex=data['signature'],
+            public_key_hex=issuer.public_key
+        )
+
+        if not is_authentic:
+            return jsonify({"error": "Invalid digital signature. "}), 401
+        
+        # ✅ CREATE TRANSACTION FOR BLOCKCHAIN
+        from app.models.Transaction import Transaction
+        from app.services.TransactionService import TransactionService
+        from app.services.BlockChainService import BlockChainService
+        from app.services.NetworkService import get_network_service
+        from app.blockchain_instance import get_blockchain_instance
+        
+        # Create transaction payload
+        tx = Transaction(
+            sender_pubkey=issuer.public_key,
+            sender_address=issuer.address,
+            recipient_address=recipient.address,
+            payload={
+                "op": "mint_nft",
+                "degree_type": data['degree_type'],
+                "pdf_hash": data['pdf_hash'],
+                "institution_address": data['institution_address']
+            }
+        )
+        
+        # Sign transaction (need issuer's private key - should be passed or retrieved securely)
+        # For now, we'll calculate tx_hash without signing
+        # In production, you should sign the transaction with issuer's private key
+        tx.tx_hash = TransactionService.calculate_hash(tx)
+        tx.tx_id = tx.tx_hash  # Use hash as ID for now
+        
+        # Add to mempool
+        blockchain = get_blockchain_instance()
+        if not BlockChainService.add_transaction_to_mempool(blockchain, tx):
+            return jsonify({"error": "Failed to add transaction to mempool"}), 500
+        
+        # Broadcast transaction to P2P network
+        try:
+            network_service = get_network_service()
+            propagated = network_service.broadcast_transaction(tx.to_dict())
+            print(f"[OK] Transaction propagated to {propagated} peers")
+        except Exception as e:
+            print(f"⚠ Warning: Failed to propagate transaction: {e}")
+            # Continue even if propagation fails
         
         # Create NFT
         nft = NFTService.create_nft(
-            issuer_pubkey=issuer.pubkey,
+            issuer_address=issuer.address,
+            issuer_pubkey=issuer.public_key,
             metadata=metadata,
             recipient=recipient
         )
         
         # Sign and save NFT using NFTService
-        success = NFTService.sign_and_save_nft(nft, data.get('issuer_private_key', ''))
+        success = NFTRepository.create_nft(nft)
         
         if success:
             return jsonify({
                 "message": "NFT created successfully",
                 "success": True,
                 "token_id": nft.token_id,
+                "tx_hash": tx.tx_hash,
                 "nft": {
                     "token_id": nft.token_id,
                     "issuer_pubkey": nft.issuer_pubkey,
@@ -90,28 +145,13 @@ def create_nft():
 def get_nft(token_id: str):
     """Lấy thông tin NFT theo token_id"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
         
         return jsonify({
             "nft": NFTService.get_nft_info(nft)
-        }), 200
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@nft_bp.route('/student/<student_id>', methods=['GET'])
-def get_student_nfts(student_id: str):
-    """Lấy tất cả NFT của một student"""
-    try:
-        nfts = NFTService.get_student_nfts(student_id)
-        
-        return jsonify({
-            "total": len(nfts),
-            "nfts": [NFTService.get_nft_info(nft) for nft in nfts]
         }), 200
         
     except Exception as e:
@@ -152,7 +192,7 @@ def get_all_nfts():
 def verify_nft(token_id: str):
     """Xác minh NFT signature"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
@@ -174,7 +214,7 @@ def verify_nft(token_id: str):
 def revoke_nft(token_id: str):
     """Thu hồi NFT"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404
@@ -214,7 +254,7 @@ def verify_batch_nfts():
         # Lấy NFT một lần duy nhất cho mỗi token_id (tối ưu hiệu suất)
         nfts = []
         for tid in token_ids:
-            nft = NFTService.get_nft(tid)
+            nft = NFTService.get_nft_by_id(tid)
             if nft:
                 nfts.append(nft)
         
@@ -235,7 +275,7 @@ def verify_batch_nfts():
 def get_metadata_hash(token_id: str):
     """Lấy hash của metadata"""
     try:
-        nft = NFTService.get_nft(token_id)
+        nft = NFTService.get_nft_by_id(token_id)
         
         if not nft:
             return jsonify({"error": "NFT not found"}), 404

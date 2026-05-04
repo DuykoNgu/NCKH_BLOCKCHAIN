@@ -1,23 +1,39 @@
 import { Dashboard } from "@/components/common/layout/Dashboard";
+import { PendingState } from "@/components/common/layout/PendingState";
+import { PageTransition } from "@/components/common/layout/PageTransition";
 import React from "react";
-import { logoutUser } from "@/services/authService";
+import { useWallet } from "@/hooks/useWallet";
+import { useAuth } from "@/hooks/useAuth";
+import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";
 
 const Home: React.FC = () => {
+  const { isPendingApproval } = useAuth();
   const address = localStorage.getItem("address") || "";
-  const balance = "0.0000"; // mock
-  const chainId = "1"; // mock
+  const { lock } = useWallet();
 
   const handleDisconnect = () => {
-    logoutUser();
+    lock();
     window.location.replace("/login");
   };
 
+  if (isPendingApproval) {
+    return (
+      <PageTransition>
+        <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
+          <TrongDongWatermark />
+          <div className="z-10 w-full">
+            <PendingState onLogout={handleDisconnect} />
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
-    <div>
+    <div className="relative">
+      <TrongDongWatermark />
       <Dashboard
         address={address}
-        balance={balance}
-        chainId={chainId}
         onDisconnect={handleDisconnect}
       />
     </div>

@@ -1,10 +1,24 @@
-# core/utils/logger.py
+﻿# core/utils/logger.py
 import logging
 import sys
 import os
 from pathlib import Path
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional
+
+class SafeRotatingFileHandler(RotatingFileHandler):
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass
+
+class SafeTimedRotatingFileHandler(TimedRotatingFileHandler):
+    def doRollover(self):
+        try:
+            super().doRollover()
+        except PermissionError:
+            pass
 
 try:
     from pythonjsonlogger import jsonlogger
@@ -71,7 +85,7 @@ def get_logger(
 
     # ==================== 2. File Handler - Rotate theo dung lượng ====================
     if LOG_TO_FILE:
-        all_file_handler = RotatingFileHandler(
+        all_file_handler = SafeRotatingFileHandler(
             LOG_DIR / "app.log",
             maxBytes=10_000_000,    # 10MB
             backupCount=10,
@@ -86,13 +100,13 @@ def get_logger(
         daily_dir = LOG_DIR / "daily"
         daily_dir.mkdir(parents=True, exist_ok=True)  # Tạo thư mục con
 
-        daily_handler = TimedRotatingFileHandler(
+        daily_handler = SafeTimedRotatingFileHandler(
             filename=str(daily_dir / "app.log"),  # str() để tránh lỗi Path trên Windows
             when="midnight",
             interval=1,
             backupCount=30,
             encoding="utf-8",
-            delay=True  # QUAN TRỌNG NHẤT: Không mở file ngay → không lỗi khi thư mục chưa tồn tại
+            delay=True  # QUAN TRỌNG NHẤT: Không mở file ngay -> không lỗi khi thư mục chưa tồn tại
         )
         daily_handler.setLevel(logging.DEBUG)
         daily_handler.setFormatter(_get_file_formatter(LOG_JSON_FORMAT))
@@ -101,7 +115,7 @@ def get_logger(
         logger.addHandler(daily_handler)
 
     # ==================== 4. Error-only File ====================
-    error_handler = RotatingFileHandler(
+    error_handler = SafeRotatingFileHandler(
         LOG_DIR / "error.log",
         maxBytes=5_000_000,
         backupCount=10,
@@ -125,7 +139,7 @@ class LoggerAdapter(logging.LoggerAdapter):
     Ví dụ dùng trong FastAPI:
         log = LoggerAdapter(logger, {"request_id": "abc123", "user_id": 999})
         log.info("Xử lý thanh toán")
-        → tự động thêm request_id, user_id vào extra
+        -> tự động thêm request_id, user_id vào extra
     """
     def process(self, msg, kwargs):
         extras = {k: v for k, v in self.extra.items() if v is not None}

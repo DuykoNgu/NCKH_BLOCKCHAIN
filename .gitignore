@@ -1,0 +1,80 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.cpython-*.pyc
+*.so
+*.pyd
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# DB and Data
+*.db
+*.sqlite
+*.sqlite3
+
+# Test files
+tests/test_*.py
+**/test_*.py
+.pytest_cache/
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lockb
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Frontend builds
+dist/
+.vite/
+.next/
+out/
+.vercel
+.turbo
+front_end_v1/apps/*/dist/
+front_end_v1/apps/*/.vite/
+
+# Temporary files
+tmp/
+temp/
+
+# Misc
+.DS_Store
+Thumbs.db

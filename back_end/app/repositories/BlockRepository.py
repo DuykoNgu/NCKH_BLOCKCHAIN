@@ -1,6 +1,6 @@
 """BlockRepository - Data access layer for Block operations"""
 from typing import Optional, List
-from app.database import get_connection
+from app.database.connection import get_connection
 from app.models.Block import Block
 from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
@@ -175,7 +175,7 @@ class BlockRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            cursor.execute('SELECT block_id FROM block ORDER BY index DESC LIMIT 1')
+            cursor.execute('SELECT block_id FROM block ORDER BY index_num DESC LIMIT 1')
             row = cursor.fetchone()
             conn.close()
             

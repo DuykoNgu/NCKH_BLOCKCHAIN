@@ -1,47 +1,49 @@
 import { Header } from "./Header";
-import { NFTManagement } from "../nft/NFTManagernent";
-import { PDF_Preview } from "../home_common/PDF_Preview";
-import { StatGridContent } from "../home_common/StatGridContent";
-import { WalletIn4 } from "../home_common/WalletIn4";
-import { WalletRegister } from "../home_common/WalletRegister";
-import { TransactionList } from "@/components/common/home_common/TransactionList";
+import { NFTManagement } from "../nft/NFTManagement";
+import { PDFPreview as PDF_Preview } from "../pdf/PDFPreview";
+import { WalletInfo as WalletIn4 } from "../wallet/WalletInfo";
+import { NetworkStatus } from "../wallet/NetworkStatus";
+import { TransactionList } from "../transaction/TransactionList";
+import { DashboardStats } from "./DashboardStats";
+import { PageTransition } from "./PageTransition";
+import { useAuth } from "@/hooks/useAuth";
+
 interface DashboardProps {
   address: string;
-  balance: string | null;
-  chainId: string | null;
   onDisconnect: () => void;
 }
 
 export const Dashboard = ({
   address,
-  balance,
-  chainId,
   onDisconnect,
 }: DashboardProps) => {
+  const { isUser, isValidator } = useAuth();
+
   return (
-    <div className="min-h-screen">
-      <Header />
-      <main className="container mx-auto px-4 py-8 animate-fade-in">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatGridContent />
-        </div>
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <WalletIn4
-              address={address}
-              balance={balance}
-              chainId={chainId}
-              onDisconnect={onDisconnect}
-            />
-            <WalletRegister />
+    <PageTransition>
+      <div className="min-h-screen">
+        <Header />
+        <main className="container mx-auto px-4 py-8 animate-fade-in">
+          {/* Dashboard Stats displayed on top of everything */}
+          <DashboardStats />
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1 space-y-6">
+              <WalletIn4
+                address={address}
+                onDisconnect={onDisconnect}
+              />
+              <NetworkStatus />
+            </div>
+            
+            <div className="lg:col-span-2 space-y-6">
+              <NFTManagement account={address} />
+              <TransactionList />
+              {(isUser || isValidator) && <PDF_Preview />}
+            </div>
           </div>
-          <div className="lg:col-span-2 space-y-6">
-            <NFTManagement account={address} />
-            <PDF_Preview />
-            <TransactionList />
-          </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </PageTransition>
   );
 };

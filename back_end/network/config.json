@@ -1,0 +1,52 @@
+{
+    "network": {
+        "node_id": "",
+        "node_type": "validator",
+        "listen_host": "127.0.0.1",
+        "listen_port": 5000,
+        "max_peers": 50,
+        "ping_interval": 30,
+        "peer_timeout": 120
+    },
+    "seed_nodes": [
+        {
+            "name": "Node 0 (Seed)",
+            "ip": "127.0.0.1",
+            "port": 5000,
+            "public_key": "0450863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b23522cd470243453a299fa9e77237716103abc11a1df38855ed6f2ee187e9c582ba6",
+            "role": "super_validator"
+        },
+        {
+            "name": "Node 1",
+            "ip": "127.0.0.1",
+            "port": 5001,
+            "public_key": "0473a2169542032483120612198083c6f108f90c3716e2550f2495b6c0032c52538965825482352352352352352352352352352352352352352352352352352352",
+            "role": "validator"
+        }
+    ],
+    "whitelist": {
+        "enabled": false,
+        "authorized_validators": []
+    },
+    "gossip": {
+        "fan_out_factor": 0.5,
+        "min_fan_out": 3,
+        "max_fan_out": 10,
+        "transaction_ttl": 300,
+        "block_ttl": 600
+    },
+    "ntp": {
+        "servers": [
+            "pool.ntp.org",
+            "time.google.com"
+        ],
+        "sync_interval": 3600,
+        "max_offset": 5.0
+    },
+    "consensus": {
+        "slot_duration": 5,
+        "block_time": 5,
+        "validator_rotation": true,
+        "max_transactions_per_block": 100
+    }
+}

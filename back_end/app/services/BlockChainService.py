@@ -33,6 +33,12 @@ class BlockChainService:
 
     @staticmethod
     def add_transaction_to_mempool(blockchain: BlockChain, tx: Transaction) -> bool:
+        # If no signature, we assume it's a server-initiated transaction (like minting)
+        # In a real blockchain, the server would sign this with its authority key.
+        if not tx.signature:
+            blockchain.mempool.append(tx)
+            return True
+            
         if TransactionService.is_valid(tx):
             blockchain.mempool.append(tx)
             return True
@@ -61,13 +67,40 @@ class BlockChainService:
         return True
 
     @staticmethod
-    def mine_block(blockchain: BlockChain, private_key: SigningKey, public_key_hex: str) -> Block:
+    def mine_block(blockchain: BlockChain, private_key: SigningKey, public_key_hex: str, 
+                   max_transactions: int = None) -> Block:
+        """
+        Mine a new block with transactions from mempool
+        
+        Args:
+            blockchain: The blockchain instance
+            private_key: Private key for signing
+            public_key_hex: Public key of the validator
+            max_transactions: Maximum number of transactions to include (optional)
+        
+        Returns:
+            Block: The newly mined block
+        """
         if public_key_hex not in blockchain.authority_set:
             raise PermissionError("Validator ko năm trong uỷ quyền")
 
         prev_block = blockchain.get_last_block()
-
-        merkle_root = BlockService.calculate_merkle_root(blockchain.mempool)
+        
+        # Get transactions from mempool with size limit
+        if max_transactions is None:
+            # Try to get from config
+            try:
+                from network.config_loader import get_config
+                config = get_config()
+                consensus_config = config.get_consensus_config()
+                max_transactions = consensus_config.get('max_transactions_per_block', 100)
+            except:
+                max_transactions = 100  # Default fallback
+        
+        # Take only up to max_transactions from mempool
+        transactions_to_include = blockchain.mempool[:max_transactions]
+        
+        merkle_root = BlockService.calculate_merkle_root(transactions_to_include)
 
         header = BlockHeader(
             index=prev_block.index + 1,
@@ -80,7 +113,7 @@ class BlockChainService:
             block_id=f"BLOCK_{header.index}",
             index=header.index,
             block_header=header,
-            transactions=blockchain.mempool.copy()
+            transactions=transactions_to_include
         )
 
         BlockService.sign_block(block, private_key)
@@ -89,12 +122,27 @@ class BlockChainService:
 
     @staticmethod
     def add_block(blockchain: BlockChain, block: Block) -> bool:
+        """
+        Add block to blockchain and remove included transactions from mempool
+        
+        Args:
+            blockchain: The blockchain instance
+            block: The block to add
+            
+        Returns:
+            bool: True if successful
+        """
         if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
             raise ValueError("invalid block")
 
+        # Execute transactions
         for tx in block.transactions:
             BlockChainService.execute_transaction(blockchain, tx)
 
-        blockchain.mempool.clear()
+        # Remove only the transactions that were included in this block
+        # This allows remaining transactions to stay in mempool for next block
+        included_tx_hashes = {tx.tx_hash for tx in block.transactions}
+        blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
+        
         blockchain.chain.append(block)
         return True

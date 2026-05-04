@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Shield, Copy, ExternalLink, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -14,6 +15,7 @@ interface NFTDetailProps {
 }
 
 export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
+  const { isAdmin, isUser } = useAuth();
   const [nft, setNft] = useState<NFT | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
   const [metadataHash, setMetadataHash] = useState<string | null>(null);
@@ -31,8 +33,11 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
       const response = await NFTService.getNFT(tokenId);
       if ('nft' in response) {
         setNft(response.nft);
+        // Tự động xác minh ngay khi tải xong thông tin NFT
+        const result = await NFTService.verifyNFT(tokenId);
+        setVerifyResult(result);
       }
-      
+
       try {
         const hashResponse = await NFTService.getMetadataHash(tokenId);
         setMetadataHash(hashResponse.metadata_hash);
@@ -68,7 +73,7 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi chứng chỉ này? Hành động này không thể hoàn tác.')) {
       return;
     }
-    
+
     setIsRevoking(true);
     try {
       const result = await NFTService.revokeNFT(tokenId);
@@ -130,9 +135,9 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
               <FileText className="w-6 h-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-lg">Chi tiết NFT Chứng chỉ</CardTitle>
+              <CardTitle className="text-lg">Chi tiết Chứng chỉ số</CardTitle>
               <CardDescription className="font-mono text-xs">
-                {formatAddress(nft.token_id)}
+                Mã số: {formatAddress(nft.token_id)}
               </CardDescription>
             </div>
           </div>
@@ -152,81 +157,86 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Metadata Info */}
+        {/* Metadata Info - Friendly for all users */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">ID Sinh viên</p>
-            <p className="font-medium">{nft.metadata?.student_id || '-'}</p>
-          </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Loại bằng cấp</p>
             <p className="font-medium">{nft.metadata?.degree_type || '-'}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Tổ chức phát hành</p>
-            <p className="font-medium">{nft.metadata?.institution || '-'}</p>
+            <p className="text-xs text-muted-foreground">Đơn vị cấp phát</p>
+            <p className="font-medium">{nft.metadata?.institution_address || nft.metadata?.institution || '-'}</p>
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Ngày tạo</p>
+            <p className="text-xs text-muted-foreground">Ngày cấp phát</p>
             <p className="font-medium">
-              {nft.minted_at ? new Date(nft.minted_at).toLocaleDateString('vi-VN') : '-'}
+              {nft.minted_at ? new Date(nft.minted_at * 1000).toLocaleDateString('vi-VN') : '-'}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">Trạng thái</p>
+            <p className={`font-medium ${nft.is_valid ? 'text-green-500' : 'text-destructive'}`}>
+              {nft.is_valid ? 'Đang hiệu lực' : 'Đã thu hồi'}
             </p>
           </div>
         </div>
 
-        <Separator />
-
-        {/* Blockchain Info */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" />
-            Thông tin Blockchain
-          </h4>
-          
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Token ID</p>
-                <p className="font-mono text-sm">{formatAddress(nft.token_id)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.token_id, 'Token ID')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Địa chỉ người nhận</p>
-                <p className="font-mono text-sm">{formatAddress(nft.recipient_address)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.recipient_address, 'Địa chỉ')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-              <div>
-                <p className="text-xs text-muted-foreground">Issuer Public Key</p>
-                <p className="font-mono text-sm">{formatAddress(nft.issuer_pubkey)}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.issuer_pubkey, 'Public Key')}>
-                <Copy className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {metadataHash && (
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div>
-                  <p className="text-xs text-muted-foreground">Metadata Hash</p>
-                  <p className="font-mono text-sm">{formatAddress(metadataHash)}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => copyToClipboard(metadataHash, 'Hash')}>
-                  <Copy className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+        {/* Mã văn bằng - Shown to all */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+          <div>
+            <p className="text-xs text-muted-foreground">Mã văn bằng</p>
+            <p className="font-mono text-sm">{formatAddress(nft.token_id)}</p>
           </div>
+          <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.token_id, 'Mã văn bằng')}>
+            <Copy className="w-4 h-4" />
+          </Button>
         </div>
+
+        {/* Blockchain Proof - Only shown to admin/validator */}
+        {!isUser && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                Thông tin xác thực kỹ thuật
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Địa chỉ ví người nhận</p>
+                    <p className="font-mono text-sm">{formatAddress(nft.recipient_address || '-')}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.recipient_address || '', 'Địa chỉ')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Khoá công khai đơn vị cấp phát</p>
+                    <p className="font-mono text-sm">{formatAddress(nft.issuer_pubkey)}</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => copyToClipboard(nft.issuer_pubkey, 'Khóa công khai')}>
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {metadataHash && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Mã xác thực tính toàn vẹn</p>
+                      <p className="font-mono text-sm">{formatAddress(metadataHash)}</p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(metadataHash, 'Mã xác thực')}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* PDF Link */}
         {nft.metadata?.pdf_url && (
@@ -277,15 +287,17 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
               Quay lại
             </Button>
           )}
-          <Button onClick={handleVerify} disabled={isVerifying}>
-            {isVerifying ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Shield className="w-4 h-4 mr-2" />
-            )}
-            Xác minh chữ ký
-          </Button>
-          {nft.is_valid && (
+          {!isUser && (
+            <Button onClick={handleVerify} disabled={isVerifying}>
+              {isVerifying ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Shield className="w-4 h-4 mr-2" />
+              )}
+              Xác minh chữ ký
+            </Button>
+          )}
+          {isAdmin && nft.is_valid && (
             <Button variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
               {isRevoking ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
