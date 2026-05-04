@@ -8,6 +8,7 @@ from app.core.config import SECRET_KEY, REDIS_HOST, REDIS_PORT, REDIS_DB
 import uuid
 from app.models.Account import Role
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
+from ecdsa.util import sigdecode_string
 
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 
@@ -112,9 +113,16 @@ def verify():
         
         public_key = account.public_key
 
+        # Load public key
         vk = VerifyingKey.from_string(bytes.fromhex(public_key), curve=SECP256k1)
-        # Signature verification logic
-        is_valid = vk.verify(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        
+        # Verify signature using pre-computed hash (verify_digest)
+        # sigdecode_string is for 64-byte compact signatures
+        is_valid = vk.verify_digest(
+            bytes.fromhex(signature), 
+            bytes.fromhex(msg_hash), 
+            sigdecode=sigdecode_string
+        )
         
         if is_valid:
             if HAS_REDIS:

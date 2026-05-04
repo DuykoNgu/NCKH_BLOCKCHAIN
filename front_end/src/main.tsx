@@ -7,6 +7,7 @@ import { WalletProvider } from "@/contexts/WalletContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import "../configs/pdfWorker";
+import "../configs/secp256k1.config";
 
 
 createRoot(document.getElementById("root")!).render(

@@ -1,5 +1,10 @@
 import * as secp from "@noble/secp256k1";
 import { sha256 } from "@noble/hashes/sha2.js";
+import { hmac } from "@noble/hashes/hmac.js";
+
+// Cấu hình hàm hash cho thư viện secp256k1 (Yêu cầu bởi noble-secp256k1 v2+)
+secp.hashes.sha256 = (msg: Uint8Array) => sha256(msg);
+secp.hashes.hmacSha256 = (key: Uint8Array, msg: Uint8Array) => hmac(sha256, key, msg);
 
 /**
  * Uint8Array to Hex string
@@ -37,14 +42,14 @@ export function calculateHashHex(data: string | Uint8Array): string {
 
 /**
  * Sign data using ECDSA (secp256k1)
- * Returns hex signature
+ * Returns hex signature (64 bytes compact format)
  */
 export async function signData(data: string | Uint8Array, privateKey: Uint8Array | string): Promise<string> {
   const privKey = typeof privateKey === 'string' ? hexToBytes(privateKey) : privateKey;
   const msgHash = calculateHash(data);
   
-  // Sign using noble-secp256k1
-  const signature = await secp.sign(msgHash, privKey);
+  // Ký hash của dữ liệu
+  const signature = secp.sign(msgHash, privKey, { prehash: false });
   return bytesToHex(signature);
 }
 
@@ -53,8 +58,9 @@ export async function signData(data: string | Uint8Array, privateKey: Uint8Array
  */
 export async function verifySignature(data: string | Uint8Array, signature: string, publicKey: string | Uint8Array): Promise<boolean> {
   const pubKey = typeof publicKey === 'string' ? hexToBytes(publicKey) : publicKey;
-  const sig = hexToBytes(signature);
+  const sigBytes = typeof signature === 'string' ? hexToBytes(signature) : signature;
   const msgHash = calculateHash(data);
   
-  return secp.verify(sig, msgHash, pubKey);
+  // Xác thực chữ ký với hash
+  return secp.verify(sigBytes, msgHash, pubKey, { prehash: false });
 }
