@@ -1,15 +1,8 @@
 import { Award, CheckCircle, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
-import { TRANSACTION_SERVER } from '@/constants/api';
-export type Dictionary<T> = Record<string, T>;
-interface Transaction {
-    tx_hash: string;
-    payload: Dictionary<string>;
-    timestamp: number;
-    status: 'pending' | 'completed';
-    sender_address: string;
-}
+import { TransactionService } from '@/services/transactionService';
+
 interface Activity {
   id: string;
   type: 'mint' | 'verify' | 'revoke' | 'register' | 'unknown';
@@ -31,7 +24,7 @@ const formatDistanceToNow = (timestamp: number) => {
   return 'Vừa xong';
 };
 
-const getTitleByType = (payload: Dictionary<string>) => {
+const getTitleByType = (payload: any) => {
   const op = payload?.op || '';
   if (op === 'mint_nft') return 'Cấp bằng mới';
   if (op === 'verify_nft') return 'Xác minh chứng chỉ';
@@ -56,21 +49,21 @@ export const TransactionList = () => {
   useEffect(() => {
     const fetchActivities = async () => {
       try {
-        const url = (isAdmin || isValidator) 
-          ? `${import.meta.env.VITE_API_URL}${TRANSACTION_SERVER.GET_ALL}`
-          : `${import.meta.env.VITE_API_URL}${TRANSACTION_SERVER.GET_BY_ADDRESS.replace(':address', address || '')}`;
-        
-        const response = await fetch(url);
-        const data = await response.json();
+        let response;
+        if (isAdmin || isValidator) {
+          response = await TransactionService.getAllTransactions();
+        } else if (address) {
+          response = await TransactionService.getTransactionsByAddress(address);
+        }
 
-        if (data.success && data.transactions) {
-          const mapped: Activity[] = data.transactions.map((tx: Transaction) => ({
+        if (response && response.success && response.transactions) {
+          const mapped: Activity[] = response.transactions.map((tx: any) => ({
             id: tx.tx_hash,
             type: getTypeByOp(tx.payload?.op),
             title: getTitleByType(tx.payload),
-            address: tx.sender_address ? tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4) : '',
+            address: tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4),
             time: formatDistanceToNow(tx.timestamp),
-            status: 'completed' // In our local DB, stored txs are usually confirmed
+            status: 'completed'
           }));
           setActivities(mapped.slice(0, 5)); // Show latest 5
         }

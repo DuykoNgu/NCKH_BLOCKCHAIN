@@ -5,15 +5,14 @@ import {
   Activity,
   Settings,
   Blocks,
-  FileCheck,
   Users,
   Network,
   LogOut,
+  PlusCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/admin/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useWallet } from "@/hooks/useWallet";
 import {
   Sidebar,
   SidebarContent,
@@ -27,26 +26,51 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth } from "@/hooks/useAuth";
 import { hasRoutePermission } from "@/constants/permissions";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { role } = useAuth();
-  const { lock } = useWallet();
+  const { role, logout } = useAuth();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { role } = useAuth();
 
 
   const isActive = (path: string) => location.pathname === path;
 
-  const filteredMainItems = mainItems.filter(item => !item.roles || item.roles.includes(role || ""));
-  const filteredManageItems = manageItems.filter(item => !item.roles || item.roles.includes(role || ""));
+  // Danh sách tất cả menu items tiềm năng
+  const allMenuItems = {
+    main: [
+      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+      { title: "Cấp phát Bằng", url: "/admin/degrees", icon: PlusCircle, roles: ["validator"] }, // Chỉ hiện Plus icon cho validator
+      { title: "Tất cả Bằng cấp", url: "/admin/degrees", icon: GraduationCap, roles: ["moet", "admin"] },
+      { title: "Bằng cấp của tôi", url: "/admin/degrees", icon: GraduationCap, roles: ["client"] },
+      { title: "Bằng đã cấp", url: "/admin/my-degrees", icon: GraduationCap, roles: ["validator"] },
+      { title: "Xác thực", url: "/admin/verify", icon: Shield },
+      { title: "Giao dịch", url: "/admin/transactions", icon: Activity },
+    ],
+    manage: [
+      { title: "Quản lý mạng (Node)", url: "/admin/network", icon: Network },
+      { title: "Quản lý Sinh viên", url: "/admin/students", icon: Users },
+      { title: "Cấu hình Hệ thống", url: "/admin/contracts", icon: Blocks },
+      { title: "Cài đặt", url: "/admin/settings", icon: Settings },
+    ]
+  };
 
-  const handleLogout = () => {
-    lock();
-    window.location.href = "/login";
+  // Lọc menu items dựa trên permissions.ts
+  const filterMenu = (items: any[]) => {
+    return items.filter(item => {
+      // Nếu item có quy định roles cụ thể cho hiển thị
+      if (item.roles && !item.roles.includes(role || "")) return false;
+      
+      // Kiểm tra quyền truy cập route tổng quát
+      return hasRoutePermission(role, item.url);
+    });
+  };
+
+  const menu = {
+    main: filterMenu(allMenuItems.main),
+    manage: filterMenu(allMenuItems.manage)
   };
 
   return (
@@ -59,7 +83,9 @@ export function AppSidebar() {
           {!collapsed && (
             <div>
               <h2 className="font-display text-sm font-bold text-foreground">EduChain Vault</h2>
-              <p className="text-xs text-muted-foreground">Blockchain Verify</p>
+              <p className="text-[10px] text-primary font-mono uppercase tracking-wider">
+                Role: {role || "Guest"}
+              </p>
             </div>
           )}
         </div>
@@ -70,7 +96,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Tổng quan</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {filteredMainItems.map((item) => (
+              {menu.main.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
@@ -84,23 +110,25 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Quản lý</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredManageItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menu.manage.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Quản lý</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menu.manage.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                      <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 space-y-4">
@@ -108,14 +136,14 @@ export function AppSidebar() {
           <div className="glass-card rounded-lg p-3">
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse-glow" />
-              <span className="text-xs text-muted-foreground">Mạng EduChain • Hoạt động</span>
+              <span className="text-xs text-muted-foreground">EduChain P2P • Online</span>
             </div>
           </div>
         )}
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleLogout}
+          onClick={logout}
           className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3"
         >
           <LogOut className="h-4 w-4" />

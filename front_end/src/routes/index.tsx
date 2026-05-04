@@ -1,6 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { lazy } from 'react';
 import ProtectedRoute from '@/components/common/ProtectedRoute';
+import { ROUTE_PERMISSIONS } from '@/constants/permissions';
 
 const ROUTES = {
   HOME: '/home',
@@ -8,8 +9,6 @@ const ROUTES = {
 } as const;
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
-const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
-const MockLogin = lazy(() => import('@/pages/MockLogin'));
 const Home = lazy(() => import('@/pages/Home'));
 const PublicVerify = lazy(() => import('@/pages/PublicVerify'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
@@ -25,7 +24,7 @@ const AdminStudents = lazy(() => import('@/pages/admin/AdminStudents'));
 const AdminContracts = lazy(() => import('@/pages/admin/AdminContracts'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminNetwork = lazy(() => import('@/pages/admin/AdminNetwork'));
-const AdminValidators = lazy(() => import('@/pages/admin/AdminValidators'));
+const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
 
 
 export const router = createBrowserRouter([
@@ -41,7 +40,11 @@ export const router = createBrowserRouter([
   },
   {
     path: ROUTES.HOME,
-    element: <ProtectedRoute allowedRoles={['admin', 'client', 'validator', 'moet']}><Home /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/home']}>
+        <Home />
+      </ProtectedRoute>
+    ),
     errorElement: <NotFoundPage />,
   },
   {
@@ -62,23 +65,72 @@ export const router = createBrowserRouter([
     element: <UnauthorizedPage />,
   },
   {
-    path: '/mock-login',
-    element: <MockLogin />,
-  },
-  {
     path: '/admin',
-    element: <ProtectedRoute allowedRoles={['admin', 'moet']}><AdminLayout /></ProtectedRoute>,
+    element: (
+      <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     errorElement: <NotFoundPage />,
     children: [
       { index: true, element: <AdminIndex /> },
-      { path: 'degrees', element: <AdminDegrees /> },
-      { path: 'validators', element: <AdminValidators /> },
-      { path: 'verify', element: <AdminVerify /> },
-      { path: 'transactions', element: <AdminTransactions /> },
-      { path: 'students', element: <AdminStudents /> },
-      { path: 'contracts', element: <AdminContracts /> },
-      { path: 'settings', element: <AdminSettings /> },
-      { path: 'network', element: <AdminNetwork /> },
+      { 
+        path: 'degrees', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/degrees']}>
+            <AdminDegrees />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'verify', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/verify']}>
+            <AdminVerify />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'transactions', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/transactions']}>
+            <AdminTransactions />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'students', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/students']}>
+            <AdminStudents />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'contracts', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/contracts']}>
+            <AdminContracts />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'settings', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/settings']}>
+            <AdminSettings />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'network', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/network']}>
+            <AdminNetwork />
+          </ProtectedRoute>
+        ) 
+      },
+      { path: '*', element: <Navigate to="/admin" replace /> }
     ],
   },
   {

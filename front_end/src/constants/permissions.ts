@@ -32,10 +32,10 @@ export const ACTION_PERMISSIONS = {
 export const hasRoutePermission = (role: UserRole | null, path: string): boolean => {
   if (!role) return false;
   if (role === "admin" || role === "moet") return true; // Super admin
-  
+
   const allowedRoles = ROUTE_PERMISSIONS[path];
   if (!allowedRoles) return true; // Mặc định cho phép nếu không khai báo
-  
+
   return allowedRoles.includes(role);
 };
 
@@ -45,7 +45,7 @@ export const hasRoutePermission = (role: UserRole | null, path: string): boolean
 export const hasActionPermission = (role: UserRole | null, action: keyof typeof ACTION_PERMISSIONS): boolean => {
   if (!role) return false;
   if (role === "admin" || role === "moet") return true;
-  
+
   const allowedRoles = ACTION_PERMISSIONS[action];
   return allowedRoles.includes(role);
 };

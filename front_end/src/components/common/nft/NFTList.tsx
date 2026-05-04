@@ -21,8 +21,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
   const fetchNFTs = async () => {
     setIsLoading(true);
     try {
-      const issuerAddress = localStorage.getItem('address');
-      const response = await NFTService.getNFTsByIssuer(issuerAddress || '');
+      const response = await NFTService.getAllNFTs();
       setNfts(response.nfts || []);
       setFilteredNfts(response.nfts || []);
     } catch (error) {
@@ -41,8 +40,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
       const filtered = nfts.filter(
         (nft) =>
           nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata?.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata.institution.toLowerCase().includes(searchTerm.toLowerCase())
+          (nft.metadata?.student_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (nft.metadata?.institution || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredNfts(filtered);
     } else {
@@ -55,8 +54,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+  const formatDate = (date: string | number) => {
+    return new Date(date).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -146,7 +145,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                          {nft.minted_at ? formatDate((nft.minted_at * 1000).toString()) : '-'}
+                      {nft.minted_at ? formatDate(nft.minted_at) : '-'}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm">
