@@ -40,8 +40,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
       const filtered = nfts.filter(
         (nft) =>
           nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata?.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata?.institution.toLowerCase().includes(searchTerm.toLowerCase())
+          (nft.metadata?.student_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (nft.metadata?.institution || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredNfts(filtered);
     } else {

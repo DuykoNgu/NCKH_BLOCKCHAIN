@@ -1,16 +1,13 @@
-import { useState, useRef } from 'react';
-import { FileText, Send, Loader2, CheckCircle, AlertCircle, Upload, File, X } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Send, Loader2, CheckCircle, AlertCircle, Key } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NFTService } from '@/services/nftService';
-import { useStorage } from '@/hooks/useStorage';
-import { usePassword } from '@/hooks/usePassword';
-import { calculatePdfHash, signDataWithBytes } from '@/utils/signatureUtils';
+import { calculateHashHex, signData } from '@/utils/cryptoUtils';
 import { decryptPrivateKey } from '@/utils/cryptoVault';
-import type { CreateNFTRequest } from '@/services/nftService';
 
 interface NFTCreateProps {
   account: string;
@@ -29,19 +26,14 @@ const degreeTypes = [
 export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
-  const { uploading: pdfUploading, error: pdfError, uploadPDF, clearError: clearPdfError } = useStorage();
-  const { getPassword, hasPassword } = usePassword();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pdfHash, setPdfHash] = useState<string>('');
-  const [formData, setFormData] = useState<CreateNFTRequest>({
+  const [password, setPassword] = useState('');
+  
+  const [formData, setFormData] = useState({
     issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
-    pdf_hash: '',
-    institution: '',
-    institution_address: account,
+    institution_address: '',
     recipient_address: account,
   });
 
@@ -132,96 +124,65 @@ const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
     setResult(null);
 
     try {
-      // Lấy password từ session storage
-      const password = getPassword();
-      console.log('Password : ',password);
-      if (!password) {
-        throw new Error('Mật khẩu ví không tìm thấy');
+      // 1. Lấy Vault từ Storage để giải mã Private Key
+      const vaultData = localStorage.getItem("vault");
+      if (!vaultData) throw new Error("Không tìm thấy ví trên thiết bị này.");
+      
+      const vault = JSON.parse(vaultData);
+      let privateKey: Uint8Array;
+      
+      try {
+        privateKey = await decryptPrivateKey(vault, password);
+      } catch (err) {
+        throw new Error("Mật khẩu không chính xác.");
       }
 
-      // Get private key from vault using password
-      const vault = localStorage.getItem('vault');
-      if (!vault) {
-        throw new Error('Không tìm thấy ví trong hệ thống');
-      }
+      // 2. Tính toán Hash của dữ liệu bằng cấp (Mock pdf_hash từ URL nếu không có file thực tế)
+      // Trong thực tế, nên hash nội dung file PDF. Ở đây ta hash URL + metadata.
+      const pdf_hash = calculateHashHex(formData.pdf_url + formData.degree_type + formData.student_id);
 
-      const vaultData = JSON.parse(vault);
-      const privateKeyBytes = await decryptPrivateKey(vaultData, password);
+      // 3. Chuẩn bị metadata để ký (Giống logic trong NFTmetadata.py của Backend)
+      // Nội dung ký: degree_type + pdf_url + pdf_hash + institution_address
+      const messageToSign = formData.degree_type + formData.pdf_url + pdf_hash + formData.institution_address;
+      
+      // 4. Thực hiện ký số
+      const signature = await signData(messageToSign, privateKey);
 
-      // Create signing data with current timestamp
-      const issuedAt = Math.floor(Date.now() / 1000); // seconds
-
-
-// Trong handleSubmit, hãy sửa lại đoạn tạo signingData:
-const signingMetadata = {
-  degree_type: formData.degree_type,
-  pdf_url: formData.pdf_url,
-  pdf_hash: formData.pdf_hash,
-  institution_address: formData.institution_address,
-  issued_at: issuedAt,
-};
-
-
-const sortedMetadata = sortObjectKeys(signingMetadata);
-
-const signingData = JSON.stringify(sortedMetadata);
-      console.log('Signing data:', signingData);
-
-      // Sign the data
-      const signature = signDataWithBytes(signingData, privateKeyBytes);
-      console.log('Signature generated:', signature);
-
-      // Prepare request with signature
+      // 5. Gửi yêu cầu Mint lên Backend
       const requestData = {
         ...formData,
-        issued_at: issuedAt,
-        signature: signature,
+        pdf_hash,
+        signature,
       };
 
-      console.log('Request data:', requestData);
-      
       const response = await NFTService.createNFT(requestData);
+      
       if (response.success) {
         setResult({
           success: true,
-          message: 'Chứng chỉ số đã được cấp phát thành công!',
+          message: 'Chứng chỉ số đã được cấp phát và ghi vào Blockchain thành công!',
           tokenId: response.token_id,
         });
-        // Reset form
+        // Reset form (trừ password)
         setFormData({
           issuer_id: '',
           student_id: '',
           degree_type: '',
           pdf_url: '',
-          pdf_hash: '',
-          institution: '',
-          institution_address: account,
+          institution_address: '',
           recipient_address: account,
         });
-        setSelectedFile(null);
-        setPdfHash('');
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
+        setPassword('');
       } else {
         setResult({
           success: false,
           message: response.error || 'Có lỗi xảy ra khi cấp phát chứng chỉ',
         });
       }
-    } catch (error: unknown) {
-      let errorMessage = 'Có lỗi không xác định xảy ra';
-
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-
-      console.error('NFT creation error:', error);
+    } catch (error: any) {
       setResult({
         success: false,
-        message: errorMessage,
+        message: error.message || 'Không thể kết nối đến server',
       });
     } finally {
       setIsLoading(false);
@@ -236,8 +197,8 @@ const signingData = JSON.stringify(sortedMetadata);
             <FileText className="w-5 h-5 text-white" />
           </div>
           <div>
-            <CardTitle className="text-lg">Cấp phát Chứng chỉ số</CardTitle>
-            <CardDescription>Lưu trữ chứng chỉ mới lên hệ thống EduChain</CardDescription>
+            <CardTitle className="text-lg">Cấp phát Chứng chỉ số (Mint NFT)</CardTitle>
+            <CardDescription>Dữ liệu sẽ được ký số bằng Private Key của bạn trước khi gửi lên Blockchain</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -288,12 +249,12 @@ const signingData = JSON.stringify(sortedMetadata);
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="institution">Tổ chức/Trường</Label>
+            <Label htmlFor="institution_address">Tổ chức/Trường (Địa chỉ)</Label>
             <Input
-              id="institution"
+              id="institution_address"
               placeholder="VD: Harvard University"
-              value={formData.institution}
-              onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+              value={formData.institution_address}
+              onChange={(e) => setFormData({ ...formData, institution_address: e.target.value })}
               required
               className="bg-background/50"
             />
@@ -312,85 +273,7 @@ const signingData = JSON.stringify(sortedMetadata);
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="pdf_file">Upload Chứng chỉ (PDF)</Label>
-            <div className="relative">
-              <input
-                ref={fileInputRef}
-                id="pdf_file"
-                type="file"
-                accept=".pdf"
-                onChange={handleFileSelect}
-                disabled={pdfUploading}
-                className="hidden"
-              />
-              
-              {!selectedFile && !formData.pdf_url ? (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={pdfUploading}
-                  className="w-full p-4 border-2 border-dashed border-border/50 rounded-lg hover:border-primary/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-2 bg-background/30"
-                >
-                  {pdfUploading ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                      <span className="text-sm text-muted-foreground">Đang tải lên...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                      <div className="text-center">
-                        <p className="text-sm font-medium">Chọn file PDF để tải lên</p>
-                        <p className="text-xs text-muted-foreground">hoặc kéo thả file vào đây</p>
-                      </div>
-                    </>
-                  )}
-                </button>
-              ) : formData.pdf_url ? (
-                <div className="p-4 rounded-lg bg-success/10 border border-success/30 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-success" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-success">Upload thành công</p>
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{selectedFile?.name}</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveFile}
-                    className="p-1 hover:bg-background/50 rounded transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : null}
-
-              {pdfError && (
-                <div className="mt-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-destructive">{pdfError}</p>
-                </div>
-              )}
-
-              {pdfHash && (
-                <div className="mt-2 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
-                  <p className="text-xs font-mono text-blue-600 break-all">
-                    Hash: {pdfHash}
-                  </p>
-                </div>
-              )}
-
-              <input
-                id="pdf_url"
-                type="hidden"
-                value={formData.pdf_url}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="recipient_address">Địa chỉ định danh người nhận</Label>
+            <Label htmlFor="recipient_address">Địa chỉ ví Sinh viên</Label>
             <Input
               id="recipient_address"
               placeholder="0x..."
@@ -399,6 +282,27 @@ const signingData = JSON.stringify(sortedMetadata);
               required
               className="bg-background/50 font-mono text-sm"
             />
+          </div>
+
+          <div className="pt-4 border-t border-border/30">
+            <div className="space-y-2">
+              <Label htmlFor="password" title="Cần mật khẩu để giải mã Private Key thực hiện ký số">Xác nhận bằng Mật khẩu ví</Label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Nhập mật khẩu ví của bạn"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-background/50 pl-10"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                * Private Key sẽ được giải mã tạm thời để ký dữ liệu và không bao giờ rời khỏi trình duyệt.
+              </p>
+            </div>
           </div>
 
           {result && (
@@ -420,7 +324,7 @@ const signingData = JSON.stringify(sortedMetadata);
                 </p>
                 {result.tokenId && (
                   <p className="text-xs text-muted-foreground mt-1 font-mono">
-                    Mã số chứng chỉ: {result.tokenId}
+                    Mã số chứng chỉ (Token ID): {result.tokenId}
                   </p>
                 )}
               </div>
@@ -435,22 +339,12 @@ const signingData = JSON.stringify(sortedMetadata);
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang ký và cấp phát...
-              </>
-            ) : pdfUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Đang tải file...
-              </>
-            ) : !formData.pdf_url ? (
-              <>
-                <File className="w-4 h-4 mr-2" />
-                Vui lòng tải lên PDF
+                Đang xác thực và ký số...
               </>
             ) : (
               <>
                 <Send className="w-4 h-4 mr-2" />
-                Ký và Cấp phát Chứng chỉ
+                Cấp phát Chứng chỉ (Sign & Mint)
               </>
             )}
           </Button>

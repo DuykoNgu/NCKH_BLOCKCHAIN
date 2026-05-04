@@ -1,4 +1,4 @@
-"""
+﻿"""
 Example: How to use the P2P Network in EduChain
 Demonstrates network initialization, peer discovery, and consensus
 """
@@ -148,10 +148,10 @@ def example_5_consensus_timing():
     
     if is_my_turn:
         print(f"\n🟢 It's MY turn! (Validator #{my_validator_index})")
-        print("   → I should create a block now")
+        print("   -> I should create a block now")
     else:
         print(f"\n⏳ Not my turn yet (I am Validator #{my_validator_index})")
-        print(f"   → Current leader is Validator #{slot_info['leader_index']}")
+        print(f"   -> Current leader is Validator #{slot_info['leader_index']}")
 
 
 def example_6_validator_rotation():
@@ -256,3 +256,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

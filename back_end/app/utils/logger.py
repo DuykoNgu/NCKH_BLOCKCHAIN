@@ -1,4 +1,4 @@
-# core/utils/logger.py
+﻿# core/utils/logger.py
 import logging
 import sys
 import os
@@ -106,7 +106,7 @@ def get_logger(
             interval=1,
             backupCount=30,
             encoding="utf-8",
-            delay=True  # QUAN TRỌNG NHẤT: Không mở file ngay → không lỗi khi thư mục chưa tồn tại
+            delay=True  # QUAN TRỌNG NHẤT: Không mở file ngay -> không lỗi khi thư mục chưa tồn tại
         )
         daily_handler.setLevel(logging.DEBUG)
         daily_handler.setFormatter(_get_file_formatter(LOG_JSON_FORMAT))
@@ -139,7 +139,7 @@ class LoggerAdapter(logging.LoggerAdapter):
     Ví dụ dùng trong FastAPI:
         log = LoggerAdapter(logger, {"request_id": "abc123", "user_id": 999})
         log.info("Xử lý thanh toán")
-        → tự động thêm request_id, user_id vào extra
+        -> tự động thêm request_id, user_id vào extra
     """
     def process(self, msg, kwargs):
         extras = {k: v for k, v in self.extra.items() if v is not None}
