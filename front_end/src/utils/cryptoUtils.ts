@@ -45,12 +45,47 @@ export function calculateHashHex(data: string | Uint8Array): string {
  * Returns hex signature (64 bytes compact format)
  */
 export async function signData(data: string | Uint8Array, privateKey: Uint8Array | string): Promise<string> {
+  return signDataDER(data, privateKey);
+}
+
+/**
+ * Sign data using ECDSA (secp256k1)
+ * Returns hex signature (DER format)
+ */
+export async function signDataDER(data: string | Uint8Array, privateKey: Uint8Array | string): Promise<string> {
   const privKey = typeof privateKey === 'string' ? hexToBytes(privateKey) : privateKey;
   const msgHash = calculateHash(data);
   
   // Ký hash của dữ liệu
-  const signature = secp.sign(msgHash, privKey, { prehash: false });
-  return bytesToHex(signature);
+  const sigBytes = secp.sign(msgHash, privKey, { prehash: false });
+  
+  // Manual DER encoding for ECDSA
+  // Format: 0x30 + total_len + 0x02 + r_len + r + 0x02 + s_len + s
+  const r = sigBytes.slice(0, 32);
+  const s = sigBytes.slice(32, 64);
+  
+  const prepare = (bytes: Uint8Array) => {
+    let hex = bytesToHex(bytes);
+    // Remove leading zeros
+    hex = hex.replace(/^0+/, '');
+    if (hex === '') hex = '00';
+    // If first bit is 1, prepend 00
+    if (parseInt(hex[0], 16) >= 8) hex = '00' + hex;
+    // Ensure even length
+    if (hex.length % 2 !== 0) hex = '0' + hex;
+    return hex;
+  };
+  
+  const rHex = prepare(r);
+  const sHex = prepare(s);
+  
+  const rLen = (rHex.length / 2).toString(16).padStart(2, '0');
+  const sLen = (sHex.length / 2).toString(16).padStart(2, '0');
+  
+  const body = '02' + rLen + rHex + '02' + sLen + sHex;
+  const totalLen = (body.length / 2).toString(16).padStart(2, '0');
+  
+  return '30' + totalLen + body;
 }
 
 /**

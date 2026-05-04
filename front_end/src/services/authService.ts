@@ -3,7 +3,7 @@ import saveUserData from "@/utils/saveDataToStorage";
 import { generateWallet, restoreWallet, validateMnemonic } from "@/utils/walletGenerator";
 import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
-import { calculateHashHex, signData } from "@/utils/cryptoUtils";
+import { calculateHashHex, signData, signDataDER } from "@/utils/cryptoUtils";
 import api from "@configs/axios.config";
 
 export interface CreateWalletResult {
@@ -18,6 +18,26 @@ export const clearOldSession = () => {
   clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
+
+/**
+ * Helper to format registration data for signing (matches backend's json.dumps(..., sort_keys=True))
+ */
+const getRegisterSigningData = (address: string, publicKey: string, role: string, timestamp: number) => {
+  const data = {
+    address: address,
+    public_key: publicKey,
+    role: role,
+    timestamp: timestamp
+  };
+  // Sort keys alphabetically to match Python's sort_keys=True
+  const sortedKeys = Object.keys(data).sort() as Array<keyof typeof data>;
+  const sortedData: any = {};
+  sortedKeys.forEach(key => {
+    sortedData[key] = data[key];
+  });
+  return JSON.stringify(sortedData);
+};
+
 
 export const createWallet = async (password: string, schoolName?: string): Promise<CreateWalletResult> => {
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
@@ -34,12 +54,19 @@ export const createWallet = async (password: string, schoolName?: string): Promi
     is_active: schoolName ? "0" : "1",
   };
 
+  const timestamp = Math.floor(Date.now() / 1000);
+  const publicKeyHex = uint8ArrayToHex(publicKey);
+  const signingData = getRegisterSigningData(address.toLowerCase(), publicKeyHex, userData.role, timestamp);
+  const signature = await signDataDER(signingData, privateKey);
+
   try {
     await api.post(AUTH_SERVER.WALLET_REGISTER, {
       address: address.toLowerCase(),
-      public_key: uint8ArrayToHex(publicKey),
+      public_key: publicKeyHex,
       role: userData.role,
-      full_name: userData.full_name
+      full_name: userData.full_name,
+      signature: signature,
+      timestamp: timestamp
     });
   } catch (error) {
     console.error('Backend registration failed:', error);
@@ -67,11 +94,18 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
     is_active: "1",
   };
 
+  const timestamp = Math.floor(Date.now() / 1000);
+  const publicKeyHex = uint8ArrayToHex(publicKey);
+  const signingData = getRegisterSigningData(address.toLowerCase(), publicKeyHex, "client", timestamp);
+  const signature = await signDataDER(signingData, privateKey);
+
   try {
     await api.post(AUTH_SERVER.WALLET_REGISTER, {
       address: address.toLowerCase(),
-      public_key: uint8ArrayToHex(publicKey),
-      role: "client"
+      public_key: publicKeyHex,
+      role: "client",
+      signature: signature,
+      timestamp: timestamp
     });
   } catch (error) {
     console.error('Backend registration failed:', error);
