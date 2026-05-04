@@ -46,6 +46,16 @@ export default function Degrees() {
     fetchDegrees();
   }, []);
 
+  const degrees = nfts.map((nft) => ({
+    id: nft.token_id,
+    tokenId: truncateHash(nft.token_id),
+    name: nft.metadata?.degree_type || "Chứng chỉ số",
+    degree: nft.metadata?.degree_type || "-",
+    university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address) : "-",
+    date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
+    status: getNftStatus(nft),
+  }));
+
   const filtered = degrees.filter((d) => {
     const name = d.recipient_name || "";
     const degreeType = d.metadata?.degree_type || "";

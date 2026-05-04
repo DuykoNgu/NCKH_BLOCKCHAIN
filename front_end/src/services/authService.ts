@@ -22,8 +22,6 @@ export const clearOldSession = () => {
 };
 
 export const createWallet = async (password: string): Promise<CreateWalletResult> => {
-  clearOldSession();
-  // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
   // Mã hóa private key bằng password
@@ -36,76 +34,17 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
     address: address.toLowerCase(),
     vault,
     role: "client",
-    is_active: "1",
   };
 
   // Đăng ký với Backend
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "client"
-      }),
+    await api.post(AUTH_SERVER.WALLET_REGISTER, {
+      address: address.toLowerCase(),
+      public_key: uint8ArrayToHex(publicKey),
+      role: "client"
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend registration failed:', errorData);
-    }
   } catch (error) {
-    console.error('Network error during registration:', error);
-  }
-
-  saveUserData(userData);
-
-  // Lưu password vào session storage để dùng cho signing
-  savePasswordToSession(password);
-  console.log('[authService] Password saved to session storage');
-
-  // Trả về mnemonic để hiển thị cho user backup
-  return { mnemonic, address };
-};
-
-export const registerSchool = async (
-  password: string,
-  schoolName: string,
-  taxId: string,
-  representative: string,
-  email: string,
-  phone: string
-): Promise<CreateWalletResult> => {
-  clearOldSession();
-  // Tạo ví mới với seed phrase (BIP39)
-  const { mnemonic, privateKey, publicKey, address } = await generateWallet();
-
-  // Mã hóa private key bằng password
-  const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
-  const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
-
-  // Đăng ký với Backend
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "validator"
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend school registration failed:', errorData);
-    } else {
-      // Đăng ký thành công thì cập nhật tên trường + KYC
-      await updateProfile(address, schoolName, undefined, taxId, representative, email, phone);
-    }
-  } catch (error) {
-    console.error('Network error during school registration:', error);
+    console.error('Backend registration failed:', error);
   }
 
   const userData: Record<string, unknown> = {
@@ -119,11 +58,6 @@ export const registerSchool = async (
   };
 
   saveUserData(userData);
-
-  // Lưu password vào session storage để dùng cho signing
-  savePasswordToSession(password);
-  console.log('[authService] Password saved to session storage');
-
   return { mnemonic, address };
 };
 

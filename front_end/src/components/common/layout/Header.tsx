@@ -2,6 +2,8 @@ import { ShieldCheck, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export const Header = () => {
+  const { isAdmin } = useAuth();
+
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">

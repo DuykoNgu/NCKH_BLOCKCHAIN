@@ -27,22 +27,8 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "../ui/button";
-
-const mainItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard, roles: ["admin", "moet"] },
-  { title: "Bằng cấp NFT", url: "/admin/degrees", icon: GraduationCap, roles: ["admin", "moet", "validator"] },
-  { title: "Xác thực", url: "/admin/verify", icon: Shield, roles: ["admin", "moet", "validator", "client"] },
-  { title: "Giao dịch", url: "/admin/transactions", icon: Activity, roles: ["admin", "moet", "validator"] },
-];
-
-const manageItems = [
-  { title: "Quản lý mạng", url: "/admin/network", icon: Network, roles: ["admin", "moet"] },
-  { title: "Phê duyệt", url: "/admin/validators", icon: FileCheck, roles: ["admin", "moet"] },
-  { title: "Sinh viên", url: "/admin/students", icon: Users, roles: ["admin", "moet", "validator"] },
-  { title: "Smart Contract", url: "/admin/contracts", icon: FileCheck, roles: ["admin", "moet"] },
-  { title: "Cài đặt", url: "/admin/settings", icon: Settings, roles: ["admin", "moet", "validator"] },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { hasRoutePermission } from "@/constants/permissions";
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -50,7 +36,8 @@ export function AppSidebar() {
   const { lock } = useWallet();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { role, isAdmin, isValidator } = useAuth();
+  const { role } = useAuth();
+
 
   const isActive = (path: string) => location.pathname === path;
 

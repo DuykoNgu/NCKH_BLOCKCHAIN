@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { FileText, Send, Loader2, CheckCircle, AlertCircle, Upload, File, X } from 'lucide-react';
+import { useState } from 'react';
+import { FileText, Send, Loader2, CheckCircle, AlertCircle, Key } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,6 @@ import { useStorage } from '@/hooks/useStorage';
 import { usePassword } from '@/hooks/usePassword';
 import { calculatePdfHash, signDataWithBytes } from '@/utils/signatureUtils';
 import { decryptPrivateKey } from '@/utils/cryptoVault';
-import type { CreateNFTRequest } from '@/services/nftService';
 
 interface NFTCreateProps {
   account: string;
@@ -29,19 +28,14 @@ const degreeTypes = [
 export const NFTCreate = ({ account }: NFTCreateProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string; tokenId?: string } | null>(null);
-  const { uploading: pdfUploading, error: pdfError, uploadPDF, clearError: clearPdfError } = useStorage();
-  const { getPassword, hasPassword } = usePassword();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [pdfHash, setPdfHash] = useState<string>('');
-  const [formData, setFormData] = useState<CreateNFTRequest>({
+  const [password, setPassword] = useState('');
+  
+  const [formData, setFormData] = useState({
     issuer_id: '',
     student_id: '',
     degree_type: '',
     pdf_url: '',
-    pdf_hash: '',
-    institution: '',
-    institution_address: account,
+    institution_address: '',
     recipient_address: account,
   });
 
@@ -193,9 +187,7 @@ const signingData = JSON.stringify(sortedMetadata);
           student_id: '',
           degree_type: '',
           pdf_url: '',
-          pdf_hash: '',
-          institution: '',
-          institution_address: account,
+          institution_address: '',
           recipient_address: account,
         });
         setSelectedFile(null);
@@ -399,6 +391,27 @@ const signingData = JSON.stringify(sortedMetadata);
               required
               className="bg-background/50 font-mono text-sm"
             />
+          </div>
+
+          <div className="pt-4 border-t border-border/30">
+            <div className="space-y-2">
+              <Label htmlFor="password" title="Cần mật khẩu để giải mã Private Key thực hiện ký số">Xác nhận bằng Mật khẩu ví</Label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Nhập mật khẩu ví của bạn"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="bg-background/50 pl-10"
+                />
+              </div>
+              <p className="text-[10px] text-muted-foreground italic">
+                * Private Key sẽ được giải mã tạm thời để ký dữ liệu và không bao giờ rời khỏi trình duyệt.
+              </p>
+            </div>
           </div>
 
           {result && (
