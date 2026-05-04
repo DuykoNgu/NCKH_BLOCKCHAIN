@@ -1,5 +1,5 @@
-import { ShieldCheck, Info } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ShieldCheck } from "lucide-react"
+import { useAuth } from "@/hooks/useAuth"
 
 export const Header = () => {
   const { isAdmin } = useAuth();

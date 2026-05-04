@@ -22,12 +22,14 @@ class Transaction:
         tx_id: str = "",
         tx_hash: str = "",
         sender_pubkey: str = "",
-        sender_address: str = "",
+        sender_address: Optional[str] = None,
         recipient_address: str = "",
         payload: Optional[Dict[str, Any]] = None,
         signature: str = "",
         timestamp: Optional[float] = None,
-        block_id: str = ""
+        block_id: str = "",
+        tx_status: str = "PENDING",  # 'PENDING', 'COMMITTED', 'FAILED'
+        error_reason: str = ""  # Error message if tx fails
     ) -> None:
         self.tx_id = tx_id
         self.tx_hash = tx_hash
@@ -38,6 +40,8 @@ class Transaction:
         self.signature = signature
         self.timestamp = timestamp if timestamp is not None else time.time()
         self.block_id = block_id
+        self.tx_status = tx_status
+        self.error_reason = error_reason
 
 
 
@@ -52,7 +56,9 @@ class Transaction:
             "payload": self.payload,
             "signature": self.signature,
             "timestamp": self.timestamp,
-            "block_id": self.block_id
+            "block_id": self.block_id,
+            "tx_status": self.tx_status,
+            "error_reason": self.error_reason
         }
 
     @staticmethod
@@ -62,10 +68,12 @@ class Transaction:
             tx_id=data.get("tx_id", ""),
             tx_hash=data.get("tx_hash", ""),
             sender_pubkey=data.get("sender_pubkey", ""),
-            sender_address=data.get("sender_address", ""),
+            sender_address=data.get("sender_address"),  # Allow None for system transactions
             recipient_address=data.get("recipient_address", ""),
             payload=data.get("payload", {}),
             signature=data.get("signature", ""),
             timestamp=data.get("timestamp", time.time()),
-            block_id=data.get("block_id", "")
+            block_id=data.get("block_id", ""),
+            tx_status=data.get("tx_status", "PENDING"),
+            error_reason=data.get("error_reason", "")
         )

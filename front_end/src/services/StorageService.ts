@@ -9,16 +9,7 @@ interface SignatureResponse {
   tags?: string; // Thêm trường tags nếu Backend trả về
 }
 
-interface CloudinaryUploadResponse {
-  secure_url: string;
-  public_id: string;
-  width?: number;
-  height?: number;
-  format?: string;
-  bytes?: number;
-  created_at?: string;
-  [key: string]: unknown;
-}
+
 
 export interface UploadOptions {
   folder?: string;
@@ -90,7 +81,7 @@ class StorageService {
     // 4. Xác định resourceType
     // Với PDF/Doc nên dùng 'raw', với ảnh dùng 'image'. 
     // Nếu không chắc, bạn có thể truyền từ options hoặc dùng 'auto'
-    const resourceType = options.resourceType || 'auto'; 
+    const resourceType =  'raw'; 
     
     // URL upload của Cloudinary
     const uploadUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/${resourceType}/upload`;
@@ -101,9 +92,9 @@ class StorageService {
     });
 
     return uploadResponse.data.secure_url;
-  } catch (error: any) {
-    console.error('Chi tiết lỗi Cloudinary:', error.response?.data || error.message);
-    throw new Error(`Upload thất bại: ${error.response?.data?.error?.message || error.message}`);
+  } catch (error: unknown) {
+    console.error('Chi tiết lỗi Cloudinary:', (error as { response?: { data?: unknown } }).response?.data || (error as { message?: string }).message);
+    throw new Error(`Upload thất bại: ${(error as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message || (error as { message?: string }).message}`);
   }
 }
 

@@ -18,7 +18,9 @@ export const NFT_SERVER = {
   GET_USER_NFTS: '/nft/user/:recipientAddress',
   GET_ALL: '/nft/all',
   VERIFY: '/nft/:tokenId/verify',
+  GET_BY_ISSUER: '/nft/issuer/:issuer_address',
   REVOKE: '/nft/:tokenId/revoke',
   VERIFY_BATCH: '/nft/verify/batch',
   GET_METADATA_HASH: '/nft/:tokenId/metadata-hash',
+  BATCH_UPLOAD: '/nft/batch-upload',
 } as const;

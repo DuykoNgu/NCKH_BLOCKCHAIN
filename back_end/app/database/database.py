@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
     degree_type TEXT,
     pdf_url TEXT,
     pdf_hash TEXT,
+    student_id TEXT,
+    institution TEXT,
     institution_address TEXT,
     issued_at REAL,
     FOREIGN KEY (institution_address) REFERENCES account(address)
@@ -61,6 +63,7 @@ CREATE TABLE IF NOT EXISTS nft (
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
     tx_id TEXT PRIMARY KEY,
+    sender_pubkey TEXT,
     sender_address TEXT,
     recipient_address TEXT,
 
@@ -69,7 +72,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT,
     payload TEXT,
     block_id TEXT,
-    FOREIGN KEY (sender_address) REFERENCES account(address),
+    tx_status TEXT DEFAULT 'PENDING',  -- 'PENDING', 'COMMITTED', 'FAILED'
+    error_reason TEXT,  -- Error message if tx_status = 'FAILED'
+    FOREIGN KEY (sender_address) REFERENCES account(address) ON DELETE SET NULL,
     FOREIGN KEY (block_id) REFERENCES block(block_id)
 );
 

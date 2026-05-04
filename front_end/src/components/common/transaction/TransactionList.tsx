@@ -2,7 +2,14 @@ import { Award, CheckCircle, Clock, ShieldCheck, AlertCircle } from 'lucide-reac
 import { useAuth } from '@/hooks/useAuth';
 import { useState, useEffect } from 'react';
 import { TRANSACTION_SERVER } from '@/constants/api';
-
+export type Dictionary<T> = Record<string, T>;
+interface Transaction {
+    tx_hash: string;
+    payload: Dictionary<string>;
+    timestamp: number;
+    status: 'pending' | 'completed';
+    sender_address: string;
+}
 interface Activity {
   id: string;
   type: 'mint' | 'verify' | 'revoke' | 'register' | 'unknown';
@@ -24,7 +31,7 @@ const formatDistanceToNow = (timestamp: number) => {
   return 'Vừa xong';
 };
 
-const getTitleByType = (payload: any) => {
+const getTitleByType = (payload: Dictionary<string>) => {
   const op = payload?.op || '';
   if (op === 'mint_nft') return 'Cấp bằng mới';
   if (op === 'verify_nft') return 'Xác minh chứng chỉ';
@@ -57,11 +64,11 @@ export const TransactionList = () => {
         const data = await response.json();
 
         if (data.success && data.transactions) {
-          const mapped: Activity[] = data.transactions.map((tx: any) => ({
+          const mapped: Activity[] = data.transactions.map((tx: Transaction) => ({
             id: tx.tx_hash,
             type: getTypeByOp(tx.payload?.op),
             title: getTitleByType(tx.payload),
-            address: tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4),
+            address: tx.sender_address ? tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4) : '',
             time: formatDistanceToNow(tx.timestamp),
             status: 'completed' // In our local DB, stored txs are usually confirmed
           }));

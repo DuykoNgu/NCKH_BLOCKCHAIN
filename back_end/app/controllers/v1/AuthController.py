@@ -8,7 +8,7 @@ from app.services.NetworkService import get_network_service
 import sys
 import hashlib
 import json
-
+from app.utils.CryptoUtils import CryptoUtils
 # Add back_end to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -26,7 +26,7 @@ def generate_peer_id(ip: str, port: int) -> str:
     return hashlib.sha256(data).hexdigest()[:16]
 
 
-def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
+def try_update_peer_after_activation(validator_worker, public_key: str,private_key_hex: str) -> None:
     """Try to update peer record in database after validator activation"""
     try:
         logger.info(f"→ [DEBUG] try_update_peer_after_activation called with public_key={public_key[:20] if public_key else 'EMPTY'}...")
@@ -67,7 +67,7 @@ def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
             # Also create an activation transaction for other nodes to sync
             try:
                 logger.info(f"→ [DEBUG] Creating activation transaction...")
-                create_and_broadcast_activation_transaction(node_ip, node_port, public_key)
+                create_and_broadcast_activation_transaction(node_ip, node_port, public_key, private_key_hex)
                 logger.info(f"✓ [DEBUG] Activation transaction completed")
             except Exception as tx_err:
                 logger.warning(f"⚠ Could not create activation transaction: {tx_err}")
@@ -82,7 +82,7 @@ def try_update_peer_after_activation(validator_worker, public_key: str) -> None:
         logger.error(f"✗ [DEBUG] Exception traceback: {traceback.format_exc()}")
 
 
-def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str) -> None:
+def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str, private_key_hex: str) -> None:
     """
     Create a validator activation transaction and broadcast to peers
     This allows other nodes to sync the validator's public_key to their local DB
@@ -91,10 +91,13 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
         from app.models.Transaction import Transaction
         from app.services.BlockChainService import BlockChainService
         from app.blockchain_instance import get_blockchain_instance
+        from app.repositories.TransactionRepository import TransactionRepository
         import datetime
         import hashlib
         
         logger.info("→ Creating activation transaction for broadcast...")
+        
+        now_ts = datetime.datetime.now().timestamp()
         
         # Create activation transaction payload
         payload = {
@@ -102,30 +105,38 @@ def create_and_broadcast_activation_transaction(ip_address: str, port: int, publ
             "ip_address": ip_address,
             "port": port,
             "public_key": public_key,
-            "timestamp": datetime.datetime.now().timestamp()
+            "timestamp": now_ts
         }
-        
-        # Hash payload to create tx_hash
-        payload_json = json.dumps(payload, sort_keys=True).encode()
-        tx_hash = hashlib.sha256(payload_json).hexdigest()
         
         # Create transaction object
         tx = Transaction(
-            tx_id=tx_hash,
-            tx_hash=tx_hash,
             sender_pubkey=public_key,
             sender_address="system",
             recipient_address="system",
             payload=payload,
-            signature="",  # System transactions don't need signature
-            timestamp=datetime.datetime.now().timestamp(),
+            timestamp=now_ts,
             block_id=None
         )
         
+        # Sign the transaction using TransactionService (this will also generate tx_id and tx_hash)
+        from app.services.TransactionService import TransactionService
+        TransactionService.sign(tx, private_key_hex)
+        tx_hash = tx.tx_hash
+        
         # Add to mempool
         blockchain = get_blockchain_instance()
-        BlockChainService.add_transaction_to_mempool(blockchain, tx)
-        logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
+        success = BlockChainService.add_transaction_to_mempool(blockchain, tx)
+        if success:
+            logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
+        else:
+            logger.error(f"✗ Failed to add activation transaction to mempool: invalid transaction")
+            return
+        
+        # Save to database for persistence
+        if TransactionRepository.create_transaction(tx):
+            logger.info(f"✓ Activation transaction saved to database: {tx_hash[:16]}...")
+        else:
+            logger.warning(f"⚠ Warning: Failed to save activation transaction to database, but still in mempool")
         
         # Broadcast to peers
         try:
@@ -238,7 +249,7 @@ def activate_validator():
             
             # Try to update peer record in database
             public_key = keystore_data.get('public_key', '')
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key,private_key_hex)
             
             return jsonify({
                 'success': True,
@@ -319,7 +330,7 @@ def activate_validator_with_key():
             # Still update peer record in database even if already active
             # (peer record might not exist or might not have public_key yet)
             public_key = validator_worker.public_key or ""
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key,private_key_hex)
             
             return jsonify({
                 'success': True,
@@ -344,7 +355,7 @@ def activate_validator_with_key():
             # Try to update peer record in database
             # Get public_key from validator_worker
             public_key = validator_worker.public_key or ""
-            try_update_peer_after_activation(validator_worker, public_key)
+            try_update_peer_after_activation(validator_worker, public_key, private_key_hex)
             
             return jsonify({
                 'success': True,
