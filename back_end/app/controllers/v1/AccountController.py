@@ -71,8 +71,8 @@ def verify():
         public_key = account.public_key
 
         vk = VerifyingKey.from_string(bytes.fromhex(public_key), curve=SECP256k1)
-        # Frontend sends msg_hash (SHA-256 of nonce), so we use verify_digest
-        is_valid = vk.verify_digest(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        # Signature verification logic
+        is_valid = vk.verify(bytes.fromhex(signature), bytes.fromhex(msg_hash))
         
         if is_valid:
             r.delete(f"nonce:{address}")

@@ -1,9 +1,7 @@
-import { ShieldCheck, User as UserIcon } from "lucide-react"
-import { useAuth } from "@/hooks/useAuth"
+import { ShieldCheck, Info } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export const Header = () => {
-  const { fullName, role, isAdmin } = useAuth();
-  
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -12,11 +10,15 @@ export const Header = () => {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
               <ShieldCheck className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <span className="text-xl font-bold text-gradient block leading-none mb-1">EduChain</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Blockchain Verify</span>
-            </div>
+            <span className="text-xl font-bold text-gradient">EduChain</span>
           </div>
+
+          <Button asChild variant="ghost" size="sm" className="hidden md:flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+            <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer">
+              <Info className="w-4 h-4" />
+              Giới thiệu dự án
+            </a>
+          </Button>
         </div>
 
         <div className="flex items-center gap-4">

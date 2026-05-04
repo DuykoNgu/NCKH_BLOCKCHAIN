@@ -50,6 +50,7 @@ export function AppSidebar() {
   const { lock } = useWallet();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { role, isAdmin, isValidator } = useAuth();
 
   const isActive = (path: string) => location.pathname === path;
 
