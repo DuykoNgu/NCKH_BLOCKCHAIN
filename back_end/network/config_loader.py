@@ -1,4 +1,4 @@
-﻿"""
+"""
 Configuration Loader for EduChain Network
 Loads and validates network configuration from config.json
 """
@@ -25,7 +25,7 @@ class NetworkConfig:
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
-            print(f"[OK] Configuration loaded from {self.config_path}")
+            print(f"✓ Configuration loaded from {self.config_path}")
         except FileNotFoundError:
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
         except json.JSONDecodeError as e:
@@ -87,9 +87,9 @@ class NetworkConfig:
         try:
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=2, ensure_ascii=False)
-            print(f"[OK] Configuration saved to {self.config_path}")
+            print(f"✓ Configuration saved to {self.config_path}")
         except Exception as e:
-            print(f"[FAIL] Failed to save configuration: {e}")
+            print(f"✗ Failed to save configuration: {e}")
     
     def validate_config(self) -> bool:
         """Validate configuration structure"""
@@ -97,7 +97,7 @@ class NetworkConfig:
         
         for section in required_sections:
             if section not in self.config:
-                print(f"[FAIL] Missing required section: {section}")
+                print(f"✗ Missing required section: {section}")
                 return False
         
         # Validate seed nodes
@@ -107,10 +107,10 @@ class NetworkConfig:
         
         for node in seed_nodes:
             if not all(key in node for key in ['name', 'ip', 'port', 'public_key']):
-                print(f"[FAIL] Invalid seed node configuration: {node}")
+                print(f"✗ Invalid seed node configuration: {node}")
                 return False
         
-        print("[OK] Configuration validation passed")
+        print("✓ Configuration validation passed")
         return True
 
 
@@ -143,4 +143,3 @@ if __name__ == "__main__":
         print(f"Seed Nodes: {len(config.get_seed_nodes())}")
         print(f"Whitelist Enabled: {config.is_whitelist_enabled()}")
         print(f"Slot Duration: {config.get_slot_duration()}s")
-

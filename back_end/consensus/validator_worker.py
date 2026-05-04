@@ -1,4 +1,4 @@
-﻿"""
+"""
 Validator Worker - Automatic Block Mining Daemon
 Monitors consensus timer and creates blocks when it's the validator's turn
 """
@@ -65,7 +65,7 @@ class ValidatorWorker:
         self.worker_thread = threading.Thread(target=self._run, daemon=True)
         self.worker_thread.start()
         
-        print(f"[OK] Validator Worker started (index={self.my_index}/{self.total_validators})")
+        print(f"✓ Validator Worker started (index={self.my_index}/{self.total_validators})")
         print(f"  Public Key: {self.public_key[:32]}...")
         print(f"  Slot Duration: {self.slot_duration}s")
     
@@ -80,7 +80,7 @@ class ValidatorWorker:
         if self.worker_thread:
             self.worker_thread.join(timeout=10)
         
-        print(f"[OK] Validator Worker stopped (mined {self.blocks_mined} blocks)")
+        print(f"✓ Validator Worker stopped (mined {self.blocks_mined} blocks)")
     
     def _run(self) -> None:
         """Main worker loop - runs in background thread"""
@@ -99,7 +99,7 @@ class ValidatorWorker:
                     time.sleep(0.5)
             
             except Exception as e:
-                print(f"[FAIL] Validator worker error: {e}")
+                print(f"✗ Validator worker error: {e}")
                 import traceback
                 traceback.print_exc()
                 time.sleep(5)  # Wait before retrying
@@ -151,7 +151,7 @@ class ValidatorWorker:
                     max_transactions=max_tx_per_block
                 )
                 
-                print(f"[OK] Block mined:")
+                print(f"✓ Block mined:")
                 print(f"  Block Hash: {block.block_hash[:32]}...")
                 print(f"  Block Index: {block.index}")
                 print(f"  Block Size: {block.block_size} transactions")
@@ -169,13 +169,13 @@ class ValidatorWorker:
                     tx.block_id = block.block_id
                     TransactionRepository.create_transaction(tx)
                 
-                print(f"[OK] Block saved to database")
+                print(f"✓ Block saved to database")
                 
                 # Broadcast block to P2P network
                 propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=True)
                 
-                print(f"[OK] Block propagated to {propagated} peers")
-                print(f"[OK] Remaining in mempool: {len(self.blockchain.mempool)} transactions")
+                print(f"✓ Block propagated to {propagated} peers")
+                print(f"✓ Remaining in mempool: {len(self.blockchain.mempool)} transactions")
                 
                 # Update statistics
                 self.blocks_mined += 1
@@ -185,12 +185,12 @@ class ValidatorWorker:
                 if len(self.blockchain.mempool) > 0:
                     time.sleep(0.5)
             
-            print(f"\n[OK] Completed mining {blocks_created} block(s)")
-            print(f"[OK] Mempool now has {len(self.blockchain.mempool)} transactions")
+            print(f"\n✓ Completed mining {blocks_created} block(s)")
+            print(f"✓ Mempool now has {len(self.blockchain.mempool)} transactions")
             print(f"{'='*60}\n")
         
         except Exception as e:
-            print(f"[FAIL] Failed to mine and broadcast block: {e}")
+            print(f"✗ Failed to mine and broadcast block: {e}")
             import traceback
             traceback.print_exc()
     
@@ -259,4 +259,3 @@ def stop_validator_worker() -> None:
     if _validator_worker is not None:
         _validator_worker.stop()
         _validator_worker = None
-

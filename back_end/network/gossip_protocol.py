@@ -1,4 +1,4 @@
-﻿"""
+"""
 Gossip Protocol for EduChain P2P Network
 Implements transaction and block propagation using gossip algorithm
 """
@@ -135,7 +135,7 @@ class GossipProtocol:
             self.seen_messages.discard(msg_id)
             del self.message_cache[msg_id]
         
-        print(f"[OK] Cleaned up {len(expired_ids)} expired messages")
+        print(f"✓ Cleaned up {len(expired_ids)} expired messages")
     
     def send_message_to_peer(self, peer: Peer, endpoint: str, message: Dict, 
                             timeout: int = 5) -> bool:
@@ -147,11 +147,11 @@ class GossipProtocol:
             if response.status_code == 200:
                 return True
             else:
-                print(f"[FAIL] Failed to send to {peer.ip_address}:{peer.port}: HTTP {response.status_code}")
+                print(f"✗ Failed to send to {peer.ip_address}:{peer.port}: HTTP {response.status_code}")
                 return False
         
         except requests.exceptions.RequestException as e:
-            print(f"[FAIL] Error sending to {peer.ip_address}:{peer.port}: {e}")
+            print(f"✗ Error sending to {peer.ip_address}:{peer.port}: {e}")
             return False
     
     def propagate_transaction(self, tx_data: Dict, exclude_peers: List[str] = None) -> int:
@@ -185,7 +185,7 @@ class GossipProtocol:
         # Select random peers
         selected_peers = self.select_random_peers(k, exclude_peers)
         
-        print(f"-> Gossiping transaction to {len(selected_peers)} peers (fan-out={k})")
+        print(f"→ Gossiping transaction to {len(selected_peers)} peers (fan-out={k})")
         
         # Send to selected peers
         success_count = 0
@@ -193,7 +193,7 @@ class GossipProtocol:
             if self.send_message_to_peer(peer, '/gossip/transaction', message.to_dict()):
                 success_count += 1
         
-        print(f"[OK] Transaction gossiped to {success_count}/{len(selected_peers)} peers")
+        print(f"✓ Transaction gossiped to {success_count}/{len(selected_peers)} peers")
         return success_count
     
     def propagate_block(self, block_data: Dict, use_inv: bool = True) -> int:
@@ -205,7 +205,7 @@ class GossipProtocol:
         block_hash = block_data.get('block_hash')
         
         if not block_hash:
-            print("[FAIL] Block hash missing, cannot propagate")
+            print("✗ Block hash missing, cannot propagate")
             return 0
         
         # Check if we've already seen this block
@@ -233,7 +233,7 @@ class GossipProtocol:
                 'has_block': True
             })
             
-            print(f"-> Sending INV for block {block_hash[:8]}... to {len(active_peers)} peers")
+            print(f"→ Sending INV for block {block_hash[:8]}... to {len(active_peers)} peers")
             
             for peer in active_peers:
                 if self.send_message_to_peer(peer, '/gossip/inv', inv_message.to_dict()):
@@ -242,13 +242,13 @@ class GossipProtocol:
             # Send full block directly
             block_message = GossipMessage('block', block_data)
             
-            print(f"-> Broadcasting full block {block_hash[:8]}... to {len(active_peers)} peers")
+            print(f"→ Broadcasting full block {block_hash[:8]}... to {len(active_peers)} peers")
             
             for peer in active_peers:
                 if self.send_message_to_peer(peer, '/gossip/block', block_message.to_dict()):
                     success_count += 1
         
-        print(f"[OK] Block propagated to {success_count}/{len(active_peers)} peers")
+        print(f"✓ Block propagated to {success_count}/{len(active_peers)} peers")
         return success_count
     
     def request_block(self, peer: Peer, block_hash: str) -> Optional[Dict]:
@@ -259,14 +259,14 @@ class GossipProtocol:
             
             if response.status_code == 200:
                 block_data = response.json()
-                print(f"[OK] Received block {block_hash[:8]}... from {peer.ip_address}")
+                print(f"✓ Received block {block_hash[:8]}... from {peer.ip_address}")
                 return block_data
             else:
-                print(f"[FAIL] Failed to get block from {peer.ip_address}: HTTP {response.status_code}")
+                print(f"✗ Failed to get block from {peer.ip_address}: HTTP {response.status_code}")
                 return None
         
         except requests.exceptions.RequestException as e:
-            print(f"[FAIL] Error requesting block from {peer.ip_address}: {e}")
+            print(f"✗ Error requesting block from {peer.ip_address}: {e}")
             return None
     
     def handle_inv_message(self, inv_data: Dict, sender_peer_id: str) -> Optional[Dict]:
@@ -285,12 +285,12 @@ class GossipProtocol:
             return None
         
         # We don't have it, request from sender
-        print(f"-> Requesting block {block_hash[:8]}... from peer {sender_peer_id[:8]}...")
+        print(f"→ Requesting block {block_hash[:8]}... from peer {sender_peer_id[:8]}...")
         
         # Find sender peer
         sender_peer = self.peer_manager.peers.get(sender_peer_id)
         if not sender_peer:
-            print(f"[FAIL] Sender peer {sender_peer_id[:8]}... not found")
+            print(f"✗ Sender peer {sender_peer_id[:8]}... not found")
             return None
         
         # Request block
@@ -309,7 +309,7 @@ class GossipProtocol:
         tx_hash = tx_data.get('tx_hash')
         
         if not tx_hash:
-            print("[FAIL] Transaction hash missing")
+            print("✗ Transaction hash missing")
             return False
         
         # Check if we've already seen this transaction
@@ -332,19 +332,19 @@ class GossipProtocol:
             
             # Validate transaction signature
             if not TransactionService.is_valid(tx):
-                print(f"[FAIL] Invalid transaction signature: {tx_hash[:8]}...")
+                print(f"✗ Invalid transaction signature: {tx_hash[:8]}...")
                 return False
             
             # Add to blockchain mempool
             blockchain = get_blockchain_instance()
             if BlockChainService.add_transaction_to_mempool(blockchain, tx):
-                print(f"[OK] Transaction {tx_hash[:8]}... added to mempool")
+                print(f"✓ Transaction {tx_hash[:8]}... added to mempool")
             else:
-                print(f"[FAIL] Failed to add transaction {tx_hash[:8]}... to mempool")
+                print(f"✗ Failed to add transaction {tx_hash[:8]}... to mempool")
                 return False
         
         except Exception as e:
-            print(f"[FAIL] Error processing transaction: {e}")
+            print(f"✗ Error processing transaction: {e}")
             return False
         
         # Continue gossip to other peers (exclude sender)
@@ -361,7 +361,7 @@ class GossipProtocol:
         block_hash = block_data.get('block_hash')
         
         if not block_hash:
-            print("[FAIL] Block hash missing")
+            print("✗ Block hash missing")
             return False
         
         # Check if we've already seen this block
@@ -387,24 +387,24 @@ class GossipProtocol:
             
             # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):
-                print(f"[FAIL] Block {block_hash[:8]}... has invalid signature")
+                print(f"✗ Block {block_hash[:8]}... has invalid signature")
                 return False
             
             # 2. Verify validator authorization
             if block.block_header.validator_pubkey not in blockchain.authority_set:
-                print(f"[FAIL] Validator {block.block_header.validator_pubkey[:16]}... not authorized")
+                print(f"✗ Validator {block.block_header.validator_pubkey[:16]}... not authorized")
                 return False
             
             # 3. Verify merkle root
             calculated_merkle = BlockService.calculate_merkle_root(block.transactions)
             if calculated_merkle != block.block_header.merkle_root:
-                print(f"[FAIL] Merkle root mismatch for block {block_hash[:8]}...")
+                print(f"✗ Merkle root mismatch for block {block_hash[:8]}...")
                 return False
             
             # 4. Verify block chain continuity
             if len(blockchain.chain) > 0:
                 if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
-                    print(f"[FAIL] Block {block_hash[:8]}... validation failed")
+                    print(f"✗ Block {block_hash[:8]}... validation failed")
                     return False
             
             # 5. Commit to blockchain
@@ -416,10 +416,10 @@ class GossipProtocol:
                 tx.block_id = block.block_id
                 TransactionRepository.create_transaction(tx)
             
-            print(f"[OK] Block {block_hash[:8]}... verified and committed (index={block.index})")
+            print(f"✓ Block {block_hash[:8]}... verified and committed (index={block.index})")
         
         except Exception as e:
-            print(f"[FAIL] Failed to process block: {e}")
+            print(f"✗ Failed to process block: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -448,7 +448,7 @@ if __name__ == "__main__":
     # Test fan-out calculation
     for n in [5, 10, 20, 50, 100]:
         k = gossip.calculate_fan_out(n)
-        print(f"N={n} peers -> fan-out k={k}")
+        print(f"N={n} peers → fan-out k={k}")
     
     # Test transaction gossip
     print("\n=== Test Transaction Gossip ===")
@@ -459,5 +459,3 @@ if __name__ == "__main__":
         'amount': 100
     }
     gossip.propagate_transaction(test_tx)
-
-

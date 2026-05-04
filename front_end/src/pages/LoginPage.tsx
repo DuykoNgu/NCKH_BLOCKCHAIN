@@ -105,14 +105,7 @@ const LoginPage = () => {
 
     try {
       await unlock(password);
-      
-      // Kiểm tra role sau khi đăng nhập để điều hướng đúng trang
-      const role = localStorage.getItem("role");
-      if (role === 'admin' || role === 'moet') {
-        navigate('/admin');
-      } else {
-        navigate('/home');
-      }
+      navigate('/home');
     } catch (err) {
       setError('Đăng nhập thất bại. Vui lòng kiểm tra lại mật khẩu.');
       console.error(err);

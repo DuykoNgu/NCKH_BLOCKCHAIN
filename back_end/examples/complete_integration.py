@@ -1,4 +1,4 @@
-﻿"""
+"""
 EduChain P2P Blockchain - Complete Integration Example
 Demonstrates how to initialize and run the complete P2P blockchain system
 """
@@ -16,11 +16,11 @@ from consensus.validator_worker import start_validator_worker
 SUPER_VALIDATOR_PUBKEY = "04a1b2c3d4e5f6..."  # Your validator's public key
 
 blockchain = initialize_blockchain(SUPER_VALIDATOR_PUBKEY)
-print(f"[OK] Blockchain initialized with {len(blockchain.chain)} blocks")
+print(f"✓ Blockchain initialized with {len(blockchain.chain)} blocks")
 
 # Step 2: Initialize P2P network
 if initialize_network():
-    print("[OK] P2P network initialized successfully")
+    print("✓ P2P network initialized successfully")
     network_service = get_network_service()
     
     # Check network stats
@@ -29,7 +29,7 @@ if initialize_network():
     print(f"  - Validators: {stats['validator_peers']}")
     print(f"  - Time synced: {stats['is_time_synced']}")
 else:
-    print("[FAIL] Failed to initialize network")
+    print("✗ Failed to initialize network")
     exit(1)
 
 
@@ -51,7 +51,7 @@ worker = start_validator_worker(
     public_key=MY_PUBLIC_KEY
 )
 
-print(f"[OK] Validator worker started")
+print(f"✓ Validator worker started")
 print(f"  - My index: {MY_VALIDATOR_INDEX}/{TOTAL_VALIDATORS}")
 print(f"  - Slot duration: 5 seconds")
 
@@ -82,12 +82,12 @@ response = requests.post(
 
 if response.status_code == 201:
     result = response.json()
-    print(f"[OK] NFT minted successfully!")
+    print(f"✓ NFT minted successfully!")
     print(f"  - Token ID: {result['token_id']}")
     print(f"  - TX Hash: {result['tx_hash']}")
     print(f"  - Transaction is now in mempool and propagating to peers")
 else:
-    print(f"[FAIL] Failed to mint NFT: {response.json()}")
+    print(f"✗ Failed to mint NFT: {response.json()}")
 
 
 # ============================================================================
@@ -175,15 +175,15 @@ def shutdown_handler(signum, frame):
     from consensus.validator_worker import stop_validator_worker
     stop_validator_worker()
     
-    print("[OK] Validator worker stopped")
-    print("[OK] Shutdown complete")
+    print("✓ Validator worker stopped")
+    print("✓ Shutdown complete")
     sys.exit(0)
 
 # Register signal handlers
 signal.signal(signal.SIGINT, shutdown_handler)
 signal.signal(signal.SIGTERM, shutdown_handler)
 
-print("\n[OK] System running. Press Ctrl+C to shutdown gracefully.")
+print("\n✓ System running. Press Ctrl+C to shutdown gracefully.")
 
 
 # ============================================================================
@@ -251,7 +251,7 @@ def test_transaction_flow():
     print(f"  Mempool size: {len(blockchain.mempool)}")
     
     if len(blockchain.mempool) == 0:
-        print("\n[OK] Transaction flow test PASSED!")
+        print("\n✓ Transaction flow test PASSED!")
     else:
         print("\n⚠ Transaction flow test INCOMPLETE")
     
@@ -288,12 +288,11 @@ def verify_block_propagation():
                 print(f"  Latest block: {block['index']}")
                 print(f"  Block hash: {block['block_hash'][:32]}...")
             else:
-                print(f"\n{node_url}: [FAIL] Failed to get block")
+                print(f"\n{node_url}: ✗ Failed to get block")
         except Exception as e:
-            print(f"\n{node_url}: [FAIL] Connection failed - {e}")
+            print(f"\n{node_url}: ✗ Connection failed - {e}")
     
     print("\n" + "="*60 + "\n")
 
 # Run verification
 # verify_block_propagation()
-

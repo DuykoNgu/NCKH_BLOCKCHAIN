@@ -1,6 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { benefits } from "@/constants/landingData";
+import { benefits } from "@/data-review-mock";
 
 const BenefitsSection = () => {
   const ref = useRef(null);
@@ -27,7 +27,7 @@ const BenefitsSection = () => {
         </motion.h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-0 border border-border">
-          {benefits.map((benefit: any, index: number) => (
+          {benefits.map((benefit, index) => (
             <motion.div
               key={index}
               className="p-8 bg-card border-b border-r border-border last:border-r-0 [&:nth-child(3n)]:border-r-0 [&:nth-last-child(-n+3)]:border-b-0"

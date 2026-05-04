@@ -2,17 +2,15 @@
 from typing import Optional, List
 from app.database.connection import get_connection
 from app.models.Transaction import Transaction
-from json import dumps, loads
-
+from json import dumps
+BASE_TRANSACTION_SELECT = """
+    SELECT tx_hash, sender_address, recipient_address, 
+           payload, signature, timestamp, block_id
+    FROM transactions
+"""
 class TransactionRepository:
     """Repository for Transaction database operations"""
     
-    BASE_TRANSACTION_SELECT = """
-        SELECT tx_hash, sender_address, recipient_address, 
-               payload, signature, timestamp, block_id
-        FROM transactions
-    """
-
     @staticmethod
     def create_transaction(transaction: Transaction) -> bool:
         """Tạo transaction mới (Đã sửa lỗi dấu ? và khớp schema)"""
@@ -50,7 +48,7 @@ class TransactionRepository:
             cursor = conn.cursor()
             
             # Sửa thành tx_hash = ?
-            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE tx_hash = ?"
+            query = f"{BASE_TRANSACTION_SELECT} WHERE tx_hash = ?"
             cursor.execute(query, (tx_id,))
             row = cursor.fetchone()
             conn.close()
@@ -67,7 +65,7 @@ class TransactionRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE sender_address = ? ORDER BY timestamp DESC"
+            query = f"{BASE_TRANSACTION_SELECT} WHERE sender_address = ? ORDER BY timestamp DESC"
             cursor.execute(query, (sender_address,))
             rows = cursor.fetchall()
             conn.close()
@@ -112,7 +110,7 @@ class TransactionRepository:
         """Get transactions by type (from payload)"""
         try:
             all_txs = TransactionRepository.get_all_transactions()
-            return [tx for tx in all_txs if tx.payload.get('op') == tx_type]
+            return [tx for tx in all_txs if tx.payload.get('type') == tx_type]
         except Exception as e:
             print(f"Error getting transactions by type: {e}")
             return []
@@ -139,12 +137,15 @@ class TransactionRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            query = f"{BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
+            # Sử dụng biến BASE_TRANSACTION_SELECT đã thống nhất ở các hàm trước
+            # Toán tử BETWEEN giúp truy vấn ngắn gọn và tối ưu hơn >= AND <=
+            query = f"{TransactionRepository.BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
             
             cursor.execute(query, (start_timestamp, end_timestamp))
             rows = cursor.fetchall()
             conn.close()
             
+            # Sử dụng List Comprehension và hàm helper để parse dữ liệu sạch sẽ
             return [TransactionRepository._parse_transaction_row(row) for row in rows if row]
             
         except Exception as e:
@@ -157,12 +158,14 @@ class TransactionRepository:
         if not row:
             return None
         
+        import json
+        
         try:
             return Transaction(
                 tx_hash=row[0],
                 sender_address=row[1],
                 recipient_address=row[2],
-                payload=loads(row[3]) if row[3] else {},
+                payload=json.loads(row[3]) if row[3] else {},
                 signature=row[4],
                 timestamp=row[5],
                 block_id=row[6]

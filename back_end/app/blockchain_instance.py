@@ -21,7 +21,7 @@ def get_blockchain_instance() -> BlockChain:
     
     if _blockchain_instance is None:
         _blockchain_instance = BlockChain()
-        print("[OK] Blockchain instance created")
+        print("✓ Blockchain instance created")
     
     return _blockchain_instance
 
@@ -43,7 +43,7 @@ def initialize_blockchain(super_validator_pubkey: str = None) -> BlockChain:
     # Only create genesis if chain is empty
     if len(blockchain.chain) == 0 and super_validator_pubkey:
         BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
-        print(f"[OK] Genesis block created with validator: {super_validator_pubkey[:16]}...")
+        print(f"✓ Genesis block created with validator: {super_validator_pubkey[:16]}...")
     
     return blockchain
 
@@ -52,4 +52,4 @@ def reset_blockchain() -> None:
     """Reset the blockchain instance (for testing purposes)"""
     global _blockchain_instance
     _blockchain_instance = None
-    print("[OK] Blockchain instance reset")
+    print("✓ Blockchain instance reset")

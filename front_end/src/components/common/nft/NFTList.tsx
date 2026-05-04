@@ -40,8 +40,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
       const filtered = nfts.filter(
         (nft) =>
           nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (nft.metadata?.student_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (nft.metadata?.institution || "").toLowerCase().includes(searchTerm.toLowerCase())
+          nft.metadata?.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          nft.metadata?.institution.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredNfts(filtered);
     } else {
@@ -54,8 +54,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatDate = (date: string | number) => {
-    return new Date(date).toLocaleDateString('vi-VN', {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

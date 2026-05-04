@@ -1,4 +1,4 @@
-﻿"""
+"""
 Network Utilities for EduChain
 Helper functions for P2P networking
 """
@@ -176,23 +176,22 @@ if __name__ == "__main__":
     # Test peer ID generation
     print("\nPeer ID Generation:")
     peer_id = create_peer_id('10.0.1.1', 5000)
-    print(f"  10.0.1.1:5000 -> {peer_id}")
+    print(f"  10.0.1.1:5000 → {peer_id}")
     
     # Test fan-out calculation
     print("\nFan-out Calculation:")
     for n in [5, 10, 20, 50]:
         k = calculate_fan_out(n)
-        print(f"  N={n} -> k={k}")
+        print(f"  N={n} → k={k}")
     
     # Test address parsing
     print("\nAddress Parsing:")
     test_addresses = ['10.0.1.1:5000', 'http://192.168.1.1:8080', 'invalid']
     for addr in test_addresses:
         result = parse_peer_address(addr)
-        print(f"  {addr} -> {result}")
+        print(f"  {addr} → {result}")
     
     # Test URL construction
     print("\nURL Construction:")
     url = get_peer_url('10.0.1.1', 5000, '/api/v1/peers')
     print(f"  {url}")
-

@@ -21,7 +21,7 @@ const item = {
 } as any;
 
 export const DashboardStats = () => {
-  const { isUser, isValidator, isAdmin, fullName, address } = useAuth();
+  const { isUser, isValidator, isAdmin, role, fullName, address } = useAuth();
   const [nftCount, setNftCount] = useState<number | null>(null);
 
   useEffect(() => {
