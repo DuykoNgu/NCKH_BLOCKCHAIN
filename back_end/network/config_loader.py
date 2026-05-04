@@ -64,7 +64,9 @@ class NetworkConfig:
     def get_consensus_config(self) -> Dict[str, Any]:
         """Get consensus configuration"""
         return self.config.get('consensus', {})
-    
+    def get_monitor_config(self) -> Dict[str, Any]:
+        return self.config.get('monitor', {})
+        
     def get_slot_duration(self) -> int:
         """Get slot duration in seconds"""
         consensus = self.get_consensus_config()
@@ -74,6 +76,11 @@ class NetworkConfig:
         """Get current node ID"""
         network = self.get_network_config()
         return network.get('node_id', '')
+    
+    def get_max_peers(self) -> int:
+        """Get maximum allowed peers"""
+        network = self.get_network_config()
+        return network.get('max_peers', 2)
     
     def set_node_id(self, node_id: str) -> None:
         """Set node ID and save to config"""

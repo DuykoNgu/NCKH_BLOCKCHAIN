@@ -54,7 +54,7 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
 
   const handleVerify = async () => {
     setIsVerifying(true);
-    try {
+ 
       const result = await NFTService.verifyNFT(tokenId);
       setVerifyResult(result);
       if (result.is_valid) {
@@ -62,11 +62,8 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
       } else {
         toast.error('Chứng chỉ không hợp lệ hoặc đã bị thu hồi');
       }
-    } catch (error) {
-      toast.error('Không thể xác minh chứng chỉ');
-    } finally {
       setIsVerifying(false);
-    }
+    
   };
 
   const handleRevoke = async () => {
@@ -75,7 +72,7 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
     }
 
     setIsRevoking(true);
-    try {
+
       const result = await NFTService.revokeNFT(tokenId);
       if (result.message) {
         toast.success('Đã thu hồi chứng chỉ thành công');
@@ -83,11 +80,8 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
       } else {
         toast.error(result.error || 'Không thể thu hồi chứng chỉ');
       }
-    } catch (error) {
-      toast.error('Không thể thu hồi chứng chỉ');
-    } finally {
       setIsRevoking(false);
-    }
+    
   };
 
   const copyToClipboard = (text: string, label: string) => {

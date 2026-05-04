@@ -8,72 +8,6 @@ from app.models.BlockHeader import BlockHeader
 
 block_bp = Blueprint('block', __name__, url_prefix='/api/v1/block')
 
-#TODO: thay đổi hàm từ model Block -> sang sử dụng hàm từ BlockService
-@block_bp.route('/create', methods=['POST'])
-def create_block():
-    """
-    Create a new block
-    
-    Request body:
-    {
-        "index": 1,
-        "block_id": "BLOCK_1",
-        "pre_hash": "0x...",
-        "merkle_root": "0x...",
-        "validator_pubkey": "0x...",
-        "transactions": [...],
-        "private_key": "0x..."
-    }
-    """
-    try:
-        data = request.get_json()
-        
-        # Validate required fields
-        required_fields = ['index', 'block_id', 'pre_hash', 'merkle_root', 
-                          'validator_pubkey', 'private_key']
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing required fields"}), 400
-        
-        # Create block header
-        block_header = BlockHeader(
-            index=data['index'],
-            pre_hash=data['pre_hash'],
-            merkle_root=data['merkle_root'],
-            validator_pubkey=data['validator_pubkey']
-        )
-        
-        # Create block
-        block = Block(
-            index=data['index'],
-            block_id=data['block_id'],
-            block_header=block_header,
-            transactions=data.get('transactions', [])
-        )
-        
-        # Calculate hash and sign block using BlockService
-        block.block_hash = BlockService.calculate_hash(block)
-        BlockService.sign_block(block, data['private_key'])
-        
-        # Save to database
-        success = BlockRepository.create_block(block)
-        
-        if success:
-            return jsonify({
-                "success": True,
-                "message": "Block created successfully",
-                "block": {
-                    "block_id": block.block_id,
-                    "index": block.index,
-                    "block_hash": block.block_hash,
-                    "validator_signature": block.validator_signature,
-                    "transactions_count": len(block.transactions)
-                }
-            }), 201
-        else:
-            return jsonify({"error": "Failed to save block"}), 400
-            
-    except Exception as e:
-        return jsonify({"error": f"Error creating block: {str(e)}"}), 500
 
 
 @block_bp.route('/<block_id>', methods=['GET'])
@@ -272,3 +206,19 @@ def count_blocks():
         
     except Exception as e:
         return jsonify({"error": f"Error counting blocks: {str(e)}"}), 500
+
+
+@block_bp.route('/genesis', methods=['GET'])
+def get_genesis_block():
+    """Get genesis block with all transactions for seed node sharing"""
+    try:
+        genesis_block = BlockRepository.get_block_by_id("GENESIS")
+        
+        if not genesis_block:
+            return jsonify({"error": "Genesis block not found"}), 404
+        
+        # Return full block with transactions data for other nodes to sync
+        return jsonify(genesis_block.to_dict()), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Error getting genesis block: {str(e)}"}), 500

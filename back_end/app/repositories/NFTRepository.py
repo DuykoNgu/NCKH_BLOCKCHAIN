@@ -13,14 +13,16 @@ BASE_NFT_SELECT = """
         nft.minted_at,        -- 4
         nft.issuer_pubkey,    -- 5
         m.degree_type,        -- 6
-        m.pdf_url,           -- 7
-        m.pdf_hash,          -- 8
-        m.institution_address, -- 9
-        m.issued_at,         -- 10
-        a.address,           -- 11
-        a.public_key,        -- 12
-        a.org_name,          -- 13
-        a.is_active          -- 14
+        m.student_id,         -- 7
+        m.institution,        -- 8
+        m.pdf_url,            -- 9
+        m.pdf_hash,           -- 10
+        m.institution_address,-- 11
+        m.issued_at,          -- 12
+        a.address,            -- 13
+        a.public_key,         -- 14
+        a.org_name,           -- 15
+        a.is_active           -- 16
     FROM nft
     LEFT JOIN nft_metadata m ON nft.metadata_id = m.metadata_id
     LEFT JOIN account a ON nft.owner_address = a.address
@@ -40,10 +42,12 @@ class NFTRepository:
             metadata_dict = nft.metadata.to_dict()
             cursor.execute("""
                 INSERT INTO nft_metadata 
-                ( degree_type, pdf_url, pdf_hash, institution_address, issued_at)
-                VALUES ( ?, ?, ?, ?, ?)
+                ( degree_type,student_id,institution, pdf_url, pdf_hash, institution_address, issued_at)
+                VALUES ( ?, ?, ?, ?, ?, ?, ?)
             """, (
                 metadata_dict['degree_type'],
+                metadata_dict['student_id'],
+                metadata_dict['institution'],
                 metadata_dict['pdf_url'],
                 metadata_dict['pdf_hash'],
                 metadata_dict['institution_address'],
@@ -115,7 +119,22 @@ class NFTRepository:
         except Exception as e:
             print(f"Error fetching recipient NFTs: {e}")
             return []
-
+    
+    @staticmethod
+    def get_nft_by_issuer(issuer_address: str) -> List[NFT]:
+        """Lấy tất cả NFT do một issuer phát hành"""
+        try:
+            conn = get_connection()
+            cursor = conn.cursor()
+            query = BASE_NFT_SELECT + " WHERE nft.issuer_address = ?"
+            cursor.execute(query, (issuer_address,))
+            rows = cursor.fetchall()
+            close_connection(conn)
+            
+            return [NFTRepository._parse_nft_row(row) for row in rows if row]
+        except Exception as e:
+            print(f"Error fetching issuer NFTs: {e}")
+            return []
     @staticmethod
     def get_all_nfts() -> List[NFT]:
         """Lấy tất cả NFT trong hệ thống"""
@@ -176,33 +195,58 @@ class NFTRepository:
     def _parse_nft_row(row: tuple) -> Optional[NFT]:
         if not row: return None
         
-        # Metadata (6-10)
-        metadata = NFTmetadata(
-            degree_type=row[6],
-            pdf_url=row[7],
-            pdf_hash=row[8],
-            institution_address=row[9],
-            issued_at=row[10]
-        )
-        
-        # Owner Account (11-14)
-        owner = Account(
-            address=row[11],
-            public_key=row[12],
-            role=Role.CLIENT, 
-            org_name=row[13],
-            is_active=bool(row[14])
-        )
-        
-        nft = NFT(
-            issuer_address=row[1], 
-            issuer_pubkey=row[5],
-            metadata=metadata,
-            owner_address=owner
-        )
-        nft.token_id = row[0]
-        nft.issuer_signature = row[2]
-        nft.is_valid = bool(row[3])
-        nft.minted_at = row[4] 
-        
-        return nft
+        try:
+            # Critical field validations - skip if essential fields are None
+            if row[0] is None:  # nft_id is required
+                print(f"Skipping row: missing nft_id")
+                return None
+            
+            # Handle NULL metadata fields from LEFT JOIN
+            # Provide defaults for NULL values
+            metadata = NFTmetadata(
+                degree_type=row[6] or '',
+                student_id=row[7] or '',
+                institution=row[8] or '',
+                pdf_url=row[9] or '',
+                pdf_hash=row[10] or '',
+                institution_address=row[11] or '',
+                issued_at=row[12] if row[12] is not None else None
+            )
+            
+            # Handle NULL owner fields from LEFT JOIN
+            # If owner doesn't exist in account table, create a minimal placeholder
+            # This handles orphaned NFTs that reference non-existent accounts
+            if row[13] is None:
+                # NFT exists but owner account doesn't exist in DB
+                # Create a placeholder to avoid breaking the response
+                owner = Account(
+                    public_key='',
+                    address='Unknown',
+                    role=Role.CLIENT,
+                    org_name='Unknown',
+                    is_active=False
+                )
+            else:
+                owner = Account(
+                    public_key=row[14] or '',
+                    address=row[13],
+                    role=Role.CLIENT,
+                    org_name=row[15] or 'Unknown',
+                    is_active=bool(row[16]) if row[16] is not None else False
+                )
+            
+            nft = NFT(
+                issuer_address=row[1] or '', 
+                issuer_pubkey=row[5] or '',
+                metadata=metadata,
+                owner_address=owner
+            )
+            nft.token_id = row[0]
+            nft.issuer_signature = row[2]
+            nft.is_valid = bool(row[3]) if row[3] is not None else False
+            nft.minted_at = row[4]
+            
+            return nft
+        except Exception as e:
+            print(f"Error parsing NFT row: {str(e)}, row: {row}")
+            return None

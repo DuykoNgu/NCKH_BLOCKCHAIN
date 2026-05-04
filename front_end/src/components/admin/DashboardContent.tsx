@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Copy, ExternalLink, TrendingUp, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Copy, GraduationCap, Shield, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +55,33 @@ export default function DashboardContent() {
 
     fetchData();
   }, []);
+
+  const totalNfts = nfts.length;
+  const verifiedNfts = nfts.filter((n) => n.is_valid !== false).length;
+  const pendingNfts = totalNfts - verifiedNfts;
+  const todayTxCount = transactions.length;
+
+  const dashboardStats = [
+    { label: "Tổng NFT phát hành", value: totalNfts.toLocaleString(), icon: "GraduationCap", color: "text-primary" },
+    { label: "Đã xác thực", value: verifiedNfts.toLocaleString(), icon: "Shield", color: "text-green-400" },
+    { label: "Đang chờ / Đã thu hồi", value: pendingNfts.toLocaleString(), icon: "Clock", color: "text-yellow-400" },
+    { label: "Tổng giao dịch", value: todayTxCount.toLocaleString(), icon: "Activity", color: "text-accent" },
+  ];
+
+  const recentDegrees = nfts.slice(0, 5).map((nft) => ({
+    id: truncateHash(nft.token_id),
+    name: nft.metadata?.degree_type || "Chứng chỉ số",
+    degree: nft.metadata?.degree_type || "-",
+    university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address) : "-",
+    date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
+    status: nft.is_valid !== false ? "verified" : "rejected",
+  }));
+
+  const recentTxs = transactions.slice(0, 3).map((tx) => ({
+    hash: truncateHash(tx.tx_hash || tx.tx_id),
+    type: tx.payload?.op === "mint_nft" ? "Mint NFT" : tx.payload?.op || "Giao dịch",
+    time: tx.timestamp ? formatTimeAgo(tx.timestamp) : "-",
+  }));
 
   const copyAddress = () => {
     if (adminAddress) {

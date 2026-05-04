@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download, Loader2 } from "lucide-react";
+import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +45,16 @@ export default function Degrees() {
   useEffect(() => {
     fetchDegrees();
   }, []);
+
+  const degrees = nfts.map((nft) => ({
+    id: nft.token_id,
+    tokenId: truncateHash(nft.token_id),
+    name: nft.metadata?.degree_type || "Chứng chỉ số",
+    degree: nft.metadata?.degree_type || "-",
+    university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address) : "-",
+    date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
+    status: getNftStatus(nft),
+  }));
 
   const filtered = degrees.filter((d) => {
     const name = d.recipient_name || "";

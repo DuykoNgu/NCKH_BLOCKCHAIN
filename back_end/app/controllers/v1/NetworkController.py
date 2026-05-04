@@ -1,11 +1,13 @@
 """
 Network Controller for EduChain P2P API
-REST API endpoints for peer discovery and gossip protocol
+REST API endpoints for peer discovery, gossip protocol, and chain sync
 """
 from flask import Blueprint, request, jsonify
 from typing import Dict, Any
 
 from app.services.NetworkService import get_network_service
+from app.repositories.BlockRepository import BlockRepository
+from app.blockchain_instance import get_blockchain_instance
 
 
 # Create blueprint for network routes
@@ -59,18 +61,101 @@ def register_peer():
     """
     Register a new peer with the network
     
+    If public_key is provided: peer becomes ACTIVE immediately (trusted bootstrap registration)
+    If public_key is NOT provided: peer status is PENDING (requires approval)
+    
     Request body:
     {
         "ip_address": "10.0.1.5",
         "port": 5000,
-        "public_key": "04xyz...",
+        "public_key": "04abc..." (OPTIONAL - if provided, peer is trusted),
         "node_type": "observer"
     }
     
     Response:
     {
         "success": true,
-        "peer": { ... }
+        "peer": {
+            "peer_id": "abc123...",
+            "ip_address": "10.0.1.5",
+            "port": 5000,
+            "public_key": "04abc...",
+            "node_type": "observer",
+            "status": "ACTIVE" or "PENDING",
+            "last_seen": 1234567890.0
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['ip_address', 'port']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        service = get_network_service()
+        public_key = data.get('public_key', '')
+        
+        # Register peer
+        # If public_key is provided, trust it and set status to INACTIVE (for initial discovery)
+        # The /peers/status-update endpoint will set it to ACTIVE
+        peer = service.register_peer(
+            ip_address=data['ip_address'],
+            port=data['port'],
+            public_key=public_key,
+            node_type=data.get('node_type', 'validator')
+        )
+        
+        if peer:
+            # If public_key was provided during registration, update peer to INACTIVE 
+            # (pending activation confirmation)
+            if public_key:
+                from app.repositories.PeerRepository import PeerRepository
+                import hashlib
+                peer_id = hashlib.sha256(
+                    f"{data['ip_address']}:{data['port']}".encode()
+                ).hexdigest()[:16]
+                PeerRepository.update_peer_status(peer_id, "INACTIVE")
+                peer['status'] = 'INACTIVE'
+            
+            return jsonify({
+                'success': True,
+                'peer': peer,
+                'message': f"Peer registered with status {peer.get('status', 'PENDING')}"
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Peer registration failed'
+            }), 403
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/peers/status-update', methods=['POST'])
+def update_peer_status():
+    """
+    Update peer status when node activates (from active_node.py)
+    Updates public_key from node's keystore and sets status to ACTIVE
+    
+    If peer doesn't exist or status update fails, auto-registers the peer.
+    This ensures nodes can activate even if registration wasn't received.
+    
+    Request body:
+    {
+        "ip_address": "192.168.1.100",
+        "port": 5000,
+        "public_key": "04abc...",
+        "node_type": "validator"
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Peer activated - public_key saved and status set to ACTIVE"
     }
     """
     try:
@@ -84,27 +169,117 @@ def register_peer():
         
         service = get_network_service()
         
-        # Register peer
-        peer = service.register_peer(
+        # Try to update peer: find by IP:port, save public_key, set status to ACTIVE
+        success = service.update_peer_activation(
             ip_address=data['ip_address'],
             port=data['port'],
             public_key=data['public_key'],
-            node_type=data.get('node_type', 'observer')
+            node_type=data.get('node_type', 'validator')
         )
         
-        if peer:
+        if success:
             return jsonify({
                 'success': True,
-                'peer': peer
+                'message': 'Peer activated - public_key saved and status set to ACTIVE'
             }), 200
         else:
-            return jsonify({
-                'success': False,
-                'error': 'Peer not authorized or already exists'
-            }), 403
+            # If update failed, try to register the peer first
+            # This handles cases where registration message wasn't received
+            from app.repositories.PeerRepository import PeerRepository
+            import hashlib
+            
+            ip = data['ip_address']
+            port = data['port']
+            public_key = data['public_key']
+            node_type = data.get('node_type', 'validator')
+            
+            # Generate consistent peer_id
+            peer_id = hashlib.sha256(f"{ip}:{port}".encode()).hexdigest()[:16]
+            
+            # Register peer as ACTIVE directly (since it's sending status update, it must be activated)
+            peer = PeerRepository.update_peer_public_key_and_activate(
+                peer_id=peer_id,
+                ip_address=ip,
+                port=port,
+                public_key=public_key
+            )
+            
+            if peer:
+                return jsonify({
+                    'success': True,
+                    'message': 'Peer registered and activated - public_key saved and status set to ACTIVE'
+                }), 200
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Failed to register and activate peer'
+                }), 500
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/peers/activation', methods=['POST'])
+def receive_node_activation():
+    """
+    Receive node activation message from another node.
+    This endpoint implements the node activation protocol:
+    
+    Step 1 [Node A]: Node creates signed payload and broadcasts
+    Step 2 [Node B, C...]: Receive activation message and verify
+    - Verify authentication (signature verification)
+    - Check authorization (is peer authorized?)
+    - Update peer status (PENDING -> ACTIVE)
+    - Optionally create activation transaction for mempool
+    
+    Request body:
+    {
+        "type": "NODE_ACTIVATION",
+        "payload": {
+            "node_id": "04abc...",  // Public key
+            "ip": "192.168.1.100",
+            "port": 5000,
+            "timestamp": 1234567890,
+            "status": "ACTIVE"
+        },
+        "signature": "3045022100abc..."
+    }
+    
+    Response:
+    {
+        "success": true,
+        "message": "Peer status updated to ACTIVE",
+        "peer_id": "04abc123",
+        "action": "added|updated"
+    }
+    """
+    try:
+        from app.services.NodeActivationService import NodeActivationService
+        
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'Invalid request body'}), 400
+        
+        if data.get('type') != 'NODE_ACTIVATION':
+            return jsonify({'error': 'Invalid message type'}), 400
+        
+        # Process activation message
+        result = NodeActivationService.handle_activation_message(data)
+        
+        if result.get('success'):
+            return jsonify(result), 200
+        else:
+            status_code = 401 if result.get('step') == 'authentication' else \
+                         403 if result.get('step') == 'authorization' else 400
+            return jsonify(result), status_code
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e), 'step': 'error'}), 500
 
 
 @network_bp.route('/gossip/transaction', methods=['POST'])
@@ -306,12 +481,14 @@ def get_slot_info():
 def approve_peer(peer_id: str):
     """
     Approve a pending peer (MOET only)
-    Transitions peer from PENDING -> ACTIVE and adds to whitelist
+    Transitions peer from PENDING -> INACTIVE (waiting for node to activate)
+    
+    Request body: {} (empty)
     
     Response:
     {
         "success": true,
-        "message": "Peer approved successfully"
+        "message": "Peer approved and set to INACTIVE (awaiting activation)"
     }
     """
     try:
@@ -322,7 +499,7 @@ def approve_peer(peer_id: str):
         if success:
             return jsonify({
                 'success': True,
-                'message': 'Peer approved successfully'
+                'message': 'Peer approved and set to INACTIVE (awaiting node activation)'
             }), 200
         else:
             return jsonify({
@@ -385,6 +562,75 @@ def get_network_stats():
         service = get_network_service()
         stats = service.get_network_stats()
         return jsonify(stats), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/blocks/height', methods=['GET'])
+def get_chain_height():
+    """
+    Get current blockchain height (for chain sync protocol)
+    
+    Response:
+    {
+        "height": 105,
+        "latest_block_hash": "abc123..."
+    }
+    """
+    try:
+        blockchain = get_blockchain_instance()
+        height = len(blockchain.chain) - 1  # -1 because genesis is index 0
+        
+        latest_hash = ""
+        if len(blockchain.chain) > 0:
+            latest_hash = blockchain.get_last_block().block_hash
+        
+        return jsonify({
+            'height': height,
+            'latest_block_hash': latest_hash
+        }), 200
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@network_bp.route('/blocks/range', methods=['GET'])
+def get_blocks_for_sync():
+    """
+    Get blocks in a given index range with full data (for chain sync)
+    Returns full block data including transactions for P2P sync
+    
+    Query params:
+    - start: start block index (inclusive)
+    - end: end block index (inclusive)
+    
+    Response:
+    {
+        "blocks": [
+            { full block dict with transactions... },
+            ...
+        ]
+    }
+    """
+    try:
+        start_index = request.args.get('start', 0, type=int)
+        end_index = request.args.get('end', 100, type=int)
+        
+        # Limit range to prevent abuse
+        if end_index - start_index > 50:
+            end_index = start_index + 50
+        
+        blocks = BlockRepository.get_blocks_by_range(start_index, end_index)
+        
+        # Return full block data with transactions for sync
+        block_list = []
+        for b in blocks:
+            block_list.append(b.to_dict())
+        
+        return jsonify({
+            'blocks': block_list
+        }), 200
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500

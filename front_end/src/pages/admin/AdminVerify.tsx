@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { NFTService } from "@/services/nftService";
-import type { NFT, VerifyResult } from "@/services/nftService";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -62,7 +60,9 @@ export default function Verify() {
       toast.error("Có lỗi xảy ra khi truy vấn hệ thống");
     } finally {
       setLoading(false);
-    }
+      if (found?.status === "verified") toast.success("Bằng cấp hợp lệ!");
+      else if (!found) toast.error("Không tìm thấy bằng cấp!");
+    }, 1200);
   };
 
   const copyToken = () => {
@@ -104,7 +104,7 @@ export default function Verify() {
                 className="flex-1 font-mono text-sm"
               />
               <Button onClick={handleVerify} disabled={loading} className="gap-2 min-w-[120px]">
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                {loading ? <span className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full" /> : <Search className="h-4 w-4" />}
                 Xác thực
               </Button>
             </div>
@@ -129,6 +129,10 @@ export default function Verify() {
 
               {nft && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <div><p className="text-xs text-muted-foreground">Sinh viên</p><p className="text-sm font-medium text-foreground">{resolvedResult.name}</p></div>
+                  </div>
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
                     <GraduationCap className="h-4 w-4 text-muted-foreground shrink-0" />
                     <div>
@@ -192,6 +196,35 @@ export default function Verify() {
           </Card>
         </motion.div>
       )}
+
+      {/* Recent */}
+      <motion.div variants={item}>
+        <Card className="glass-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-lg">Lịch sử xác thực gần đây</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-border">
+              {recentVerifications.map((v, i) => {
+                const sd = statusDisplay[v.status as keyof typeof statusDisplay];
+                const Icon = sd.icon;
+                return (
+                  <div key={i} className="flex items-center justify-between px-6 py-3 hover:bg-secondary/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-4 w-4 ${sd.color}`} />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{v.name}</p>
+                        <p className="text-xs font-mono text-muted-foreground">{v.hash}</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{v.time}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

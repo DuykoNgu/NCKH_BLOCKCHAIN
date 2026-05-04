@@ -10,15 +10,9 @@ export const useAuth = () => {
   const isActive = localStorage.getItem("is_active") === "1";
 
   return {
-    isLoggedIn,
-    role,
-    fullName,
-    avatarUrl,
-    address,
-    isActive,
-    isAdmin: role === "admin" || role === "moet",
-    isValidator: role === "validator",
-    isUser: role === "client",
-    isPendingApproval: role === "validator" && !isActive,
+    ...context,
+    isAdmin: context.role === "admin" || context.role === "moet",
+    isValidator: context.role === "validator",
+    isUser: context.role === "client",
   };
 };

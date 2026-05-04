@@ -87,7 +87,7 @@ class NTPClient:
         if self.cached_offset is not None:
             time_since_sync = current_time - self.last_sync_time
             if time_since_sync < self.sync_interval:
-                print(f"✓ Using cached NTP offset: {self.cached_offset:.3f}s (synced {time_since_sync:.0f}s ago)")
+              #  print(f"✓ Using cached NTP offset: {self.cached_offset:.3f}s (synced {time_since_sync:.0f}s ago)")
                 return self.cached_offset
         
         # Need fresh sync
