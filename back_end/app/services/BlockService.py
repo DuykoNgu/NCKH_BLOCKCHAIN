@@ -22,17 +22,23 @@ class BlockService:
 
         tx_hashes = []
         for tx in transactions:
+            # CRITICAL FIX: Only hash the "transaction core" fields
+            # Exclude: block_id, tx_status, error_reason (these are metadata added after creation)
+            # This ensures merkle root stays consistent whether calculated at creation or at sync
+            tx_core = {
+                "tx_id": tx.tx_id,
+                "tx_hash": tx.tx_hash,
+                "sender_pubkey": tx.sender_pubkey,
+                "sender_address": tx.sender_address if tx.sender_address is not None else "system",
+                "recipient_address": tx.recipient_address,
+                "payload": tx.payload,
+                "signature": tx.signature,
+                "timestamp": tx.timestamp
+            }
+                
             # Chuẩn hoá dữ liệu để luôn đảm bảo tính nhất quán (Canonical JSON)
             # Loại bỏ các khoảng trắng mặc định, sắp xếp keys theo thứ tự Alphabet
-            tx_dict = tx.to_dict()
-            
-            # Đảm bảo các field rỗng thay vì bị None/null
-            if tx_dict.get('error_reason') is None:
-                tx_dict['error_reason'] = ""
-            if tx_dict.get('sender_address') is None:
-                tx_dict['sender_address'] = "system"
-                
-            canonical_json = json.dumps(tx_dict, sort_keys=True, separators=(',', ':'))
+            canonical_json = json.dumps(tx_core, sort_keys=True, separators=(',', ':'))
             tx_hashes.append(HashUtils.hash_sha256(canonical_json.encode()))
 
         while len(tx_hashes) > 1:
@@ -51,18 +57,27 @@ class BlockService:
     
     @staticmethod
     def get_signing_data(block: Block) -> bytes:
-        """Lấy data để ký block (không bao gồm signature)"""
-        # Convert transactions to serializable format
+        """Lấy data để ký block (không bao gồm signature)
+        
+        CRITICAL: Must use SAME transaction fields as calculate_merkle_root()
+        to ensure block_hash is consistent across nodes.
+        Excludes: block_id, tx_status, error_reason (metadata added after creation)
+        """
+        # Convert transactions to serializable format using CORE fields only
         tx_list = []
         for tx in block.transactions:
             if isinstance(tx, Transaction):
+                # ✅ Must match calculate_merkle_root() - use core fields only
                 tx_list.append({
                     "tx_id": tx.tx_id,
-                    "sender_address": tx.sender_address,
+                    "tx_hash": tx.tx_hash,
+                    "sender_pubkey": tx.sender_pubkey,
+                    "sender_address": tx.sender_address if tx.sender_address is not None else "system",
                     "recipient_address": tx.recipient_address,
                     "payload": tx.payload,
-                    "timestamp": tx.timestamp,
-                    "block_id": tx.block_id
+                    "signature": tx.signature,
+                    "timestamp": tx.timestamp
+                    # ✅ EXCLUDED: block_id, tx_status, error_reason
                 })
             else:
                 tx_list.append(tx)

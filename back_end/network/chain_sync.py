@@ -62,7 +62,7 @@ class ChainSync:
         Find the peer with the longest chain
         
         Returns:
-            Tuple of (peer, height) or None if no peers available
+            Tuple of (peer, height) or None if no peers available with longer chain
         """
         active_peers = self.peer_manager.get_active_peers()
         
@@ -71,22 +71,17 @@ class ChainSync:
             return None
         
         best_peer = None
+        best_height = self.get_local_height()
+        
         valid_peers = [(p, self.query_peer_height(p)) for p in active_peers]
         better_peers = [(p,h) for p,h in valid_peers if h is not None and h > self.get_local_height()]
         if better_peers:
             best_peer, best_height = max(better_peers, key=lambda x: x[1])
             print(f"Found peer {best_peer.ip_address}:{best_peer.port} with height {best_height}")
-        # best_height = self.get_local_height()
+            return (best_peer, best_height)
         
-        # for peer in active_peers:
-        #     height = self.query_peer_height(peer)
-        #     if height is not None and height > best_height:
-        #         best_peer = peer
-        #         best_height = height
-        #         print(f"  Found peer {peer.ip_address}:{peer.port} "
-        #               f"with height {height}")
-        
-        return (best_peer, best_height)
+        print("⚠ No peers with longer chain available")
+        return None
     
     
     def download_blocks(self, peer: Peer, start_index: int, end_index: int, 
@@ -144,6 +139,13 @@ class ChainSync:
         try:
             # Parse block
             block = Block.from_dict(block_data)
+            
+            # 0. Check if block already exists (skip duplicates)
+            if len(self.blockchain.chain) > 0:
+                local_height = len(self.blockchain.chain) - 1
+                if block.index <= local_height:
+                    print(f"⚠ Block #{block.index} already exists in chain (local height: {local_height})")
+                    return True  # Not an error, just already have this block
             
             # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):

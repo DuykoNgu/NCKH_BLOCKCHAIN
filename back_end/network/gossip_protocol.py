@@ -539,6 +539,12 @@ class GossipProtocol:
                     local_height = len(blockchain.chain) - 1
             except Exception:
                 local_height = len(blockchain.chain) - 1
+            
+           
+            if block.index <= local_height:
+                print(f"⚠ Block #{block.index} already exists in chain (local height: {local_height})")
+                return True  # Not an error, just already have this block
+            
             block_gap = block.index - local_height
             
             if block_gap > 1:
