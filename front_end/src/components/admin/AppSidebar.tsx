@@ -74,34 +74,37 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="z-20">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/20 flex items-center justify-center glow-effect shrink-0">
-            <Blocks className="h-5 w-5 text-primary" />
+    <Sidebar collapsible="icon" className="z-20 border-r border-primary/5 bg-background/50 backdrop-blur-xl">
+      <SidebarHeader className="p-6">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+            <Blocks className="h-6 w-6 text-primary-foreground" />
           </div>
           {!collapsed && (
-            <div>
-              <h2 className="font-display text-sm font-bold text-foreground">EduChain Vault</h2>
-              <p className="text-[10px] text-primary font-mono uppercase tracking-wider">
-                Role: {role || "Guest"}
-              </p>
+            <div className="min-w-0">
+              <h2 className="font-display text-base font-black text-foreground truncate tracking-tight">EduChain Vault</h2>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                <div className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+                <p className="text-[9px] text-primary font-black uppercase tracking-widest">
+                  {role || "Guest"}
+                </p>
+              </div>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="px-3">
         <SidebarGroup>
-          <SidebarGroupLabel>Tổng quan</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Tổng quan</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1">
               {menu.main.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} className="h-11 px-4 rounded-xl transition-all duration-300">
+                    <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -111,16 +114,16 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {menu.manage.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Quản lý</SidebarGroupLabel>
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Quản lý</SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="gap-1">
                 {menu.manage.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                      <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
-                        <item.icon className="h-4 w-4" />
-                        {!collapsed && <span>{item.title}</span>}
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} className="h-11 px-4 rounded-xl transition-all duration-300">
+                      <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -131,12 +134,19 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-4">
+      <SidebarFooter className="p-6">
         {!collapsed && (
-          <div className="glass-card rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse-glow" />
-              <span className="text-xs text-muted-foreground">EduChain P2P • Online</span>
+          <div className="relative overflow-hidden rounded-2xl bg-secondary/50 p-4 border border-border/50 group">
+            <div className="absolute -right-4 -bottom-4 h-12 w-12 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <div className="absolute inset-0 h-2 w-2 rounded-full bg-green-500 animate-ping opacity-75" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-foreground/70">Mạng lưới P2P</p>
+                <p className="text-[10px] text-muted-foreground">Sẵn sàng hoạt động</p>
+              </div>
             </div>
           </div>
         )}
@@ -144,10 +154,10 @@ export function AppSidebar() {
           variant="ghost"
           size="sm"
           onClick={logout}
-          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3"
+          className="w-full h-11 justify-start px-4 mt-4 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3 transition-colors"
         >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span>Đăng xuất</span>}
+          <LogOut className="h-5 w-5" />
+          {!collapsed && <span className="font-semibold">Đăng xuất</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>

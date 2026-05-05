@@ -67,6 +67,20 @@ class NetworkServiceClass {
     );
     return response.data;
   }
+
+  async registerPeer(data: {
+    ip_address: string;
+    port: number;
+    public_key: string;
+    node_type: string;
+    university_name: string;
+    university_code: string;
+    website: string;
+    description: string;
+  }): Promise<any> {
+    const response = await api.post(NETWORK_SERVER.REGISTER_PEER, data);
+    return response.data;
+  }
 }
 
 export const NetworkService = new NetworkServiceClass();

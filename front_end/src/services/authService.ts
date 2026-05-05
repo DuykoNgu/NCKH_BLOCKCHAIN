@@ -213,3 +213,11 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
 export const registerSchool = async (password: string, schoolName: string, ..._args: any[]) => {
   return createWallet(password, schoolName);
 };
+export const registerWallet = async (address: string, publicKey: string, role: string = 'client') => {
+  const response = await api.post(AUTH_SERVER.WALLET_REGISTER, {
+    address,
+    public_key: publicKey,
+    role,
+  });
+  return response.data;
+};

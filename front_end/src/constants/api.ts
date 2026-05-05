@@ -23,6 +23,7 @@ export const NFT_SERVER = {
   VERIFY: '/nft/:tokenId/verify',
   REVOKE: '/nft/:tokenId/revoke',
   VERIFY_BATCH: '/nft/verify/batch',
+  BATCH_UPLOAD: '/nft/batch/upload',
   GET_METADATA_HASH: '/nft/:tokenId/metadata-hash',
 } as const;
 

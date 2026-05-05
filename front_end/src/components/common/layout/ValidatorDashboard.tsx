@@ -7,9 +7,9 @@ import {
   WifiOff, Clock, CheckCircle
 } from 'lucide-react';
 import { NETWORK_SERVER } from '@/constants/api';
-import { WalletIn4 } from '../home_common/WalletIn4';
-import { TransactionList } from '../home_common/TransactionList';
-import { BlockchainInfoCard } from '../home_common/BlockchainInfoCard';
+import { WalletInfo as WalletIn4 } from '../wallet/WalletInfo';
+import { TransactionList } from '../transaction/TransactionList';
+import { NetworkStatus } from '../wallet/NetworkStatus';
 import { Header } from './Header';
 
 interface NetworkStats {
@@ -158,8 +158,8 @@ export const ValidatorDashboard = ({ address, onDisconnect }: ValidatorDashboard
     setLoading(true);
     try {
       const [statsRes, slotRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}${NETWORK_SERVER.GET_STATS}`),
-        fetch(`${import.meta.env.VITE_API_URL}${NETWORK_SERVER.GET_SLOT}?total_validators=3`),
+        fetch(`${import.meta.env.VITE_API_URL}${NETWORK_SERVER.STATS}`),
+        fetch(`${import.meta.env.VITE_API_URL}${NETWORK_SERVER.SLOT_INFO}?total_validators=3`),
       ]);
       if (statsRes.ok) setStats(await statsRes.json());
       if (slotRes.ok) setSlot(await slotRes.json());
@@ -216,7 +216,7 @@ export const ValidatorDashboard = ({ address, onDisconnect }: ValidatorDashboard
           <div className="lg:col-span-1 space-y-6">
             <WalletIn4 address={address} onDisconnect={onDisconnect} />
             <NodeStatusCard stats={stats} slot={slot} loading={loading} />
-            <BlockchainInfoCard />
+            <NetworkStatus />
           </div>
 
           {/* Right column */}

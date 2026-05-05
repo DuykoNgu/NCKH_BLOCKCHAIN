@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Activity, Search, Filter, ExternalLink, ArrowUpRight, ArrowDownLeft, RefreshCw, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,73 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TransactionService } from "@/services/transactionService";
-import type { TransactionInfo } from "@/services/transactionService";
+import { useAdminTransactions, truncateHash, formatTimeAgo, getOpLabel } from "@/hooks/useAdminTransactions";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-const typeIcons: Record<string, typeof ArrowUpRight> = {
+const typeIcons: Record<string, any> = {
   "mint_nft": ArrowUpRight,
   "verify": RefreshCw,
   "transfer": ArrowDownLeft,
   "revoke": ArrowDownLeft,
 };
 
-function truncateHash(hash: string, start = 8, end = 6): string {
-  if (!hash || hash.length <= start + end) return hash || '-';
-  return `${hash.slice(0, start)}...${hash.slice(-end)}`;
-}
-
-function formatTimeAgo(timestamp: number): string {
-  const now = Date.now() / 1000;
-  const diff = now - timestamp;
-  if (diff < 60) return `${Math.floor(diff)} giây trước`;
-  if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-  return `${Math.floor(diff / 86400)} ngày trước`;
-}
-
-function getOpLabel(op: string): string {
-  const labels: Record<string, string> = {
-    mint_nft: "Mint NFT",
-    verify: "Xác thực",
-    transfer: "Chuyển NFT",
-    revoke: "Thu hồi",
-  };
-  return labels[op] || op || "Giao dịch";
-}
-
 export default function Transactions() {
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<TransactionInfo[]>([]);
-
-  useEffect(() => {
-    const fetchTx = async () => {
-      setLoading(true);
-      try {
-        const res = await TransactionService.getAllTransactions();
-        setTransactions(res.transactions || []);
-      } catch (err) {
-        console.error("Failed to fetch transactions:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTx();
-  }, []);
-
-  const filtered = transactions.filter((tx) => {
-    const opType = tx.payload?.op || "";
-    const matchSearch =
-      (tx.tx_hash || "").toLowerCase().includes(search.toLowerCase()) ||
-      (tx.tx_id || "").toLowerCase().includes(search.toLowerCase()) ||
-      opType.toLowerCase().includes(search.toLowerCase());
-    const matchType = filterType === "all" || opType === filterType;
-    return matchSearch && matchType;
-  });
+  const {
+    search,
+    setSearch,
+    filterType,
+    setFilterType,
+    loading,
+    transactions,
+    filtered,
+    stats
+  } = useAdminTransactions();
 
   if (loading) {
     return (
@@ -97,7 +52,7 @@ export default function Transactions() {
               <Activity className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{transactions.length}</p>
+              <p className="text-2xl font-bold font-display text-foreground">{stats.total}</p>
               <p className="text-xs text-muted-foreground">Tổng giao dịch</p>
             </div>
           </CardContent>
@@ -108,7 +63,7 @@ export default function Transactions() {
               <ArrowUpRight className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{transactions.filter(t => t.payload?.op === "mint_nft").length}</p>
+              <p className="text-2xl font-bold font-display text-foreground">{stats.mintCount}</p>
               <p className="text-xs text-muted-foreground">Mint NFT</p>
             </div>
           </CardContent>
@@ -119,7 +74,7 @@ export default function Transactions() {
               <RefreshCw className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-foreground">{transactions.filter(t => t.payload?.op !== "mint_nft").length}</p>
+              <p className="text-2xl font-bold font-display text-foreground">{stats.otherCount}</p>
               <p className="text-xs text-muted-foreground">Giao dịch khác</p>
             </div>
           </CardContent>

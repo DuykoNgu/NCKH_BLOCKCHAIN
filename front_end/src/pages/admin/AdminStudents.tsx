@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users, Search, UserCheck, GraduationCap, Eye, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,78 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AccountService } from "@/services/accountService";
-import { NFTService } from "@/services/nftService";
-import type { AccountInfo } from "@/services/accountService";
+import { useAdminStudents, truncateAddress } from "@/hooks/useAdminStudents";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-function truncateAddress(addr: string): string {
-  if (!addr || addr.length <= 14) return addr || '-';
-  return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
-}
-
-interface StudentDisplay {
-  address: string;
-  name: string;
-  org_name: string;
-  role: string;
-  is_active: boolean;
-  nftCount: number;
-}
-
 export default function Students() {
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState<StudentDisplay[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const accountRes = await AccountService.getAllAccounts();
-        const accounts = accountRes.accounts || [];
-
-        // For each account, fetch their NFT count
-        const studentsWithNfts = await Promise.all(
-          accounts.map(async (acc: AccountInfo) => {
-            let nftCount = 0;
-            try {
-              const nftRes = await NFTService.getUserNFTs(acc.address);
-              nftCount = nftRes.total || 0;
-            } catch {
-              // Ignore errors for individual NFT fetches
-            }
-            return {
-              address: acc.address,
-              name: acc.full_name || truncateAddress(acc.address),
-              org_name: acc.org_name || "-",
-              role: acc.role,
-              is_active: acc.is_active,
-              nftCount,
-            };
-          })
-        );
-
-        setStudents(studentsWithNfts);
-      } catch (err) {
-        console.error("Failed to fetch accounts:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
-  const filtered = students.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.address.toLowerCase().includes(search.toLowerCase()) ||
-    s.org_name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const totalNfts = students.reduce((sum, s) => sum + s.nftCount, 0);
-  const activeCount = students.filter((s) => s.is_active).length;
+  const {
+    search,
+    setSearch,
+    loading,
+    students,
+    filtered,
+    totalNfts,
+    activeCount
+  } = useAdminStudents();
 
   if (loading) {
     return (

@@ -235,7 +235,7 @@ function TrongDongDisc() {
 
 export default memo(function Scene3D() {
   return (
-    <div className="absolute inset-0 pointer-events-auto" style={{ zIndex: 0 }}>
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
       <Canvas
         camera={{ position: [0, 0, 6], fov: 42 }}
         gl={{ alpha: true, antialias: true, powerPreference: 'high-performance' }}
