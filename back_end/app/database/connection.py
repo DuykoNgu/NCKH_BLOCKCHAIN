@@ -1,6 +1,10 @@
 import sqlite3
 import os
+import threading
 from app.database import database
+
+# Global lock for serializing database writes
+_db_write_lock = threading.RLock()
 
 def get_connection():
     """Get database connection with proper timeout and isolation level"""
@@ -8,6 +12,8 @@ def get_connection():
     # Set WAL mode for better concurrency
     conn.execute('PRAGMA journal_mode=WAL')
     conn.execute('PRAGMA busy_timeout=60000')  # 60 second busy timeout
+    conn.execute('PRAGMA synchronous=NORMAL')  # Balance safety and performance
+    conn.execute('PRAGMA cache_size=10000')    # Increase cache
     conn.execute('PRAGMA foreign_keys=ON')
     return conn
 
@@ -18,3 +24,18 @@ def close_connection(conn):
             conn.close()
         except Exception:
             pass
+
+def get_write_lock():
+    """Get the global write lock for serializing database writes"""
+    return _db_write_lock
+
+def acquire_write_lock():
+    """Acquire the global write lock (blocking)"""
+    _db_write_lock.acquire()
+
+def release_write_lock():
+    """Release the global write lock"""
+    try:
+        _db_write_lock.release()
+    except RuntimeError:
+        pass  # Lock was not acquired

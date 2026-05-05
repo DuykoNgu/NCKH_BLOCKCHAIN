@@ -1,6 +1,7 @@
 """AccountRepository - Data access layer for account operations"""
 from typing import Optional, List
-from app.database.connection import get_connection
+import time
+from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.models.Account import Account
 from app.utils.logger import get_logger
 
@@ -11,35 +12,57 @@ class AccountRepository:
     """Repository for account database operations"""
 
     @staticmethod
-    def create_account(account: Account) -> bool:
-        """Create a new account in database"""
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            
-            # Convert role enum to string value
-            role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
-            
-            cursor.execute('''
-                INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (account.public_key, account.address, role_value, account.org_name, 
-                  account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.created_at))
-            conn.commit()
-            
-            # Check if insert was successful (rowcount > 0) or skipped (duplicate)
-            inserted = cursor.rowcount > 0
-            conn.close()
-            
-            if inserted:
-                logger.info(f"✓ Account created: {account.address} (role={role_value})")
-                return True
-            else:
-                logger.warning(f"⚠ Account not created (may already exist): {account.address}")
-                return False
-        except Exception as e:
-            logger.error(f"✗ Error creating account {account.address}: {e}")
-            return False
+    def create_account(account: Account, max_retries: int = 3) -> bool:
+        """Create a new account in database
+        
+        Uses global write lock to serialize database writes and prevent lock contention
+        """
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            try:
+                # Acquire global write lock
+                acquire_write_lock()
+                
+                try:
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Convert role enum to string value
+                    role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
+                    
+                    cursor.execute('''
+                        INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, is_active, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (account.public_key, account.address, role_value, account.org_name, 
+                          account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.created_at))
+                    conn.commit()
+                    
+                    # Check if insert was successful (rowcount > 0) or skipped (duplicate)
+                    inserted = cursor.rowcount > 0
+                    conn.close()
+                    
+                    if inserted:
+                        logger.info(f"✓ Account created: {account.address} (role={role_value})")
+                        return True
+                    else:
+                        logger.warning(f"⚠ Account not created (may already exist): {account.address}")
+                        return False
+                finally:
+                    release_write_lock()
+                    
+            except Exception as e:
+                release_write_lock()
+                if "locked" in str(e).lower() and attempt < max_retries - 1:
+                    logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for account {account.address}")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                else:
+                    logger.error(f"✗ Error creating account {account.address}: {e}")
+                    return False
+        
+        return False
         
     @staticmethod
     def get_account_by_address(address: str) -> Optional[Account]:

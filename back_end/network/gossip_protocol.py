@@ -503,19 +503,27 @@ class GossipProtocol:
         Triggers sync if block gap > 1 is detected
         """
         block_hash = block_data.get('block_hash')
+        block_id = block_data.get('block_id')
         block_index = block_data.get('index', 0)
         
-        if not block_hash:
-            print("✗ Block hash missing")
+        if not block_id:
+            print("✗ Block ID missing")
             return False
         
-        # Check if we've already seen this block
-        if block_hash in self.known_blocks:
-            print(f"⚠ Block {block_hash[:8]}... already known")
+        # Check if we've already seen this block by BOTH hash and ID
+        # Use block_id as primary key since hash might vary during transmission
+        if block_id in self.known_blocks:
+            print(f"⚠ Block {block_id} already processed")
             return False
         
-        # Mark as known
-        self.known_blocks.add(block_hash)
+        if block_hash and block_hash in self.known_blocks:
+            print(f"⚠ Block hash {block_hash[:8]}... already known")
+            return False
+        
+        # Mark as known by both block_id and hash
+        self.known_blocks.add(block_id)
+        if block_hash:
+            self.known_blocks.add(block_hash)
         
         # ✅ VERIFY AND COMMIT BLOCK
         from app.models.Block import Block
@@ -581,10 +589,26 @@ class GossipProtocol:
                 print(f"✗ Merkle root mismatch for block {block_hash[:8]}...")
                 return False
             
-            # 4. Verify block chain continuity
+            # 4. CRITICAL FIX: Ensure block_hash is calculated for received blocks
+            # When blocks come via gossip, block_hash might not be set yet
+            # We need to calculate it BEFORE validating chain continuity
+            if not block.block_hash or block.block_hash == "":
+                block.block_hash = BlockService.calculate_hash(block)
+                print(f"→ [GOSSIP] Calculated block_hash for {block_hash[:8]}... (was empty)")
+            
+            # 5. Verify block chain continuity
             if len(blockchain.chain) > 0:
-                if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
+                last_block = blockchain.get_last_block()
+                
+                # Debug: Show what we're validating
+                print(f"[DEBUG] Validating block continuity:")
+                print(f"  New block index: {block.index}, prev_hash: {block.block_header.pre_hash[:16]}...")
+                print(f"  Last block index: {last_block.index}, hash: {last_block.block_hash[:16]}...")
+                
+                if not BlockChainService.is_valid_new_block(blockchain, block, last_block):
                     print(f"✗ Block {block_hash[:8]}... validation failed")
+                    print(f"  Index mismatch: {block.index} vs {last_block.index + 1}")
+                    print(f"  Hash mismatch: {block.block_header.pre_hash[:16]}... vs {last_block.block_hash[:16]}...")
                     return False
             
             # 5. 🔥 CRITICAL FIX: EXECUTE transactions to update blockchain state

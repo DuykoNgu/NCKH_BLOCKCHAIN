@@ -2,7 +2,7 @@
 import time
 import json
 from typing import Optional, List, Dict
-from app.database.connection import get_connection
+from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -15,35 +15,46 @@ class PeerRepository:
     def add_or_update_peer(peer_id: str, ip_address: str, port: int, 
                           public_key: str, node_type: str = "validator", 
                           status: str = "PENDING") -> bool:
-        """Add or update a peer in database"""
+        """Add or update a peer in database
+        
+        Uses global write lock to serialize database writes and prevent lock contention
+        """
         max_retries = 3
-        retry_delay = 0.5
+        retry_delay = 0.1
         
         for attempt in range(max_retries):
             try:
-                conn = get_connection()
-                cursor = conn.cursor()
+                # Acquire global write lock
+                acquire_write_lock()
                 
-                # Try to update first
-                cursor.execute('''
-                    UPDATE peers 
-                    SET ip_address = ?, port = ?, public_key = ?, 
-                        node_type = ?, status = ?, last_seen = ?
-                    WHERE peer_id = ?
-                ''', (ip_address, port, public_key, node_type, status, time.time(), peer_id))
-                
-                if cursor.rowcount == 0:
-                    # If no rows updated, insert new peer
+                try:
+                    conn = get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Try to update first
                     cursor.execute('''
-                        INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (peer_id, ip_address, port, public_key, node_type, status, time.time(), time.time()))
-                
-                conn.commit()
-                conn.close()
-                logger.info(f"Peer {peer_id} added/updated with status {status}")
-                return True
+                        UPDATE peers 
+                        SET ip_address = ?, port = ?, public_key = ?, 
+                            node_type = ?, status = ?, last_seen = ?
+                        WHERE peer_id = ?
+                    ''', (ip_address, port, public_key, node_type, status, time.time(), peer_id))
+                    
+                    if cursor.rowcount == 0:
+                        # If no rows updated, insert new peer
+                        cursor.execute('''
+                            INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (peer_id, ip_address, port, public_key, node_type, status, time.time(), time.time()))
+                    
+                    conn.commit()
+                    conn.close()
+                    logger.info(f"Peer {peer_id} added/updated with status {status}")
+                    return True
+                finally:
+                    release_write_lock()
+                    
             except Exception as e:
+                release_write_lock()
                 if "locked" in str(e).lower() and attempt < max_retries - 1:
                     logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for peer {peer_id[:16]}...")
                     time.sleep(retry_delay)

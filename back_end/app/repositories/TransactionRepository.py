@@ -1,6 +1,6 @@
 """TransactionRepository - Data access layer for Transaction operations"""
 from typing import Optional, List
-from app.database.connection import get_connection
+from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.models.Transaction import Transaction
 from app.utils.logger import get_logger
 from json import dumps
@@ -17,60 +17,80 @@ class TransactionRepository:
     """Repository for Transaction database operations"""
     
     @staticmethod
-    def create_transaction(transaction: Transaction, conn=None) -> bool:
+    def create_transaction(transaction: Transaction, conn=None, max_retries=3) -> bool:
         """Tạo transaction mới với retry logic, bao gồm status tracking
         
         Args:
             transaction: Transaction object to create
             conn: Optional existing database connection. If provided, uses it instead of creating new one.
                  Caller is responsible for commit/close.
+            max_retries: Maximum number of retries on database lock
         """
-        max_retries = 3
-        retry_delay = 0.5
+        retry_delay = 0.1
         should_close = conn is None  # Only close if we created the connection
+        use_lock = conn is None  # Only use lock if we're creating a new connection
         
         for attempt in range(max_retries):
             try:
-                if conn is None:
-                    conn = get_connection()
-                cursor = conn.cursor()
+                # Only acquire lock if creating new connection
+                if use_lock:
+                    acquire_write_lock()
                 
-                # Handle NULL sender_address for system transactions (both lowercase and uppercase)
-                sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
+                try:
+                    if conn is None:
+                        conn = get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Handle NULL sender_address for system transactions (both lowercase and uppercase)
+                    sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
+                    
+                    # Convert empty string to None for FK constraints
+                    block_id = transaction.block_id if transaction.block_id else None
                 
-                # Convert empty string to None for FK constraints
-                block_id = transaction.block_id if transaction.block_id else None
-            
-                
-                cursor.execute('''
-                    INSERT OR IGNORE INTO transactions 
-                    (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    transaction.tx_id,
-                    transaction.tx_hash, 
-                    transaction.sender_pubkey,
-                    sender_addr,
-                    transaction.recipient_address, 
-                    dumps(transaction.payload), 
-                    transaction.signature,
-                    transaction.timestamp, 
-                    block_id,
-                    transaction.tx_status,
-                    transaction.error_reason
-                ))
-                
-                if should_close:
-                    conn.commit()   
-                    conn.close()
-                logger.info(f"✓ Transaction created: {transaction.tx_hash[:16]}...")
-                return True
+                    
+                    cursor.execute('''
+                        INSERT OR IGNORE INTO transactions 
+                        (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        transaction.tx_id,
+                        transaction.tx_hash, 
+                        transaction.sender_pubkey,
+                        sender_addr,
+                        transaction.recipient_address, 
+                        dumps(transaction.payload), 
+                        transaction.signature,
+                        transaction.timestamp, 
+                        block_id,
+                        transaction.tx_status,
+                        transaction.error_reason
+                    ))
+                    
+                    if should_close:
+                        conn.commit()   
+                        conn.close()
+                    logger.info(f"✓ Transaction created: {transaction.tx_hash[:16]}...")
+                    return True
+                finally:
+                    if use_lock:
+                        release_write_lock()
+                        
             except Exception as e:
+                if use_lock:
+                    release_write_lock()
+                    
                 if "locked" in str(e).lower() and attempt < max_retries - 1:
                     # Retry on database lock
                     logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
                     time.sleep(retry_delay)
                     retry_delay *= 2
+                    # Reset connection on retry
+                    if should_close and conn:
+                        try:
+                            conn.close()
+                        except:
+                            pass
+                        conn = None
                     continue
                 
                 # Detailed FK constraint error logging

@@ -58,6 +58,13 @@ class ChainMonitor:
         
         # Monitoring state
         self.peer_block_status: Dict[str, PeerBlockStatus] = {}
+        
+        # Sync failure tracking - prevent infinite retry loops
+        self.last_sync_attempt_time = 0
+        self.failed_sync_count = 0
+        self.last_gap_state = (0, 0)  # (local_height, remote_height) to detect changes
+        self.max_consecutive_failed_syncs = 5
+        self.sync_cooldown_multiplier = 2  # Exponential backoff
         self.is_running = False
         self.monitor_thread = None
         self.last_check_time = 0
@@ -312,27 +319,59 @@ class ChainMonitor:
     
     def _trigger_auto_sync(self) -> int:
         """
-        Trigger automatic chain synchronization
+        Trigger automatic chain synchronization with safety checks
+        
+        Implements exponential backoff to prevent infinite retry loops:
+        - Tracks failed sync attempts
+        - Enforces minimum cooldown between syncs
+        - Gives up after max consecutive failures
         
         Returns:
             Number of blocks synced
         """
-        print(f"→ [ChainMonitor] Triggering automatic chain sync...")
+        current_time = time.time()
+        gap_state = (self.local_height, self.max_height)
+        
+        # Check if gap state changed (new block received) - reset failure count
+        if gap_state != self.last_gap_state:
+            print(f"[ChainMonitor] Gap state changed: {self.last_gap_state} → {gap_state}, resetting sync attempts")
+            self.failed_sync_count = 0
+            self.last_gap_state = gap_state
+        
+        # Safety: Check if we're in too many failed syncs
+        if self.failed_sync_count >= self.max_consecutive_failed_syncs:
+            print(f"⚠️  [ChainMonitor] Too many consecutive failed syncs ({self.failed_sync_count})")
+            print(f"   Giving up on auto-sync for now (will retry after new block arrives)")
+            return 0
+        
+        # Safety: Enforce minimum cooldown between sync attempts
+        time_since_last_sync = current_time - self.last_sync_attempt_time
+        min_cooldown = 5 * (self.sync_cooldown_multiplier ** self.failed_sync_count)  # Exponential backoff
+        
+        if self.last_sync_attempt_time > 0 and time_since_last_sync < min_cooldown:
+            print(f"⚠️  [ChainMonitor] Sync cooldown active ({time_since_last_sync:.1f}s / {min_cooldown}s)")
+            return 0
+        
+        print(f"→ [ChainMonitor] Triggering automatic chain sync (attempt #{self.failed_sync_count + 1})...")
         
         try:
+            self.last_sync_attempt_time = current_time
             chain_sync = ChainSync(self.peer_manager, self.blockchain)
             blocks_synced = chain_sync.sync()
             
             if blocks_synced > 0:
                 print(f"✅ [ChainMonitor] Auto-sync completed: {blocks_synced} blocks synced")
+                self.failed_sync_count = 0  # Reset on success
                 self.get_local_height()  # Update local height
                 return blocks_synced
             else:
                 print(f"⚠️  [ChainMonitor] Auto-sync found no blocks to sync")
+                self.failed_sync_count += 1
                 return 0
         
         except Exception as e:
             print(f"✗ [ChainMonitor] Auto-sync failed: {e}")
+            self.failed_sync_count += 1
             import traceback
             traceback.print_exc()
             return 0
