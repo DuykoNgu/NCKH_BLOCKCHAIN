@@ -65,14 +65,16 @@ export async function signDataDER(data: string | Uint8Array, privateKey: Uint8Ar
   const s = sigBytes.slice(32, 64);
   
   const prepare = (bytes: Uint8Array) => {
-    let hex = bytesToHex(bytes);
-    // Remove leading zeros
-    hex = hex.replace(/^0+/, '');
-    if (hex === '') hex = '00';
-    // If first bit is 1, prepend 00
-    if (parseInt(hex[0], 16) >= 8) hex = '00' + hex;
-    // Ensure even length
-    if (hex.length % 2 !== 0) hex = '0' + hex;
+    // Find first non-zero byte
+    let i = 0;
+    while (i < bytes.length - 1 && bytes[i] === 0) i++;
+    const slice = bytes.slice(i);
+    
+    let hex = bytesToHex(slice);
+    // If MSB is set, prepend 00 for DER positive integer encoding
+    if (slice[0] >= 128) {
+      hex = '00' + hex;
+    }
     return hex;
   };
   
