@@ -3,6 +3,8 @@ import { AppSidebar } from "@/components/admin/AppSidebar";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Outlet } from "react-router-dom";
+import { Suspense } from "react";
+import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
 export default function Layout() {
   return (
@@ -51,7 +53,9 @@ export default function Layout() {
             </div>
           </header>
           <main className="flex-1 p-6 sm:p-10 overflow-auto">
-            <Outlet />
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <Outlet />
+            </Suspense>
           </main>
         </div>
       </div>

@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Network, Server, Activity, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi, Loader2 } from "lucide-react";
+import { Network, Server, Activity, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAdminNetwork } from "@/hooks/useAdminNetwork";
+import { NetworkPageSkeleton } from "@/components/admin/AdminSkeletons";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
@@ -24,14 +25,7 @@ export default function NetworkPage() {
     networkStatsDisplay
   } = useAdminNetwork();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Đang tải thông tin mạng...</span>
-      </div>
-    );
-  }
+  if (loading) return <NetworkPageSkeleton />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { KeyRound, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { KeyRound, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/common/PasswordInput';
 
 import type { WalletData } from '@/types/auth';
 import { generateWallet } from '@/utils/walletGenerator';
@@ -15,7 +14,6 @@ interface RegisterStep1Props {
 const RegisterStep1: React.FC<RegisterStep1Props> = ({ onCreate, isLoading }) => {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -56,40 +54,23 @@ const RegisterStep1: React.FC<RegisterStep1Props> = ({ onCreate, isLoading }) =>
       </div>
 
       <div className="space-y-4">
-        <div className="space-y-2">
-          <Label>Mật khẩu bảo vệ ví</Label>
-          <div className="relative">
-            <Input
-              type={showPw ? 'text' : 'password'}
-              placeholder="Tối thiểu 8 ký tự"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw(!showPw)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
+        <PasswordInput
+          label="Mật khẩu bảo vệ ví"
+          placeholder="Tối thiểu 8 ký tự"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+        />
 
-        <div className="space-y-2">
-          <Label>Xác nhận mật khẩu</Label>
-          <Input
-            type="password"
-            placeholder="Nhập lại mật khẩu"
-            value={confirm}
-            onChange={e => setConfirm(e.target.value)}
-          />
-        </div>
-
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <PasswordInput
+          label="Xác nhận mật khẩu"
+          placeholder="Nhập lại mật khẩu"
+          value={confirm}
+          onChange={e => setConfirm(e.target.value)}
+          error={error}
+        />
       </div>
 
-      <Button className="w-full" onClick={handleCreate} disabled={isBtnLoading}>
+      <Button className="w-full h-11" onClick={handleCreate} disabled={isBtnLoading}>
         {isBtnLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <KeyRound className="w-4 h-4 mr-2" />}
         Tạo ví Node
       </Button>
