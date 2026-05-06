@@ -7,8 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminDegrees } from "@/hooks/useAdminDegrees";
-import { TablePageSkeleton } from "@/components/admin/AdminSkeletons";
+import { useAdminDegrees } from "@/hooks";
 import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
 import { motion } from "framer-motion";
 
@@ -24,7 +23,7 @@ export default function Degrees() {
     loading, nfts, degrees, filtered, handleMint
   } = useAdminDegrees();
 
-  if (loading) return <TablePageSkeleton />;
+  const isInitialLoading = loading && nfts.length === 0;
 
   return (
     <AdminPageContainer>
@@ -60,9 +59,9 @@ export default function Degrees() {
       </AdminPageHeader>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AdminStatCard label="Tổng NFT" value={nfts.length} icon={GraduationCap} />
-        <AdminStatCard label="Đã xác thực" value={degrees.filter(d => d.is_valid).length} icon={CheckCircle2} iconColor="text-green-400" bgColor="bg-green-400/20" />
-        <AdminStatCard label="Đã thu hồi" value={degrees.filter(d => !d.is_valid).length} icon={XCircle} iconColor="text-destructive" bgColor="bg-destructive/20" />
+        <AdminStatCard label="Tổng NFT" value={isInitialLoading ? "..." : nfts.length} icon={GraduationCap} />
+        <AdminStatCard label="Đã xác thực" value={isInitialLoading ? "..." : degrees.filter(d => d.is_valid).length} icon={CheckCircle2} iconColor="text-green-400" bgColor="bg-green-400/20" />
+        <AdminStatCard label="Đã thu hồi" value={isInitialLoading ? "..." : degrees.filter(d => !d.is_valid).length} icon={XCircle} iconColor="text-destructive" bgColor="bg-destructive/20" />
       </motion.div>
 
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3">
@@ -93,7 +92,18 @@ export default function Degrees() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isInitialLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-4 w-32 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-4 w-40 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><div className="h-4 w-32 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell className="hidden sm:table-cell"><div className="h-4 w-20 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-6 w-24 bg-secondary animate-pulse rounded-full" /></TableCell>
+                      <TableCell className="text-right"><div className="h-8 w-16 bg-secondary animate-pulse rounded ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Không tìm thấy kết quả</TableCell></TableRow>
                 ) : (
                   filtered.map((deg) => {

@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ShieldCheck, Fingerprint, Globe, Award } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/hooks/useAuth";
-import { NFTService } from "@/services/nftService";
+import { useAuth, useAllNFTs, useUserNFTs } from "@/hooks";
 
 const container = {
   hidden: { opacity: 0 },
@@ -22,34 +21,30 @@ const item = {
 
 export const DashboardStats = () => {
   const { isUser, isValidator, isAdmin, fullName, address } = useAuth();
-  const [nftCount, setNftCount] = useState<number | null>(null);
+  
+  const allNFTsQuery = useAllNFTs();
+  const userNFTsQuery = useUserNFTs(address || "");
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        if (!address) return;
+  const nftCount = useMemo(() => {
+    if (isUser) {
+      return userNFTsQuery.data?.total || userNFTsQuery.data?.nfts?.length || 0;
+    }
+    
+    const allNfts = allNFTsQuery.data?.nfts || [];
+    if (isAdmin) {
+      return allNFTsQuery.data?.total || allNfts.length;
+    }
+    
+    if (isValidator) {
+      return allNfts.filter(
+        (n) => n.metadata?.institution_address?.toLowerCase() === address?.toLowerCase()
+      ).length;
+    }
+    
+    return 0;
+  }, [isUser, isAdmin, isValidator, allNFTsQuery.data, userNFTsQuery.data, address]);
 
-        if (isUser) {
-          const res = await NFTService.getUserNFTs(address);
-          setNftCount(res.total || res.nfts?.length || 0);
-        } else {
-          const res = await NFTService.getAllNFTs();
-          if (isAdmin) {
-            setNftCount(res.total || res.nfts?.length || 0);
-          } else if (isValidator) {
-            const owned = (res.nfts || []).filter(
-              (n) => n.metadata?.institution_address?.toLowerCase() === address.toLowerCase()
-            );
-            setNftCount(owned.length);
-          }
-        }
-      } catch (e) {
-        console.error("Failed to fetch dashboard stats", e);
-      }
-    };
-
-    fetchStats();
-  }, [isUser, isValidator, isAdmin, address]);
+  const isLoading = isUser ? userNFTsQuery.isLoading : allNFTsQuery.isLoading;
 
   return (
     <motion.div
@@ -162,7 +157,7 @@ export const DashboardStats = () => {
                   : "Bằng cấp đã cấp phát"}
               </p>
               <h4 className="text-xl font-bold font-display text-foreground">
-                {nftCount === null ? "..." : `${nftCount} văn bằng`}
+                {isLoading ? "..." : `${nftCount} văn bằng`}
               </h4>
             </div>
           </CardContent>

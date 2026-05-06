@@ -1,7 +1,6 @@
 import { Award, CheckCircle, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useState, useEffect } from 'react';
-import { TransactionService } from '@/services/transactionService';
+import { useAuth, useAllTransactions, useUserTransactions } from '@/hooks';
+import { useMemo } from 'react';
 
 interface Activity {
   id: string;
@@ -41,43 +40,27 @@ const getTypeByOp = (op: string): Activity['type'] => {
 
 export const TransactionList = () => {
   const { address, isAdmin, isValidator } = useAuth();
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [loading, setLoading] = useState(true);
   
+  const allTxQuery = useAllTransactions();
+  const userTxQuery = useUserTransactions(address || "");
+  
+  const activeQuery = (isAdmin || isValidator) ? allTxQuery : userTxQuery;
+  const { data, isLoading } = activeQuery;
+
+  const activities = useMemo(() => {
+    if (!data?.success || !data?.transactions) return [];
+    
+    return data.transactions.map((tx: any) => ({
+      id: tx.tx_hash,
+      type: getTypeByOp(tx.payload?.op),
+      title: getTitleByType(tx.payload),
+      address: tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4),
+      time: formatDistanceToNow(tx.timestamp),
+      status: 'completed'
+    })).slice(0, 5);
+  }, [data]);
+
   const title = (isAdmin || isValidator) ? "Hoạt động mạng lưới" : "Nhật ký hoạt động";
-
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        let response;
-        if (isAdmin || isValidator) {
-          response = await TransactionService.getAllTransactions();
-        } else if (address) {
-          response = await TransactionService.getTransactionsByAddress(address);
-        }
-
-        if (response && response.success && response.transactions) {
-          const mapped: Activity[] = response.transactions.map((tx: any) => ({
-            id: tx.tx_hash,
-            type: getTypeByOp(tx.payload?.op),
-            title: getTitleByType(tx.payload),
-            address: tx.sender_address.slice(0, 6) + '...' + tx.sender_address.slice(-4),
-            time: formatDistanceToNow(tx.timestamp),
-            status: 'completed'
-          }));
-          setActivities(mapped.slice(0, 5)); // Show latest 5
-        }
-      } catch (error) {
-        console.error('Failed to fetch activities:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (address) {
-      fetchActivities();
-    }
-  }, [address, isAdmin, isValidator]);
 
   return (
     <div className="glass-card rounded-2xl overflow-hidden">
@@ -85,7 +68,7 @@ export const TransactionList = () => {
         <h2 className="text-lg font-semibold text-foreground">{title}</h2>
       </div>
       <div className="divide-y divide-border/50">
-        {loading ? (
+        {isLoading ? (
           <div className="p-8 text-center text-muted-foreground">
             <Clock className="w-8 h-8 animate-spin mx-auto mb-2 opacity-20" />
             <p className="text-sm">Đang tải hoạt động...</p>

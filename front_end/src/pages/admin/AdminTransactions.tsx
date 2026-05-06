@@ -17,8 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAdminTransactions, truncateHash, formatTimeAgo, getOpLabel } from "@/hooks/useAdminTransactions";
-import { TablePageSkeleton } from "@/components/admin/AdminSkeletons";
+import { useAdminTransactions } from "@/hooks";
+import { truncateHash, formatTimeAgo, getOpLabel } from "@/utils/formatUtils";
 import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
 import { Button } from "@/components/ui/button";
 
@@ -41,7 +41,7 @@ export default function Transactions() {
     search, setSearch, filterType, setFilterType, loading, filtered, stats
   } = useAdminTransactions();
 
-  if (loading) return <TablePageSkeleton />;
+  const isInitialLoading = loading && filtered.length === 0;
 
   return (
     <AdminPageContainer>
@@ -49,16 +49,16 @@ export default function Transactions() {
         title="Giao dịch Blockchain" 
         description="Theo dõi tất cả giao dịch trên mạng EduChain theo thời gian thực"
       >
-         <Button variant="outline" className="gap-2 bg-white/50 backdrop-blur-sm border-slate-200">
+         <Button variant="outline" className="gap-2 bg-white/50 backdrop-blur-sm border-slate-200" onClick={() => window.location.reload()}>
            <RefreshCw className="h-4 w-4" />
            Làm mới dữ liệu
          </Button>
       </AdminPageHeader>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <AdminStatCard label="Tổng giao dịch" value={stats.total} icon={Activity} />
-        <AdminStatCard label="Phát hành NFT" value={stats.mintCount} icon={Zap} iconColor="text-blue-500" bgColor="bg-blue-500/10" />
-        <AdminStatCard label="Hệ thống" value={stats.otherCount} icon={RefreshCw} iconColor="text-slate-500" bgColor="bg-slate-100" />
+        <AdminStatCard label="Tổng giao dịch" value={isInitialLoading ? "..." : stats.total} icon={Activity} />
+        <AdminStatCard label="Phát hành NFT" value={isInitialLoading ? "..." : stats.mintCount} icon={Zap} iconColor="text-blue-500" bgColor="bg-blue-500/10" />
+        <AdminStatCard label="Hệ thống" value={isInitialLoading ? "..." : stats.otherCount} icon={RefreshCw} iconColor="text-slate-500" bgColor="bg-slate-100" />
         <AdminStatCard label="Trạng thái Mạng" value="Ổn định" icon={Activity} iconColor="text-green-500" bgColor="bg-green-500/10" />
       </motion.div>
 
@@ -104,7 +104,18 @@ export default function Transactions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.length === 0 ? (
+                  {isInitialLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="py-6 px-8"><div className="h-4 w-32 bg-slate-100 animate-pulse rounded" /></TableCell>
+                        <TableCell className="py-6 px-4"><div className="h-6 w-24 bg-slate-100 animate-pulse rounded-full" /></TableCell>
+                        <TableCell className="py-6 px-4 hidden md:table-cell"><div className="h-4 w-24 bg-slate-100 animate-pulse rounded" /></TableCell>
+                        <TableCell className="py-6 px-4 hidden lg:table-cell"><div className="h-4 w-24 bg-slate-100 animate-pulse rounded" /></TableCell>
+                        <TableCell className="py-6 px-4 hidden sm:table-cell"><div className="h-4 w-20 bg-slate-100 animate-pulse rounded" /></TableCell>
+                        <TableCell className="py-6 px-8 text-right"><div className="h-8 w-24 bg-slate-100 animate-pulse rounded-xl ml-auto" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : filtered.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-24">
                         <div className="flex flex-col items-center justify-center opacity-30">
