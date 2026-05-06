@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CreateWalletProps {
   error: string;
@@ -66,11 +67,6 @@ const CreateWallet = ({
             : 'Thiết lập mật khẩu mạnh để bảo vệ tài khoản và dữ liệu của bạn.'}
         </p>
 
-        {error && (
-          <div className="mb-6 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-            <p className="text-sm text-destructive text-center">{error}</p>
-          </div>
-        )}
 
         <div className="space-y-6">
           {isSchool && (
@@ -140,7 +136,10 @@ const CreateWallet = ({
                   value={password}
                   onChange={(e) => onPasswordChange(e.target.value)}
                   placeholder="Mật khẩu ít nhất 8 ký tự"
-                  className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 focus:bg-background transition-colors"
+                  className={cn(
+                    "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 focus:bg-background transition-colors",
+                    error && (error.includes('Mật khẩu') || error.includes('khớp')) && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                  )}
                 />
                 <button
                   type="button"
@@ -159,9 +158,13 @@ const CreateWallet = ({
                 value={confirmPassword}
                 onChange={(e) => onConfirmPasswordChange(e.target.value)}
                 placeholder="Nhập lại mật khẩu"
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors"
+                className={cn(
+                  "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors",
+                  error && error.includes('khớp') && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                )}
               />
             </div>
+            {error && <p className="text-[11px] text-destructive font-medium ml-1 animate-in fade-in slide-in-from-top-1 duration-200">{error}</p>}
           </div>
 
           <div className="pt-2">

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ImportMnemonicProps {
   onImport: (mnemonic: string, password: string) => void;
@@ -33,11 +34,6 @@ const ImportMnemonic = ({ onImport, onBack, isLoading, error }: ImportMnemonicPr
         <h2 className="font-display text-xl font-bold text-foreground mb-1">Khôi phục ví</h2>
         <p className="text-sm text-muted-foreground mb-6"> Nhập 12 từ khóa bí mật để khôi phục tài khoản của bạn. </p>
 
-        {error && (
-          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-            <p className="text-sm text-destructive text-center">{error}</p>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -46,7 +42,10 @@ const ImportMnemonic = ({ onImport, onBack, isLoading, error }: ImportMnemonicPr
               value={mnemonic}
               onChange={(e) => setMnemonic(e.target.value)}
               placeholder="VD: word1 word2 word3 ..."
-              className="w-full min-h-[100px] rounded-xl bg-secondary/50 border-border/50 px-4 py-3 text-sm font-mono focus:bg-background transition-colors outline-none focus:ring-1 focus:ring-primary/30"
+              className={cn(
+                "w-full min-h-[100px] rounded-xl bg-secondary/50 border-border/50 px-4 py-3 text-sm font-mono focus:bg-background transition-colors outline-none focus:ring-1 focus:ring-primary/30",
+                error && (error.includes('Seed') || error.includes('từ') || error.includes('khóa')) && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus:ring-destructive/30"
+              )}
               required
             />
           </div>
@@ -59,7 +58,10 @@ const ImportMnemonic = ({ onImport, onBack, isLoading, error }: ImportMnemonicPr
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mật khẩu bảo vệ ví"
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12"
+                className={cn(
+                  "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12",
+                  error && (error.includes('Mật khẩu') || error.includes('khớp')) && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                )}
                 required
               />
               <button
@@ -79,10 +81,14 @@ const ImportMnemonic = ({ onImport, onBack, isLoading, error }: ImportMnemonicPr
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Nhập lại mật khẩu"
-              className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4"
+              className={cn(
+                "h-12 bg-secondary/50 border-border/50 rounded-xl px-4",
+                error && error.includes('khớp') && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+              )}
               required
             />
           </div>
+          {error && <p className="text-[11px] text-destructive font-medium ml-1 animate-in fade-in slide-in-from-top-1 duration-200">{error}</p>}
 
           <Button
             type="submit"

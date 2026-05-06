@@ -2,6 +2,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Eye, EyeOff, ShieldCheck, KeyRound } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface ImportWalletProps {
   error: string;
@@ -49,12 +50,6 @@ const ImportWallet = ({
           </div>
         )}
 
-        {error && (
-          <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg w-full">
-            <p className="text-sm text-destructive text-center">{error}</p>
-          </div>
-        )}
-
         <div className="space-y-4 w-full">
           <div className="space-y-2">
             <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu mở khóa</Label>
@@ -64,7 +59,10 @@ const ImportWallet = ({
                 value={password}
                 onChange={(e) => onPasswordChange(e.target.value)}
                 placeholder="Nhập mật khẩu"
-                className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors"
+                className={cn(
+                  "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors",
+                  error && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                )}
               />
               <button
                 type="button"
@@ -74,6 +72,7 @@ const ImportWallet = ({
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
+            {error && <p className="text-[11px] text-destructive font-medium ml-1 animate-in fade-in slide-in-from-top-1 duration-200">{error}</p>}
           </div>
 
           <Button
