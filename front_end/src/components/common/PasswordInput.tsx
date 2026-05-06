@@ -20,7 +20,11 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           <Input
             ref={ref}
             type={showPw ? 'text' : 'password'}
-            className={cn('pr-10', className)}
+            className={cn(
+              'pr-10 transition-colors', 
+              error && 'border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive',
+              className
+            )}
             {...props}
           />
           <button
