@@ -5,10 +5,10 @@ import {
   Activity,
   Settings,
   Blocks,
-  FileCheck,
   Users,
   Network,
   LogOut,
+  PlusCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/admin/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -27,22 +27,8 @@ import {
   SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { Button } from "../ui/button";
-
-const mainItems = [
-  { title: "Dashboard", url: "/admin", icon: LayoutDashboard, roles: ["admin", "moet"] },
-  { title: "Bằng cấp NFT", url: "/admin/degrees", icon: GraduationCap, roles: ["admin", "moet", "validator"] },
-  { title: "Xác thực", url: "/admin/verify", icon: Shield, roles: ["admin", "moet", "validator", "client"] },
-  { title: "Giao dịch", url: "/admin/transactions", icon: Activity, roles: ["admin", "moet", "validator"] },
-];
-
-const manageItems = [
-  { title: "Quản lý mạng", url: "/admin/network", icon: Network, roles: ["admin", "moet"] },
-  { title: "Phê duyệt", url: "/admin/validators", icon: FileCheck, roles: ["admin", "moet"] },
-  { title: "Sinh viên", url: "/admin/students", icon: Users, roles: ["admin", "moet", "validator"] },
-  { title: "Smart Contract", url: "/admin/contracts", icon: FileCheck, roles: ["admin", "moet"] },
-  { title: "Cài đặt", url: "/admin/settings", icon: Settings, roles: ["admin", "moet", "validator"] },
-];
+import { hasRoutePermission } from "@/constants/permissions";
+import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -53,41 +39,79 @@ export function AppSidebar() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const filteredMainItems = mainItems.filter(item => !item.roles || item.roles.includes(role || ""));
-  const filteredManageItems = manageItems.filter(item => !item.roles || item.roles.includes(role || ""));
+  // Danh sách tất cả menu items tiềm năng
+  const allMenuItems = {
+    main: [
+      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+      { title: "Cấp phát Bằng", url: "/admin/degrees", icon: PlusCircle, roles: ["validator"] },
+      { title: "Tất cả Bằng cấp", url: "/admin/degrees", icon: GraduationCap, roles: ["moet", "admin"] },
+      { title: "Bằng cấp của tôi", url: "/admin/degrees", icon: GraduationCap, roles: ["client"] },
+      { title: "Bằng đã cấp", url: "/admin/my-degrees", icon: GraduationCap, roles: ["validator"] },
+      { title: "Xác thực", url: "/admin/verify", icon: Shield },
+      { title: "Giao dịch", url: "/admin/transactions", icon: Activity },
+    ],
+    manage: [
+      { title: "Quản lý mạng (Node)", url: "/admin/network", icon: Network },
+      { title: "Phê duyệt đối tác", url: "/admin/validators", icon: Shield, roles: ["moet", "admin"] },
+      { title: "Quản lý Sinh viên", url: "/admin/students", icon: Users },
+      { title: "Cấu hình Hệ thống", url: "/admin/contracts", icon: Blocks },
+      { title: "Cài đặt", url: "/admin/settings", icon: Settings },
+    ]
+  };
 
   const handleLogout = () => {
     adminLogout(); // Chỉ xoá session, giữ vault để lần sau đăng nhập bằng mật khẩu
     navigate('/moet-login');
   };
 
+  // Lọc menu items dựa trên permissions.ts
+  const filterMenu = (items: any[]) => {
+    return items.filter(item => {
+      // Nếu item có quy định roles cụ thể cho hiển thị
+      if (item.roles && !item.roles.includes(role || "")) return false;
+
+      // Kiểm tra quyền truy cập route tổng quát
+      return hasRoutePermission(role, item.url);
+    });
+  };
+
+  const menu = {
+    main: filterMenu(allMenuItems.main),
+    manage: filterMenu(allMenuItems.manage)
+  };
+
   return (
-    <Sidebar collapsible="icon" className="z-20">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-primary/20 flex items-center justify-center glow-effect shrink-0">
-            <Blocks className="h-5 w-5 text-primary" />
+    <Sidebar collapsible="icon" className="z-20 border-r border-primary/5 bg-background/50 backdrop-blur-xl">
+      <SidebarHeader className={collapsed ? "p-0 py-4 flex items-center justify-center" : "p-6"}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-4"}`}>
+          <div className={`${collapsed ? "h-8 w-8" : "h-10 w-10"} rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-all duration-300`}>
+            <Blocks className={`${collapsed ? "h-5 w-5" : "h-6 w-6"} text-primary-foreground`} />
           </div>
           {!collapsed && (
-            <div>
-              <h2 className="font-display text-sm font-bold text-foreground">EduChain Vault</h2>
-              <p className="text-xs text-muted-foreground">Blockchain Verify</p>
+            <div className="min-w-0">
+              <h2 className="font-display text-base font-black text-foreground truncate tracking-tight">EduChain Vault</h2>
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                <div className="h-1 w-1 rounded-full bg-primary animate-pulse" />
+                <p className="text-[9px] text-primary font-black uppercase tracking-widest">
+                  {role || "Guest"}
+                </p>
+              </div>
             </div>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Tổng quan</SidebarGroupLabel>
+      <SidebarContent className={`no-scrollbar ${collapsed ? "px-0" : "px-3"}`}>
+        <SidebarGroup className={collapsed ? "p-2" : ""}>
+          {!collapsed && <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Tổng quan</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredMainItems.map((item) => (
+            <SidebarMenu className="gap-1">
+              {menu.main.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} className={`h-11 rounded-xl transition-all duration-300 ${collapsed ? "px-0 justify-center group-data-[collapsible=icon]:!p-0" : "px-4"}`}>
+                    <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20" className={collapsed ? "justify-center w-full" : ""}>
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -96,31 +120,40 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Quản lý</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredManageItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-primary font-medium">
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menu.manage.length > 0 && (
+          <SidebarGroup className={`mt-4 ${collapsed ? "p-2" : ""}`}>
+            {!collapsed && <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Quản lý</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {menu.manage.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} className={`h-11 rounded-xl transition-all duration-300 ${collapsed ? "px-0 justify-center group-data-[collapsible=icon]:!p-0" : "px-4"}`}>
+                      <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20" className={collapsed ? "justify-center w-full" : ""}>
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 space-y-4">
+      <SidebarFooter className={collapsed ? "p-0 py-4 flex items-center justify-center" : "p-6"}>
         {!collapsed && (
-          <div className="glass-card rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse-glow" />
-              <span className="text-xs text-muted-foreground">Mạng EduChain • Hoạt động</span>
+          <div className="relative overflow-hidden rounded-2xl bg-secondary/50 p-4 border border-border/50 group">
+            <div className="absolute -right-4 -bottom-4 h-12 w-12 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="h-2 w-2 rounded-full bg-green-500" />
+                <div className="absolute inset-0 h-2 w-2 rounded-full bg-green-500 animate-ping opacity-75" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-foreground/70">Mạng lưới P2P</p>
+                <p className="text-[10px] text-muted-foreground">Sẵn sàng hoạt động</p>
+              </div>
             </div>
           </div>
         )}
@@ -128,10 +161,10 @@ export function AppSidebar() {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3"
+          className={`h-11 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ${collapsed ? "w-11 px-0 justify-center" : "w-full px-4 mt-4 justify-start gap-3"}`}
         >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span>Đăng xuất</span>}
+          <LogOut className="h-5 w-5" />
+          {!collapsed && <span className="font-semibold">Đăng xuất</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>

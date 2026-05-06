@@ -8,10 +8,16 @@ import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";
 import { useNavigate } from "react-router-dom";
 
 const Home: React.FC = () => {
-  const { isPendingApproval } = useAuth();
+  const { isPendingApproval, isAdmin } = useAuth();
   const address = localStorage.getItem("address") || "";
   const { lock } = useWallet();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (isAdmin) {
+      window.location.replace("/admin");
+    }
+  }, [isAdmin]);
 
   const handleDisconnect = () => {
     lock();

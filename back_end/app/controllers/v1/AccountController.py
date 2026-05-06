@@ -6,10 +6,12 @@ from app.repositories.AccountRepository import AccountRepository
 from app.services.AccountService import AccountService
 from app.core.config import SECRET_KEY, REDIS_HOST, REDIS_PORT, REDIS_DB
 import uuid
-from app.models.Account import Role
+from app.models.Account import Role, TransactionAcount, TransactionUpdateAccount
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
-
+from app.utils.CryptoUtils import CryptoUtils
+from utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
+logger = get_logger(__name__)
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 @user_bp.route('/auth/get_nonce', methods=['GET'])
 def get_nonce():
@@ -26,12 +28,34 @@ def register():
     data = request.json
     if not data:
         return {"error": "Missing data"}, 400
-
+    
     address = data.get('address')
     public_key = data.get('public_key')
     role_str = data.get('role', 'client')
+<<<<<<< HEAD
     vault = data.get('vault')
     
+=======
+    signature = data.get('signature')
+    # Thông tin bổ sung (dành cho validator/trường học)
+    full_name = data.get('full_name')
+    tax_id = data.get('tax_id')
+    representative = data.get('representative')
+    email = data.get('email')
+    phone = data.get('phone')
+    transactionAccount = TransactionAcount(
+        address=address,
+        public_key=public_key,
+        role=role_str,
+        timestamp= data.get('timestamp')
+    )
+
+    message_to_verify = transactionAccount.get_signing_data()
+
+    is_valid_signature = CryptoUtils.verify_signature(message_to_verify, signature, public_key)
+    if not is_valid_signature:
+            return jsonify({"error": "Invalid digital signature. "}), 401
+>>>>>>> origin/main
     # Convert string to Role enum
     role_map = {
         'client': Role.CLIENT,
@@ -40,7 +64,19 @@ def register():
     }
     role = role_map.get(role_str.lower(), Role.CLIENT)
 
+<<<<<<< HEAD
     success, account, message = AccountService.register_account(address, public_key, role, vault)
+=======
+    success, account, message = AccountService.register_account(
+        address, public_key, role, signature,
+        reg_timestamp=data.get('timestamp'),
+        full_name=full_name,
+        tax_id=tax_id,
+        representative=representative,
+        email=email,
+        phone=phone
+    )
+>>>>>>> origin/main
 
     if success:
         return {
@@ -62,18 +98,18 @@ def verify():
 
     stored_nonce = r.get(f"nonce:{address}")
     if not stored_nonce:
-        return jsonify({"status":"fail", "message":"Nonce expired"}), 401
+        return jsonify({"Status":"fail", "message":"Nonce expired"},401)
     
     try:
         account = AccountService.get_account_by_address(address)
         if not account:
-            return jsonify({"status":"fail", "message":"account not found"}),404
+            return jsonify({"status":"fail", "message":"account not found"}), 404
         
         public_key = account.public_key
 
         vk = VerifyingKey.from_string(bytes.fromhex(public_key), curve=SECP256k1)
-        # Frontend sends msg_hash (SHA-256 of nonce), so we use verify_digest
-        is_valid = vk.verify_digest(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        # Signature verification logic
+        is_valid = vk.verify(bytes.fromhex(signature), bytes.fromhex(msg_hash))
         
         if is_valid:
             r.delete(f"nonce:{address}")
@@ -123,12 +159,33 @@ def update_profile():
     representative = data.get('representative')
     email = data.get('email')
     phone = data.get('phone')
-    
+    signature = data.get('signature')
     if not address:
         return jsonify({"error": "Missing address"}), 400
-        
-    success, account, message = AccountService.update_profile(address, full_name, avatar_url, tax_id, representative, email, phone)
+    account = AccountRepository.get_account_by_address(address)
+    if not account:
+        logger.warning(f"Profile update failed: Account {address} not found")
+        return jsonify({"status":"fail", "message":"Account not found"}), 401  
+
+    transactionUpdateAccount = TransactionUpdateAccount(
+        address=address,
+        full_name=full_name,
+        avatar_url=avatar_url,
+        tax_id=tax_id,
+        representative=representative,
+        email=email,
+        phone=phone,
+        timestamp=data.get('timestamp')
+    )  
+   
+    message_to_verify = transactionUpdateAccount.get_signing_data()
+
+    is_valid_signature = CryptoUtils.verify_signature(message_to_verify, signature, account.public_key)
+    if not is_valid_signature:
+            return jsonify({"error": "Invalid digital signature. "}), 401
+    success, account, message = AccountService.update_profile(account, address, full_name, avatar_url, tax_id, representative, email, phone)
     
+
     if success:
         return jsonify({
             "status": "success",

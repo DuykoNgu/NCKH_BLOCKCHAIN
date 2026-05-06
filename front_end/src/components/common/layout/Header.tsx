@@ -1,7 +1,8 @@
-import { ShieldCheck, User as UserIcon, LogOut } from "lucide-react"
+import { ShieldCheck, User as UserIcon, LogOut, Info, LayoutDashboard } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import { logoutUser } from "@/services/authService"
+import { Button } from "@/components/ui/button"
 
 export const Header = () => {
   const { fullName, role, isAdmin, isValidator } = useAuth();
@@ -11,7 +12,7 @@ export const Header = () => {
     logoutUser();
     navigate('/login');
   };
-  
+
   return (
     <header className="border-b border-border/50 backdrop-blur-xl bg-background/80 sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -25,6 +26,24 @@ export const Header = () => {
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Blockchain Verify</span>
             </div>
           </div>
+
+          <div className="hidden md:flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+              <a href="http://localhost:8080" target="_blank" rel="noopener noreferrer">
+                <Info className="w-4 h-4" />
+                Giới thiệu dự án
+              </a>
+            </Button>
+
+            {(isAdmin || isValidator) && (
+              <Button asChild variant="ghost" size="sm" className="flex items-center gap-2 text-primary hover:bg-primary/10 transition-colors">
+                <Link to="/admin">
+                  <LayoutDashboard className="w-4 h-4" />
+                  Quản trị hệ thống
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -36,16 +55,8 @@ export const Header = () => {
               Role: {role}
             </span>
           </div>
-          {(isValidator || isAdmin) && (
-            <button 
-              onClick={() => navigate('/admin')}
-              className="hidden sm:flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-xl border border-primary/20 transition-all font-semibold text-xs"
-            >
-              Trang quản trị
-            </button>
-          )}
 
-          <button 
+          <button
             onClick={handleLogout}
             className="flex items-center gap-2 bg-secondary/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive px-3 py-1.5 rounded-xl border border-border/50 transition-all group"
             title="Đăng xuất"

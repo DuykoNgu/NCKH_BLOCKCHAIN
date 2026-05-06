@@ -6,18 +6,7 @@ interface SignatureResponse {
   api_key: string;
   cloud_name: string;
   folder: string;
-  tags?: string; // Thêm trường tags nếu Backend trả về
-}
-
-interface CloudinaryUploadResponse {
-  secure_url: string;
-  public_id: string;
-  width?: number;
-  height?: number;
-  format?: string;
-  bytes?: number;
-  created_at?: string;
-  [key: string]: unknown;
+  tags?: string;
 }
 
 export interface UploadOptions {
@@ -28,11 +17,8 @@ export interface UploadOptions {
 
 class StorageService {
   private apiClient: AxiosInstance;
-  private backendUrl: string;
-  private cloudinaryUrl = 'https://api.cloudinary.com/v1_1';
 
   constructor(backendUrl: string = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api/v1') {
-    this.backendUrl = backendUrl;
     this.apiClient = axios.create({
       baseURL: backendUrl,
       timeout: 30000,

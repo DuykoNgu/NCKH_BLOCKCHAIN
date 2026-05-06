@@ -1,9 +1,13 @@
 """BlockRepository - Data access layer for Block operations"""
 from typing import Optional, List
+import json
 from app.database.connection import get_connection
 from app.models.Block import Block
 from app.models.BlockHeader import BlockHeader
 from app.models.Transaction import Transaction
+from app.utils.logger import get_logger
+from network.config_loader import get_config
+logger = get_logger(__name__)
 
 
 class BlockRepository:
@@ -11,12 +15,19 @@ class BlockRepository:
 
     @staticmethod
     def create_block(block: Block) -> bool:
-        """Create a new block in database"""
+        """Create a new block in database (idempotent - safe to call multiple times)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Insert block header first
+            # Check if block already exists (idempotency)
+            cursor.execute('SELECT block_id FROM block WHERE block_id = ?', (block.block_id,))
+            if cursor.fetchone():
+                logger.info(f"⚠ Block already exists: {block.block_id[:16]}... (skipping)")
+                conn.close()
+                return True  # Return True since block already saved
+            
+            # Insert block header
             cursor.execute('''
                 INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                 VALUES (?, ?, ?, ?, ?)
@@ -32,18 +43,29 @@ class BlockRepository:
                 VALUES (?, ?, ?, ?, ?)
             ''', (block.block_id, block.index, header_id, block.block_hash, block.validator_signature))
             
-            # Insert transactions for this block
+            # Update transactions to associate them with this block
+            updated_tx_count = 0
+            if(block.block_id == "GENESIS"):
+                conn.commit()
+                conn.close()
+                logger.info(f"✓ Genesis block created: {block.block_id[:16]}...")
+                return True
+            
             for tx in block.transactions:
                 cursor.execute('''
-                    INSERT INTO block_transactions (block_id, tx_id)
-                    VALUES (?, ?)
-                ''', (block.block_id, tx.tx_id))
+                    UPDATE transactions 
+                    SET block_id = ?
+                    WHERE tx_hash = ?
+                ''', (block.block_id, tx.tx_hash))
+                if cursor.rowcount > 0:
+                    updated_tx_count += 1
             
             conn.commit()
             conn.close()
+            logger.info(f"✓ Block created: {block.block_id[:16]}... with {updated_tx_count} transactions")
             return True
         except Exception as e:
-            print(f"Error creating block: {e}")
+            logger.error(f"✗ Error creating block: {e}")
             return False
 
     @staticmethod
@@ -71,9 +93,11 @@ class BlockRepository:
             ''', (block_row[2],))  # header_id is at index 2
             header_row = cursor.fetchone()
             
-            # Get transactions
+            # Get transactions from transactions table with this block_id
             cursor.execute('''
-                SELECT tx_id FROM block_transactions WHERE block_id = ?
+                SELECT tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, 
+                       payload, signature, timestamp, block_id, tx_status, error_reason
+                FROM transactions WHERE block_id = ?
             ''', (block_id,))
             tx_rows = cursor.fetchall()
             
@@ -88,7 +112,23 @@ class BlockRepository:
                 timestamp=header_row[4]
             )
             
-            transactions = [Transaction(tx_id=row[0]) for row in tx_rows]
+            # Build Transaction objects from rows
+            transactions = []
+            for row in tx_rows:
+                tx = Transaction(
+                    tx_id=row[0],
+                    tx_hash=row[1],
+                    sender_pubkey=row[2],
+                    sender_address=row[3] if row[3] is not None else "system",
+                    recipient_address=row[4],
+                    payload=json.loads(row[5]) if row[5] else {},
+                    signature=row[6],
+                    timestamp=row[7],
+                    block_id=row[8],
+                    tx_status=row[9] if len(row) > 9 else "PENDING",
+                    error_reason=row[10] if len(row) > 10 else ""
+                )
+                transactions.append(tx)
             
             block = Block(
                 index=block_row[1],
@@ -177,6 +217,7 @@ class BlockRepository:
             
             cursor.execute('SELECT block_id FROM block ORDER BY index_num DESC LIMIT 1')
             row = cursor.fetchone()
+
             conn.close()
             
             if row:

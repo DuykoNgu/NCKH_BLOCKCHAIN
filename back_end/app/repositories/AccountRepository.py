@@ -26,10 +26,19 @@ class AccountRepository:
             ''', (account.public_key, account.address, role_value, account.org_name, 
                   account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.vault, account.is_active, account.created_at))
             conn.commit()
+            
+            # Check if insert was successful (rowcount > 0) or skipped (duplicate)
+            inserted = cursor.rowcount > 0
             conn.close()
-            return True
+            
+            if inserted:
+                logger.info(f"✓ Account created: {account.address} (role={role_value})")
+                return True
+            else:
+                logger.warning(f"⚠ Account not created (may already exist): {account.address}")
+                return False
         except Exception as e:
-            logger.error(f"Error creating account: {e}")
+            logger.error(f"✗ Error creating account {account.address}: {e}")
             return False
         
     @staticmethod

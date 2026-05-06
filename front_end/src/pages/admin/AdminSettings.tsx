@@ -1,19 +1,16 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Shield, Bell, Globe, Key, Save } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield, Bell, Database, Globe, Save, Key } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { AdminPageContainer, AdminPageHeader, itemVariants } from "@/components/admin/AdminShared";
 import { toast } from "sonner";
 
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
-
-export default function Settings() {
+export default function AdminSettings() {
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem("adminSettings");
     return saved ? JSON.parse(saved) : {
@@ -22,7 +19,9 @@ export default function Settings() {
       txFail: true,
       dailyReport: false,
       twoFactor: false,
-      autoLock: true
+      autoLock: true,
+      kycRequired: true,
+      autoLockNode: true
     };
   });
 
@@ -35,111 +34,110 @@ export default function Settings() {
     setSettings((prev: any) => ({ ...prev, [key]: checked }));
   };
 
+  const sections = [
+    {
+      title: "Cấu hình Mạng lưới",
+      description: "Quản lý các thông số cốt lõi của EduChain",
+      icon: Globe,
+      fields: [
+        { label: "Network Name", value: "EduChain Mainnet" },
+        { label: "Chain ID", value: "12345" },
+        { label: "RPC URL", value: "https://rpc.educhain.io" },
+      ]
+    },
+    {
+      title: "Bảo mật & Quyền",
+      description: "Thiết lập quyền hạn và chính sách bảo mật",
+      icon: Shield,
+      switches: [
+        { label: "Yêu cầu KYC cho đối tác", key: "kycRequired" },
+        { label: "Tự động khóa Node nghi vấn", key: "autoLockNode" },
+        { label: "Xác thực 2 lớp (2FA) cho Admin", key: "twoFactor" },
+      ]
+    },
+    {
+      title: "Thông báo",
+      description: "Cấu hình kênh nhận thông báo hệ thống",
+      icon: Bell,
+      switches: [
+        { label: "Thông báo Mint NFT mới", key: "mintNFT" },
+        { label: "Xác thực bằng cấp", key: "verifyDegree" },
+        { label: "Cảnh báo giao dịch lỗi", key: "txFail" },
+      ]
+    }
+  ];
+
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-3xl">
-      <motion.div variants={item}>
-        <h2 className="font-display text-2xl font-bold text-foreground">Cài đặt</h2>
-        <p className="text-sm text-muted-foreground mt-1">Cấu hình hệ thống và tùy chỉnh</p>
-      </motion.div>
+    <AdminPageContainer>
+      <AdminPageHeader
+        title="Cài đặt Hệ thống"
+        description="Cấu hình tham số mạng lưới và tùy chỉnh trải nghiệm quản trị"
+      >
+        <Button onClick={handleSave} className="gap-2"><Save className="h-4 w-4" />Lưu thay đổi</Button>
+      </AdminPageHeader>
 
-      {/* Network */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2"><Globe className="h-5 w-5 text-primary" />Mạng Blockchain</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Mạng lưới</Label>
-              <Select defaultValue="mainnet">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mainnet">Ethereum Mainnet</SelectItem>
-                  <SelectItem value="goerli">Goerli Testnet</SelectItem>
-                  <SelectItem value="sepolia">Sepolia Testnet</SelectItem>
-                  <SelectItem value="polygon">Polygon</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>RPC URL</Label>
-              <Input defaultValue="https://mainnet.infura.io/v3/..." />
-            </div>
-            <div className="space-y-2">
-              <Label>Chain ID</Label>
-              <Input defaultValue="1" disabled />
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {sections.map((section) => (
+          <motion.div key={section.title} variants={itemVariants}>
+            <Card className="glass-card border-none shadow-sm h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <section.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-bold">{section.title}</CardTitle>
+                    <CardDescription className="text-xs">{section.description}</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {section.fields?.map((f) => (
+                  <div key={f.label} className="space-y-2">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{f.label}</Label>
+                    <Input defaultValue={f.value} className="bg-secondary/30 border-none h-10" />
+                  </div>
+                ))}
+                {section.switches?.map((s) => (
+                  <div key={s.key} className="flex items-center justify-between py-2 border-t border-border/50 first:border-none">
+                    <Label className="text-sm font-medium">{s.label}</Label>
+                    <Switch 
+                      checked={(settings as any)[s.key]} 
+                      onCheckedChange={handleToggle(s.key)} 
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
 
-      {/* Contract */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2"><Key className="h-5 w-5 text-primary" />Smart Contract</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Contract Address</Label>
-              <Input defaultValue="0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b" />
-            </div>
-            <div className="space-y-2">
-              <Label>IPFS Gateway</Label>
-              <Input defaultValue="https://ipfs.io/ipfs/" />
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Notifications */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2"><Bell className="h-5 w-5 text-primary" />Thông báo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[
-              { id: "mintNFT", title: "Mint NFT mới", desc: "Thông báo khi có NFT được mint" },
-              { id: "verifyDegree", title: "Xác thực bằng cấp", desc: "Thông báo khi có yêu cầu xác thực" },
-              { id: "txFail", title: "Giao dịch thất bại", desc: "Cảnh báo khi giao dịch lỗi" },
-              { id: "dailyReport", title: "Báo cáo hàng ngày", desc: "Nhận email tổng hợp mỗi ngày" },
-            ].map((n) => (
-              <div key={n.id} className="flex items-center justify-between">
-                <div><p className="text-sm font-medium text-foreground">{n.title}</p><p className="text-xs text-muted-foreground">{n.desc}</p></div>
-                <Switch 
-                  checked={settings[n.id]} 
-                  onCheckedChange={handleToggle(n.id)} 
-                />
+        <motion.div variants={itemVariants}>
+          <Card className="glass-card border-none shadow-sm bg-primary/5">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Database className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold">Dữ liệu & Sao lưu</CardTitle>
+                  <CardDescription className="text-xs">Quản lý cơ sở dữ liệu và các bản snapshot</CardDescription>
+                </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Security */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-display text-lg flex items-center gap-2"><Shield className="h-5 w-5 text-primary" />Bảo mật</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div><p className="text-sm font-medium text-foreground">Xác thực 2 lớp (2FA)</p><p className="text-xs text-muted-foreground">Bảo vệ tài khoản với xác thực 2 lớp</p></div>
-              <Switch checked={settings.twoFactor} onCheckedChange={handleToggle("twoFactor")} />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div><p className="text-sm font-medium text-foreground">Tự động khóa</p><p className="text-xs text-muted-foreground">Khóa ví sau 15 phút không hoạt động</p></div>
-              <Switch checked={settings.autoLock} onCheckedChange={handleToggle("autoLock")} />
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div variants={item}>
-        <Button onClick={handleSave} className="gap-2"><Save className="h-4 w-4" />Lưu cài đặt</Button>
-      </motion.div>
-    </motion.div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 rounded-xl bg-background/50 border border-border/50">
+                <p className="text-xs text-muted-foreground mb-2">Bản sao lưu gần nhất: 2 giờ trước</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1">Tải bản sao lưu</Button>
+                  <Button variant="outline" size="sm" className="flex-1">Tạo mới</Button>
+                </div>
+              </div>
+              <Button variant="ghost" className="w-full text-xs text-destructive hover:bg-destructive/10">Xóa Cache Hệ thống</Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    </AdminPageContainer>
   );
 }

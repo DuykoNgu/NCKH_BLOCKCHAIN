@@ -16,18 +16,22 @@ class NetworkService:
     
     def __init__(self, db_path: str = 'NCKH_educhain.db'):
         self.config = get_config()
-        self.peer_manager = PeerManager(db_path)
+        self.peer_manager = PeerManager()
         self.gossip = GossipProtocol(self.peer_manager)
         self.ntp_client = NTPClient()
         self.consensus_timer = ConsensusTimer(self.ntp_client)
         
         self.is_initialized = False
     
-    def initialize(self) -> bool:
+    def initialize(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> bool:
         """Initialize network service"""
         print("\n" + "="*50)
         print("🚀 Initializing EduChain Network Service")
         print("="*50)
+        
+        # Step 0: Set local peer ID for message identification
+        if node_ip and node_port:
+            self.peer_manager.set_local_peer_id(node_ip, node_port)
         
         # Step 1: Verify time synchronization
         print("\n[1/3] Verifying time synchronization...")
@@ -35,9 +39,9 @@ class NetworkService:
             print("✗ Time synchronization check failed")
             return False
         
-        # Step 2: Bootstrap network
+        # Step 2: Bootstrap network with optional node info for bidirectional discovery
         print("\n[2/3] Bootstrapping P2P network...")
-        discovered = self.bootstrap_network()
+        discovered = self.bootstrap_network(node_ip, node_port, public_key)
         print(f"✓ Network bootstrap complete: {discovered} peers discovered")
         
         # Step 3: Initial health check
@@ -53,9 +57,9 @@ class NetworkService:
         
         return True
     
-    def bootstrap_network(self) -> int:
-        """Bootstrap network by connecting to seed nodes"""
-        return self.peer_manager.bootstrap_network()
+    def bootstrap_network(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> int:
+        """Bootstrap network with optional bidirectional peer discovery"""
+        return self.peer_manager.bootstrap_network(node_ip, node_port, public_key)
     
     def sync_peers(self) -> int:
         """Synchronize peer list with network"""
@@ -104,11 +108,23 @@ class NetworkService:
     
     def broadcast_transaction(self, tx_data: Dict) -> int:
         """Broadcast transaction to network via gossip"""
-        return self.gossip.propagate_transaction(tx_data)
+        tx_hash = tx_data.get('tx_hash', 'UNKNOWN')
+        try:
+            result = self.gossip.propagate_transaction(tx_data)
+            return result
+        except Exception as e:
+            print(f"❌ [NetworkService.broadcast_transaction] Failed to broadcast {tx_hash[:8]}: {e}")
+            raise
     
     def broadcast_block(self, block_data: Dict, use_inv: bool = True) -> int:
         """Broadcast block to network via gossip"""
-        return self.gossip.propagate_block(block_data, use_inv)
+        block_hash = block_data.get('block_hash', 'UNKNOWN')
+        try:
+            result = self.gossip.propagate_block(block_data, use_inv)
+            return result
+        except Exception as e:
+            print(f"❌ [NetworkService.broadcast_block] Failed to broadcast {block_hash[:8]}: {e}")
+            raise
     
     def receive_transaction(self, tx_data: Dict, sender_peer_id: str = None) -> bool:
         """Handle incoming transaction from gossip"""
@@ -124,8 +140,11 @@ class NetworkService:
     
     def get_block_by_hash(self, block_hash: str) -> Optional[Dict]:
         """Get block data by hash (for responding to INV requests)"""
-        # This should be implemented to query blockchain service
-        # For now, return None
+        from app.repositories.BlockRepository import BlockRepository
+
+        for block in BlockRepository.get_all_blocks():
+            if block.block_hash == block_hash:
+                return block.to_dict()
         return None
     
     def get_current_slot_info(self, total_validators: int) -> Dict:
@@ -175,13 +194,47 @@ class NetworkService:
         pending_peers = self.peer_manager.get_peers_by_status("PENDING")
         return [peer.to_dict() for peer in pending_peers]
     
+    def update_peer_status(self, public_key: str, status: str, node_type: str = "validator") -> bool:
+        """
+        Update peer status by public key
+        Used when peer broadcasts activation/deactivation
+        
+        Args:
+            public_key: Public key of peer
+            status: New status (ACTIVE, INACTIVE, PENDING)
+            node_type: Type of node (validator, observer)
+            
+        Returns:
+            True if update successful, False otherwise
+        """
+        return self.peer_manager.update_peer_status_by_public_key(public_key, status, node_type)
+    
+    def update_peer_activation(self, ip_address: str, port: int, public_key: str, node_type: str = "validator") -> bool:
+        """
+        Update peer activation by IP:port (Stage 3 of peer lifecycle)
+        Called when node activates and sends public_key via status-update endpoint
+        Transitions peer from INACTIVE -> ACTIVE
+        
+        Args:
+            ip_address: IP address of peer
+            port: Port of peer
+            public_key: Public key from node's keystore
+            node_type: Node type (validator, observer)
+            
+        Returns:
+            True if update successful, False otherwise
+        """
+        return self.peer_manager.update_peer_activation_by_ip_port(ip_address, port, public_key, node_type)
+    
     def health_check(self) -> Dict:
-        """Perform health check on network"""
-        alive, dead = self.peer_manager.health_check_all_peers()
+        """Return basic health status without actively pinging (prevents infinite ping loop)"""
+        active_peers = len(self.peer_manager.get_active_peers())
+        total_peers = len(self.peer_manager.peers)
+        dead = total_peers - active_peers
         
         return {
-            'status': 'healthy' if alive > 0 else 'unhealthy',
-            'peers_alive': alive,
+            'status': 'healthy',
+            'peers_alive': active_peers,
             'peers_dead': dead,
             'time_synced': self.check_time_sync(),
             'timestamp': time.time()
@@ -200,10 +253,10 @@ def get_network_service() -> NetworkService:
     return _network_service
 
 
-def initialize_network() -> bool:
-    """Initialize global network service"""
+def initialize_network(node_ip: str = None, node_port: int = None, public_key: str = "") -> bool:
+    """Initialize global network service with optional node info for peer discovery"""
     service = get_network_service()
-    return service.initialize()
+    return service.initialize(node_ip, node_port, public_key)
 
 
 if __name__ == "__main__":

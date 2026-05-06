@@ -1,5 +1,6 @@
 import React, { createContext, useState, useCallback, type ReactNode } from 'react';
-import { loginWallet } from '@/services/authService';
+import { loginWalletFlow } from '@/services/authService';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface WalletContextType {
   privateKey: Uint8Array | null;
@@ -14,6 +15,7 @@ interface WalletContextType {
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { login, logout } = useAuthContext();
   const [privateKey, setPrivateKey] = useState<Uint8Array | null>(null);
   const [address, setAddress] = useState<string | null>(localStorage.getItem("address"));
   const [publicKey, setPublicKey] = useState<string | null>(localStorage.getItem("public_key"));
@@ -22,10 +24,20 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const unlock = useCallback(async (password: string) => {
     try {
-      const decryptedKey = await loginWallet(password);
+      const decryptedKey = await loginWalletFlow(password);
+
       if (decryptedKey) {
         setPrivateKey(decryptedKey);
-        // Refresh address and public key from storage if they were missing
+
+        // Sync with AuthContext based on localStorage which loginWalletFlow updated
+        login({
+          address: localStorage.getItem("address") || "",
+          role: localStorage.getItem("role") || "client",
+          full_name: localStorage.getItem("full_name") || "",
+          is_active: localStorage.getItem("is_active") === "1"
+        });
+
+        // Refresh local state
         setAddress(localStorage.getItem("address"));
         setPublicKey(localStorage.getItem("public_key"));
       }
@@ -33,25 +45,25 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       console.error("Failed to unlock wallet:", error);
       throw error;
     }
-  }, []);
+  }, [login]);
 
   const lock = useCallback(() => {
     setPrivateKey(null);
-    localStorage.removeItem("isLoggedIn");
-    console.log('[WalletContext] User logged out, session cleared');
-  }, []);
+    logout();
+  }, [logout]);
 
   const clearWallet = useCallback(() => {
     setPrivateKey(null);
     setAddress(null);
     setPublicKey(null);
-    
+
     // Clear all wallet and session data
     const items = ["isLoggedIn", "role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "accounts"];
     items.forEach(item => localStorage.removeItem(item));
     
+    logout();
     console.log('[WalletContext] Wallet completely cleared from device');
-  }, []);
+  }, [logout]);
 
   return (
     <WalletContext.Provider value={{ privateKey, address, publicKey, isUnlocked, unlock, lock, clearWallet }}>
@@ -59,4 +71,3 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     </WalletContext.Provider>
   );
 };
-

@@ -3,7 +3,7 @@ import os
 
 # Get database path
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'NCKH_educhain.db')
+DB_PATH = os.path.join(DB_DIR, 'node_a.db')
 schema_sql = """
 pragma foreign_keys = ON;
 -------------------------------------------------
@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS nft_metadata (
     degree_type TEXT,
     pdf_url TEXT,
     pdf_hash TEXT,
+    student_id TEXT,
+    institution TEXT,
     institution_address TEXT,
     issued_at REAL,
     FOREIGN KEY (institution_address) REFERENCES account(address)
@@ -62,6 +64,7 @@ CREATE TABLE IF NOT EXISTS nft (
 -------------------------------------------------
 CREATE TABLE IF NOT EXISTS transactions (
     tx_id TEXT PRIMARY KEY,
+    sender_pubkey TEXT,
     sender_address TEXT,
     recipient_address TEXT,
 
@@ -70,7 +73,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     tx_hash TEXT,
     payload TEXT,
     block_id TEXT,
-    FOREIGN KEY (sender_address) REFERENCES account(address),
+    tx_status TEXT DEFAULT 'PENDING',  -- 'PENDING', 'COMMITTED', 'FAILED'
+    error_reason TEXT,  -- Error message if tx_status = 'FAILED'
+    FOREIGN KEY (sender_address) REFERENCES account(address) ON DELETE SET NULL,
     FOREIGN KEY (block_id) REFERENCES block(block_id)
 );
 
@@ -100,7 +105,6 @@ CREATE TABLE IF NOT EXISTS block (
     FOREIGN KEY (header_id) REFERENCES block_header(header_id) ON DELETE CASCADE
 );
 
-
 -------------------------------------------------
 -- 6. Peers (P2P Network)
 -------------------------------------------------
@@ -117,6 +121,7 @@ CREATE TABLE IF NOT EXISTS peers (
 """
 
 def init_db():
+<<<<<<< HEAD
      conn = sqlite3.connect(DB_PATH)
      cursor = conn.cursor()
      
@@ -167,21 +172,34 @@ def init_db():
           cursor.execute("ALTER TABLE nft ADD COLUMN issuer_pubkey TEXT")
      except sqlite3.OperationalError:
           pass
+=======
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Enable foreign keys
+    cursor.execute("PRAGMA foreign_keys = ON")
+    
+    # Execute full schema
+    cursor.executescript(schema_sql)
+    
+    # Individual Migrations/Check columns
+    tables_to_check = {
+        "account": ["full_name", "avatar_url"],
+        "nft": ["owner_address", "issuer_pubkey", "issuer_address", "issuer_signature"]
+    }
+    
+    for table, columns in tables_to_check.items():
+        for col in columns:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                pass # column already exists
+                
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("Database initialized successfully.")
+>>>>>>> origin/main
 
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_address TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_signature TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     conn.commit()
-     
-     cursor.close()
-     print("Database initialized successfully.")
-     
 if __name__ == "__main__":
      init_db()
