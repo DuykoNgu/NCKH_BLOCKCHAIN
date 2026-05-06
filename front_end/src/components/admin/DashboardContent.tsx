@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { Copy, GraduationCap, Activity, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Copy, GraduationCap, Activity, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
+import { DashboardSkeleton } from "./AdminSkeletons";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -13,7 +14,7 @@ const statusConfig: Record<string, { label: string; icon: any; className: string
 };
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 
 export default function DashboardContent() {
   const {
@@ -27,14 +28,7 @@ export default function DashboardContent() {
     copyAddress
   } = useAdminDashboard();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Đang tải dữ liệu...</span>
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
@@ -77,10 +71,9 @@ export default function DashboardContent() {
       </motion.div>
 
       {/* Wallet Header - Redesigned as a Premium Banner */}
-      {walletAddress && (
-        <motion.div variants={item}>
+      <motion.div variants={item}>
+        {walletAddress && (
           <div className="relative overflow-hidden rounded-3xl bg-primary p-8 text-primary-foreground shadow-2xl shadow-primary/20">
-            {/* Background Decorative Elements */}
             <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
             <div className="absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
             
@@ -120,10 +113,10 @@ export default function DashboardContent() {
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
+        )}
+      </motion.div>
 
-      {/* Stat Cards - Modernized with better visuals */}
+      {/* Stat Cards */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat: any, idx: number) => (
           <Card key={stat.label} className="group relative overflow-hidden glass-card border-none shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
@@ -139,8 +132,6 @@ export default function DashboardContent() {
                 <p className="text-3xl font-black tracking-tight text-foreground group-hover:gradient-text transition-all">{stat.value}</p>
                 <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
               </div>
-              
-              {/* Decorative background icon */}
               <stat.icon className={`absolute -right-4 -bottom-4 h-24 w-24 opacity-[0.03] group-hover:opacity-[0.06] group-hover:scale-110 transition-all duration-700`} />
             </CardContent>
           </Card>
@@ -157,9 +148,6 @@ export default function DashboardContent() {
                   <CardTitle className="font-display text-xl font-black">Bằng cấp NFT mới</CardTitle>
                   <p className="text-xs text-muted-foreground mt-1">Các chứng chỉ vừa được xác thực trên chain</p>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-full px-4 border-primary/20 text-primary hover:bg-primary/5 transition-all">
-                  Xem tất cả
-                </Button>
               </div>
             </CardHeader>
             <CardContent className="p-2">
@@ -233,7 +221,6 @@ export default function DashboardContent() {
                   ))}
                 </div>
               )}
-              
               <Button variant="ghost" className="w-full mt-6 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-xl h-12">
                 Xem lịch sử chuỗi
               </Button>

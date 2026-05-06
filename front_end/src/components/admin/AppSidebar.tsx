@@ -75,10 +75,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="z-20 border-r border-primary/5 bg-background/50 backdrop-blur-xl">
-      <SidebarHeader className="p-6">
-        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
-            <Blocks className="h-6 w-6 text-primary-foreground" />
+      <SidebarHeader className={collapsed ? "p-0 py-4 flex items-center justify-center" : "p-6"}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "gap-4"}`}>
+          <div className={`${collapsed ? "h-8 w-8" : "h-10 w-10"} rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20 shrink-0 transition-all duration-300`}>
+            <Blocks className={`${collapsed ? "h-5 w-5" : "h-6 w-6"} text-primary-foreground`} />
           </div>
           {!collapsed && (
             <div className="min-w-0">
@@ -94,15 +94,15 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-3">
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Tổng quan</SidebarGroupLabel>
+      <SidebarContent className={`no-scrollbar ${collapsed ? "px-0" : "px-3"}`}>
+        <SidebarGroup className={collapsed ? "p-2" : ""}>
+          {!collapsed && <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Tổng quan</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               {menu.main.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} className="h-11 px-4 rounded-xl transition-all duration-300">
-                    <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} className={`h-11 rounded-xl transition-all duration-300 ${collapsed ? "px-0 justify-center group-data-[collapsible=icon]:!p-0" : "px-4"}`}>
+                    <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20" className={collapsed ? "justify-center w-full" : ""}>
                       <item.icon className="h-5 w-5 shrink-0" />
                       {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
                     </NavLink>
@@ -114,14 +114,14 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {menu.manage.length > 0 && (
-          <SidebarGroup className="mt-4">
-            <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Quản lý</SidebarGroupLabel>
+          <SidebarGroup className={`mt-4 ${collapsed ? "p-2" : ""}`}>
+            {!collapsed && <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 mb-2">Quản lý</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {menu.manage.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild isActive={isActive(item.url)} className="h-11 px-4 rounded-xl transition-all duration-300">
-                      <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} className={`h-11 rounded-xl transition-all duration-300 ${collapsed ? "px-0 justify-center group-data-[collapsible=icon]:!p-0" : "px-4"}`}>
+                      <NavLink to={item.url} end activeClassName="bg-primary text-primary-foreground shadow-lg shadow-primary/20" className={collapsed ? "justify-center w-full" : ""}>
                         <item.icon className="h-5 w-5 shrink-0" />
                         {!collapsed && <span className="font-semibold tracking-tight">{item.title}</span>}
                       </NavLink>
@@ -134,7 +134,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-6">
+      <SidebarFooter className={collapsed ? "p-0 py-4 flex items-center justify-center" : "p-6"}>
         {!collapsed && (
           <div className="relative overflow-hidden rounded-2xl bg-secondary/50 p-4 border border-border/50 group">
             <div className="absolute -right-4 -bottom-4 h-12 w-12 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors" />
@@ -154,7 +154,7 @@ export function AppSidebar() {
           variant="ghost"
           size="sm"
           onClick={logout}
-          className="w-full h-11 justify-start px-4 mt-4 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-3 transition-colors"
+          className={`h-11 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ${collapsed ? "w-11 px-0 justify-center" : "w-full px-4 mt-4 justify-start gap-3"}`}
         >
           <LogOut className="h-5 w-5" />
           {!collapsed && <span className="font-semibold">Đăng xuất</span>}

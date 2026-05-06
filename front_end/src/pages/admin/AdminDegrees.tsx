@@ -1,5 +1,4 @@
-import { motion } from "framer-motion";
-import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download, Loader2 } from "lucide-react";
+import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAdminDegrees } from "@/hooks/useAdminDegrees";
+import { TablePageSkeleton } from "@/components/admin/AdminSkeletons";
+import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
+import { motion } from "framer-motion";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -16,51 +18,26 @@ const statusConfig: Record<string, { label: string; icon: any; className: string
   rejected: { label: "Đã thu hồi", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
-
 export default function Degrees() {
   const {
-    search,
-    setSearch,
-    filterStatus,
-    setFilterStatus,
-    mintOpen,
-    setMintOpen,
-    loading,
-    nfts,
-    degrees,
-    filtered,
-    handleMint
+    search, setSearch, filterStatus, setFilterStatus, mintOpen, setMintOpen,
+    loading, nfts, degrees, filtered, handleMint
   } = useAdminDegrees();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-3 text-muted-foreground">Đang tải bằng cấp NFT...</span>
-      </div>
-    );
-  }
+  if (loading) return <TablePageSkeleton />;
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={item} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">Bằng cấp NFT</h2>
-          <p className="text-sm text-muted-foreground mt-1">Quản lý tất cả bằng cấp đã phát hành dưới dạng NFT trong mạng lưới</p>
-        </div>
+    <AdminPageContainer>
+      <AdminPageHeader 
+        title="Bằng cấp NFT" 
+        description="Quản lý tất cả bằng cấp đã phát hành dưới dạng NFT trong mạng lưới"
+      >
         <Dialog open={mintOpen} onOpenChange={setMintOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Cấp bằng mới
-            </Button>
+            <Button className="gap-2"><Plus className="h-4 w-4" />Cấp bằng mới</Button>
           </DialogTrigger>
           <DialogContent className="glass-card border-border">
-            <DialogHeader>
-              <DialogTitle className="font-display">Cấp bằng NFT mới</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="font-display">Cấp bằng NFT mới</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label>Loại bằng cấp</Label>
@@ -74,68 +51,27 @@ export default function Degrees() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>PDF URL</Label>
-                <Input placeholder="https://example.com/cert.pdf" />
-              </div>
-              <div className="space-y-2">
-                <Label>Địa chỉ ví sinh viên (recipient)</Label>
-                <Input placeholder="0x..." />
-              </div>
+              <div className="space-y-2"><Label>PDF URL</Label><Input placeholder="https://example.com/cert.pdf" /></div>
+              <div className="space-y-2"><Label>Địa chỉ ví sinh viên (recipient)</Label><Input placeholder="0x..." /></div>
               <Button onClick={handleMint} className="w-full">Mint NFT</Button>
             </div>
           </DialogContent>
         </Dialog>
+      </AdminPageHeader>
+
+      <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <AdminStatCard label="Tổng NFT" value={nfts.length} icon={GraduationCap} />
+        <AdminStatCard label="Đã xác thực" value={degrees.filter(d => d.is_valid).length} icon={CheckCircle2} iconColor="text-green-400" bgColor="bg-green-400/20" />
+        <AdminStatCard label="Đã thu hồi" value={degrees.filter(d => !d.is_valid).length} icon={XCircle} iconColor="text-destructive" bgColor="bg-destructive/20" />
       </motion.div>
 
-      {/* Stats */}
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="glass-card">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
-              <GraduationCap className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-display text-foreground">{nfts.length}</p>
-              <p className="text-xs text-muted-foreground">Tổng NFT</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-green-400/20 flex items-center justify-center">
-              <CheckCircle2 className="h-5 w-5 text-green-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => d.is_valid).length}</p>
-              <p className="text-xs text-muted-foreground">Đã xác thực</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-destructive/20 flex items-center justify-center">
-              <XCircle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold font-display text-foreground">{degrees.filter(d => !d.is_valid).length}</p>
-              <p className="text-xs text-muted-foreground">Đã thu hồi</p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Filters */}
-      <motion.div variants={item} className="flex flex-col sm:flex-row gap-3">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Tìm kiếm theo loại bằng cấp..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[180px]"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tất cả</SelectItem>
             <SelectItem value="verified">Đã xác thực</SelectItem>
@@ -145,28 +81,20 @@ export default function Degrees() {
         </Select>
       </motion.div>
 
-      {/* Table */}
-      <motion.div variants={item}>
-        <Card className="glass-card">
+      <motion.div variants={itemVariants}>
+        <Card className="glass-card border-none shadow-sm">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Token ID</TableHead>
-                  <TableHead>Loại bằng</TableHead>
-                  <TableHead className="hidden md:table-cell">Tổ chức</TableHead>
-                  <TableHead className="hidden sm:table-cell">Ngày</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead>Token ID</TableHead><TableHead>Loại bằng</TableHead>
+                  <TableHead className="hidden md:table-cell">Tổ chức</TableHead><TableHead className="hidden sm:table-cell">Ngày</TableHead>
+                  <TableHead>Trạng thái</TableHead><TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      {nfts.length === 0 ? "Chưa có NFT nào được phát hành" : "Không tìm thấy kết quả"}
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Không tìm thấy kết quả</TableCell></TableRow>
                 ) : (
                   filtered.map((deg) => {
                     const sc = statusConfig[deg.status] || statusConfig.pending;
@@ -176,20 +104,11 @@ export default function Degrees() {
                         <TableCell className="font-medium text-foreground">{deg.degree}</TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{deg.university}</TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{deg.date}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={sc.className}>
-                            <sc.icon className="h-3 w-3 mr-1" />
-                            {sc.label}
-                          </Badge>
-                        </TableCell>
+                        <TableCell><Badge variant="outline" className={sc.className}><sc.icon className="h-3 w-3 mr-1" />{sc.label}</Badge></TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                              <Download className="h-4 w-4" />
-                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -201,6 +120,6 @@ export default function Degrees() {
           </CardContent>
         </Card>
       </motion.div>
-    </motion.div>
+    </AdminPageContainer>
   );
 }
