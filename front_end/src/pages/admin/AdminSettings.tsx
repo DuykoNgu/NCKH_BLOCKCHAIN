@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Settings, Shield, Bell, Database, Globe, Save } from "lucide-react";
+import { Shield, Bell, Database, Globe, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

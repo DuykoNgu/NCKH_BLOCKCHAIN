@@ -81,6 +81,7 @@ def get_all_blocks():
             "index": b.index,
             "block_hash": b.block_hash,
             "validator_pubkey": b.block_header.validator_pubkey,
+            "timestamp": b.block_header.timestamp,
             "transactions_count": len(b.transactions)
         } for b in blocks_page]
         
