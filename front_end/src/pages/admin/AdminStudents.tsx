@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAdminStudents, truncateAddress } from "@/hooks/useAdminStudents";
-import { TablePageSkeleton } from "@/components/admin/AdminSkeletons";
+import { useAdminStudents } from "@/hooks";
+import { truncateAddress } from "@/utils/formatUtils";
 import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
+import { getRoleInfo } from "@/utils/uiUtils";
 
 export default function Students() {
   const {
     search, setSearch, loading, students, filtered, totalNfts, activeCount
   } = useAdminStudents();
 
-  if (loading) return <TablePageSkeleton />;
+  // Basic layout should show immediately, only the table or stats might be skeletonized
+  const isInitialLoading = loading && students.length === 0;
 
   return (
     <AdminPageContainer>
@@ -24,9 +26,9 @@ export default function Students() {
       />
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AdminStatCard label="Tổng tài khoản" value={students.length} icon={Users} />
-        <AdminStatCard label="Đang hoạt động" value={activeCount} icon={UserCheck} iconColor="text-green-400" bgColor="bg-green-400/20" />
-        <AdminStatCard label="NFT đã phát hành" value={totalNfts} icon={GraduationCap} iconColor="text-accent" bgColor="bg-accent/20" />
+        <AdminStatCard label="Tổng tài khoản" value={isInitialLoading ? "..." : students.length} icon={Users} />
+        <AdminStatCard label="Đang hoạt động" value={isInitialLoading ? "..." : activeCount} icon={UserCheck} iconColor="text-green-400" bgColor="bg-green-400/20" />
+        <AdminStatCard label="NFT đã phát hành" value={isInitialLoading ? "..." : totalNfts} icon={GraduationCap} iconColor="text-accent" bgColor="bg-accent/20" />
       </motion.div>
 
       <motion.div variants={itemVariants} className="flex gap-3">
@@ -49,7 +51,19 @@ export default function Students() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {isInitialLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-4 w-24 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell><div className="h-4 w-32 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><div className="h-4 w-40 bg-secondary animate-pulse rounded" /></TableCell>
+                      <TableCell className="hidden lg:table-cell"><div className="h-6 w-16 bg-secondary animate-pulse rounded-full" /></TableCell>
+                      <TableCell><div className="h-6 w-10 bg-secondary animate-pulse rounded-full" /></TableCell>
+                      <TableCell><div className="h-6 w-20 bg-secondary animate-pulse rounded-full" /></TableCell>
+                      <TableCell className="text-right"><div className="h-8 w-8 bg-secondary animate-pulse rounded-full ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Không tìm thấy kết quả</TableCell></TableRow>
                 ) : (
                   filtered.map((s) => (
@@ -58,12 +72,8 @@ export default function Students() {
                       <TableCell><p className="font-medium text-foreground">{s.name}</p></TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">{s.org_name}</TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        <Badge variant="outline" className={
-                          s.role === "moet" ? "bg-purple-400/10 text-purple-400 border-purple-400/20" :
-                          s.role === "validator" ? "bg-blue-400/10 text-blue-400 border-blue-400/20" :
-                          "bg-gray-400/10 text-gray-400 border-gray-400/20"
-                        }>
-                          {s.role === "moet" ? "MOET" : s.role === "validator" ? "Validator" : "Client"}
+                        <Badge variant="outline" className={getRoleInfo(s.role).className}>
+                          {getRoleInfo(s.role).label}
                         </Badge>
                       </TableCell>
                       <TableCell><Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">{s.nftCount}</Badge></TableCell>

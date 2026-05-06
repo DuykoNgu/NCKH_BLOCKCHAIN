@@ -1,56 +1,37 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { schoolRegisterSchema, createWalletSchema } from '@/types/auth.schema';
 
 interface CreateWalletProps {
-  error: string;
   isLoading: boolean;
-  showPassword: boolean;
-  password: string;
-  confirmPassword: string;
-  onPasswordChange: (password: string) => void;
-  onConfirmPasswordChange: (password: string) => void;
-  onTogglePassword: () => void;
-  onCreateWallet: () => void;
   isSchool?: boolean;
-  schoolName?: string;
-  onSchoolNameChange?: (name: string) => void;
-  taxId?: string;
-  onTaxIdChange?: (id: string) => void;
-  representative?: string;
-  onRepresentativeChange?: (rep: string) => void;
-  email?: string;
-  onEmailChange?: (email: string) => void;
-  phone?: string;
-  onPhoneChange?: (phone: string) => void;
+  onSubmit: (values: any) => void;
   onBack: () => void;
 }
 
 const CreateWallet = ({
-  error,
   isLoading,
-  showPassword,
-  password,
-  confirmPassword,
-  onPasswordChange,
-  onConfirmPasswordChange,
-  onTogglePassword,
-  onCreateWallet,
   isSchool,
-  schoolName,
-  onSchoolNameChange,
-  taxId,
-  onTaxIdChange,
-  representative,
-  onRepresentativeChange,
-  email,
-  onEmailChange,
-  phone,
-  onPhoneChange,
+  onSubmit,
   onBack,
 }: CreateWalletProps) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid }
+  } = useForm<any>({
+    resolver: zodResolver(isSchool ? schoolRegisterSchema : createWalletSchema),
+    mode: "onChange"
+  });
+
   return (
     <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
       <div className="flex flex-col">
@@ -67,63 +48,56 @@ const CreateWallet = ({
             : 'Thiết lập mật khẩu mạnh để bảo vệ tài khoản và dữ liệu của bạn.'}
         </p>
 
-
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {isSchool && (
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên trường học / Tổ chức</Label>
                 <Input
-                  type="text"
-                  value={schoolName || ''}
-                  onChange={(e) => onSchoolNameChange?.(e.target.value)}
+                  {...register("schoolName")}
                   placeholder="VD: Trường Đại học Bách Khoa"
-                  className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors"
+                  className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors", errors.schoolName && "border-destructive/50")}
                 />
+                {errors.schoolName && <p className="text-[10px] text-destructive font-bold">{(errors.schoolName.message as any)?.toString()}</p>}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mã số thuế / Mã Cơ Sở GD</Label>
                 <Input
-                  type="text"
-                  value={taxId || ''}
-                  onChange={(e) => onTaxIdChange?.(e.target.value)}
+                  {...register("taxId")}
                   placeholder="VD: 0100684128"
-                  className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors"
+                  className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.taxId && "border-destructive/50")}
                 />
+                {errors.taxId && <p className="text-[10px] text-destructive font-bold">{(errors.taxId.message as any)?.toString()}</p>}
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Người đại diện pháp luật</Label>
                 <Input
-                  type="text"
-                  value={representative || ''}
-                  onChange={(e) => onRepresentativeChange?.(e.target.value)}
+                  {...register("representative")}
                   placeholder="Họ và tên"
-                  className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors"
+                  className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.representative && "border-destructive/50")}
                 />
+                {errors.representative && <p className="text-[10px] text-destructive font-bold">{(errors.representative.message as any)?.toString()}</p>}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email liên hệ</Label>
                   <Input
-                    type="email"
-                    value={email || ''}
-                    onChange={(e) => onEmailChange?.(e.target.value)}
+                    {...register("email")}
                     placeholder="... @edu.vn"
-                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors"
+                    className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.email && "border-destructive/50")}
                   />
+                  {errors.email && <p className="text-[10px] text-destructive font-bold">{(errors.email.message as any)?.toString()}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Số điện thoại</Label>
                   <Input
-                    type="tel"
-                    value={phone || ''}
-                    onChange={(e) => onPhoneChange?.(e.target.value)}
+                    {...register("phone")}
                     placeholder="0912..."
-                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors"
+                    className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.phone && "border-destructive/50")}
                   />
+                  {errors.phone && <p className="text-[10px] text-destructive font-bold">{(errors.phone.message as any)?.toString()}</p>}
                 </div>
               </div>
-              <div className="pt-2 border-t border-border/50 mt-4"></div>
             </div>
           )}
 
@@ -132,51 +106,44 @@ const CreateWallet = ({
               <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mật khẩu ví</Label>
               <div className="relative">
                 <Input
+                  {...register("password")}
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => onPasswordChange(e.target.value)}
                   placeholder="Mật khẩu ít nhất 8 ký tự"
                   className={cn(
                     "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 focus:bg-background transition-colors",
-                    error && (error.includes('Mật khẩu') || error.includes('khớp')) && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                    errors.password && "border-destructive/50 ring-destructive/20"
                   )}
                 />
                 <button
                   type="button"
-                  onClick={onTogglePassword}
+                  onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {errors.password && <p className="text-[10px] text-destructive font-bold">{(errors.password.message as any)?.toString()}</p>}
             </div>
 
             <div className="space-y-2">
               <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Xác nhận mật khẩu</Label>
               <Input
+                {...register("confirmPassword")}
                 type="password"
-                value={confirmPassword}
-                onChange={(e) => onConfirmPasswordChange(e.target.value)}
                 placeholder="Nhập lại mật khẩu"
                 className={cn(
                   "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors",
-                  error && error.includes('khớp') && "border-destructive/50 bg-destructive/5 ring-destructive/20 focus-visible:ring-destructive"
+                  errors.confirmPassword && "border-destructive/50 ring-destructive/20"
                 )}
               />
+              {errors.confirmPassword && <p className="text-[10px] text-destructive font-bold">{(errors.confirmPassword.message as any)?.toString()}</p>}
             </div>
-            {error && <p className="text-[11px] text-destructive font-medium ml-1 animate-in fade-in slide-in-from-top-1 duration-200">{error}</p>}
           </div>
 
           <div className="pt-2">
             <Button
-              onClick={onCreateWallet}
-              disabled={
-                isLoading || 
-                !password || 
-                password.length < 8 || 
-                password !== confirmPassword ||
-                (isSchool && (!schoolName || !taxId || !representative || !email || !phone))
-              }
+              type="submit"
+              disabled={isLoading || !isValid}
               className="w-full h-12 rounded-xl font-display font-semibold text-sm shadow-lg shadow-primary/20"
             >
               {isLoading ? (
@@ -198,7 +165,7 @@ const CreateWallet = ({
               </p>
             </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

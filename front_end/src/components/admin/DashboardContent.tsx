@@ -1,26 +1,24 @@
 import { motion } from "framer-motion";
-import { Copy, GraduationCap, Activity, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Copy, GraduationCap, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAdminDashboard } from "@/hooks/useAdminDashboard";
+import { useAdminDashboard } from "@/hooks";
+import { NFT_STATUS_CONFIG } from "@/constants/ui";
 import { DashboardSkeleton } from "./AdminSkeletons";
 import ChainHistoryModal from "./ChainHistoryModal";
 import { useState } from "react";
 
-const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
-  verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
-  pending: { label: "Đang chờ", icon: Clock, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
-  rejected: { label: "Từ chối", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
-  revoked: { label: "Đã thu hồi", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
-};
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 
 export default function DashboardContent() {
   const {
-    loading,
+    isLoading,
+    nftListQuery,
+    txListQuery,
+    latestBlockQuery,
     walletAddress,
     blockCount,
     latestBlockIndex,
@@ -32,7 +30,8 @@ export default function DashboardContent() {
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  if (loading) return <DashboardSkeleton />;
+  // Still show a basic skeleton if everything is loading at once (initial mount)
+  if (isLoading && !nftListQuery.data && !txListQuery.data) return <DashboardSkeleton />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
@@ -77,7 +76,7 @@ export default function DashboardContent() {
              <div className="flex flex-col">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Latest Index</p>
                <p className="text-sm font-black font-mono text-blue-600">
-                 {latestBlockIndex === "-" ? "# -" : `#${latestBlockIndex}`}
+                 {latestBlockQuery.isLoading ? "..." : (latestBlockIndex === "-" ? "# -" : latestBlockIndex)}
                </p>
              </div>
            </div>
@@ -118,7 +117,7 @@ export default function DashboardContent() {
               <div className="flex gap-8">
                 <div className="text-center bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 min-w-[120px]">
                   <p className="text-xs text-primary-foreground/60 mb-1">NFTs Cấp phát</p>
-                  <p className="text-4xl font-black">{recentDegrees.length}</p>
+                  <p className="text-4xl font-black">{nftListQuery.isLoading ? "..." : recentDegrees.length}</p>
                 </div>
                 <div className="text-center bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 min-w-[120px]">
                   <p className="text-xs text-primary-foreground/60 mb-1">Trạng thái</p>
@@ -143,7 +142,9 @@ export default function DashboardContent() {
                 <div className="text-xs font-bold text-muted-foreground/40 group-hover:text-primary/40 transition-colors">0{idx + 1}</div>
               </div>
               <div className="space-y-1">
-                <p className="text-3xl font-black tracking-tight text-foreground group-hover:gradient-text transition-all">{stat.value}</p>
+                <p className="text-3xl font-black tracking-tight text-foreground group-hover:gradient-text transition-all">
+                   {(nftListQuery.isLoading || txListQuery.isLoading) ? "..." : stat.value}
+                </p>
                 <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
               </div>
               <stat.icon className={`absolute -right-4 -bottom-4 h-24 w-24 opacity-[0.03] group-hover:opacity-[0.06] group-hover:scale-110 transition-all duration-700`} />
@@ -165,7 +166,19 @@ export default function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="p-2">
-              {recentDegrees.length === 0 ? (
+              {nftListQuery.isLoading ? (
+                <div className="p-4 space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 animate-pulse">
+                      <div className="h-12 w-12 rounded-xl bg-secondary" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-1/3 bg-secondary rounded" />
+                        <div className="h-3 w-1/2 bg-secondary rounded" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : recentDegrees.length === 0 ? (
                 <div className="px-6 py-20 text-center flex flex-col items-center justify-center">
                    <div className="h-16 w-16 rounded-full bg-secondary flex items-center justify-center mb-4">
                      <GraduationCap className="h-8 w-8 text-muted-foreground/30" />
@@ -175,7 +188,7 @@ export default function DashboardContent() {
               ) : (
                 <div className="space-y-1">
                   {recentDegrees.map((deg) => {
-                    const sc = statusConfig[deg.status] || statusConfig.pending;
+                    const sc = NFT_STATUS_CONFIG[deg.status as keyof typeof NFT_STATUS_CONFIG] || NFT_STATUS_CONFIG.pending;
                     return (
                       <div key={deg.id} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-primary/[0.03] transition-all duration-300">
                         <div className="flex items-center gap-4 min-w-0">
@@ -213,7 +226,13 @@ export default function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-6">
-              {recentTxs.length === 0 ? (
+              {txListQuery.isLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-16 w-full bg-secondary/50 rounded-2xl animate-pulse" />
+                  ))}
+                </div>
+              ) : recentTxs.length === 0 ? (
                 <div className="py-20 text-center flex flex-col items-center justify-center">
                   <Activity className="h-8 w-8 text-muted-foreground/30 mb-3" />
                   <p className="text-sm text-muted-foreground">Chưa có giao dịch nào</p>
