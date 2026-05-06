@@ -60,14 +60,7 @@ export const createWallet = async (password: string, schoolName?: string): Promi
   const signature = await signDataDER(signingData, privateKey);
 
   try {
-    await api.post(AUTH_SERVER.WALLET_REGISTER, {
-      address: address.toLowerCase(),
-      public_key: publicKeyHex,
-      role: userData.role,
-      full_name: userData.full_name,
-      signature: signature,
-      timestamp: timestamp
-    });
+    await registerWallet(address.toLowerCase(), publicKeyHex, userData.role, userData.full_name, signature, timestamp);
   } catch (error) {
     console.error('Backend registration failed:', error);
   }
@@ -100,13 +93,7 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   const signature = await signDataDER(signingData, privateKey);
 
   try {
-    await api.post(AUTH_SERVER.WALLET_REGISTER, {
-      address: address.toLowerCase(),
-      public_key: publicKeyHex,
-      role: "client",
-      signature: signature,
-      timestamp: timestamp
-    });
+    await registerWallet(address.toLowerCase(), publicKeyHex, "client", undefined, signature, timestamp);
   } catch (error) {
     console.error('Backend registration failed:', error);
   }
@@ -177,16 +164,13 @@ export const updateProfile = async (address: string, fullName: string, avatarUrl
 };
 
 export const fetchProfile = async (address: string) => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.GET_PROFILE.replace(':address', address)}`);
-  if (!response.ok) throw new Error("Failed to fetch profile");
-  return response.json();
+  const response = await api.get(AUTH_SERVER.GET_PROFILE.replace(':address', address.toLowerCase()));
+  return response.data;
 };
 
 export const getPendingValidators = async () => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.GET_PENDING_VALIDATORS}`);
-  if (!response.ok) throw new Error("Failed to fetch pending validators");
-  const data = await response.json();
-  return data.data || [];
+  const response = await api.get(AUTH_SERVER.GET_PENDING_VALIDATORS);
+  return response.data.data || [];
 };
 
 export const approveValidator = async (address: string) => {
@@ -213,11 +197,21 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
 export const registerSchool = async (password: string, schoolName: string, ..._args: any[]) => {
   return createWallet(password, schoolName);
 };
-export const registerWallet = async (address: string, publicKey: string, role: string = 'client') => {
+export const registerWallet = async (
+  address: string, 
+  publicKey: string, 
+  role: string = 'client', 
+  fullName?: string, 
+  signature?: string, 
+  timestamp?: number
+) => {
   const response = await api.post(AUTH_SERVER.WALLET_REGISTER, {
-    address,
+    address: address.toLowerCase(),
     public_key: publicKey,
     role,
+    full_name: fullName,
+    signature,
+    timestamp
   });
   return response.data;
 };
