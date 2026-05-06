@@ -3,7 +3,7 @@ import {
     FileText, Upload, CheckCircle, AlertCircle, Loader2, X,
     FolderOpen, FileSpreadsheet, Play, Download, RotateCcw,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -317,10 +317,8 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     degree_type: row.LoaiBangCap,
                     pdf_url: pdfData.url,
                     pdf_hash: pdfData.hash,
-                    institution: fullname,
                     institution_address: account,
                     recipient_address: row.DiaChiVi,
-                    issued_at: issuedAt,
                     signature,
                 });
 

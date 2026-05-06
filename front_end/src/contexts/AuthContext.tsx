@@ -90,7 +90,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    localStorage.clear(); // Xóa tất cả cho an toàn
+    // Keep wallet data for easy re-login with password
+    const itemsToKeep = ['address', 'public_key', 'vault', 'full_name', 'avatar_url'];
+    
+    // Get all keys currently in localStorage
+    const allKeys = Object.keys(localStorage);
+    
+    // Remove only non-wallet items
+    allKeys.forEach(key => {
+      if (!itemsToKeep.includes(key)) {
+        localStorage.removeItem(key);
+      }
+    });
+
     setIsLoggedIn(false);
     setAddress(null);
     setRole(null);

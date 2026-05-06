@@ -85,6 +85,25 @@ class NFTServiceClass {
       throw new Error(error.response?.data?.error || error.message);
     }
   }
+
+  async batchUploadPDFs(files: File[]): Promise<{ success: boolean; data: Record<string, { url: string; hash: string }>; errors: Record<string, string> }> {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      const response = await api.post(NFT_SERVER.BATCH_UPLOAD, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error: any) {
+      return { 
+        success: false, 
+        data: {}, 
+        errors: { _general: error.response?.data?.error || error.message } 
+      };
+    }
+  }
 }
 
 export const NFTService = new NFTServiceClass();

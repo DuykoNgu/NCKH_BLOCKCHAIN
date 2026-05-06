@@ -1,208 +1,157 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
+import ImportMnemonic from '@/components/common/auth/ImportMnemonic';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import { createWallet, registerSchool, clearOldSession } from '@/services/authService';
-import { useWallet } from '@/hooks/useWallet';
+import { clearOldSession } from '@/services/authService';
+import { useLoginPage } from '@/hooks/useLoginPage';
+
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
 const LoginPage = () => {
-  const navigate = useNavigate();
-  const { type } = useParams<{ type?: string }>();
-  
-  // Use state to properly trigger re-render when URL changes
-  const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register'>('home');
-  const [showSeed, setShowSeed] = useState(false);
-  
-  const [seed, setSeed] = useState<string[]>([]);
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [schoolName, setSchoolName] = useState('');
-  const [taxId, setTaxId] = useState('');
-  const [representative, setRepresentative] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const {
+    step,
+    setStep,
+    showSeed,
+    seed,
+    password,
+    setPassword,
+    confirmPassword,
+    setConfirmPassword,
+    showPassword,
+    setShowPassword,
+    isLoading,
+    error,
+    schoolName,
+    setSchoolName,
+    taxId,
+    setTaxId,
+    representative,
+    setRepresentative,
+    email,
+    setEmail,
+    phone,
+    setPhone,
+    handleLogin,
+    handleCreateWallet,
+    handleImportMnemonic,
+    handleSchoolRegister,
+    navigate
+  } = useLoginPage();
 
-  // Update step when URL type changes
-  useEffect(() => {
-    if (type === 'existing') {
-      const hasWallet = !!localStorage.getItem('address');
-      if (!hasWallet) {
-        navigate('/login', { replace: true });
-        return;
-      }
-      setStep('import');
-    } else if (type === 'new') {
-      setStep('set-password');
-    } else if (type === 'school') {
-      setStep('school-register');
-    } else {
-      setStep('home');
-    }
-    // Reset states when URL changes
-    setShowSeed(false);
-    setSeed([]);
-    setPassword('');
-    setConfirmPassword('');
-    setSchoolName('');
-    setTaxId('');
-    setRepresentative('');
-    setEmail('');
-    setPhone('');
-    setError('');
-  }, [type]);
-
-  const handleCreateWallet = async () => {
-    if (!password || password.length < 8 || password !== confirmPassword) {
-      setError('Mật khẩu không hợp lệ');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      let result;
-      if (step === 'school-register') {
-        if (!taxId || !representative || !email || !phone) {
-          setError('Vui lòng điền đầy đủ các thông tin pháp lý');
-          setIsLoading(false);
-          return;
-        }
-        result = await registerSchool(password, schoolName, taxId, representative, email, phone);
-      } else {
-        result = await createWallet(password);
-      }
-      setSeed(result.mnemonic.split(' '));
-      setShowSeed(true);
-    } catch (err) {
-      setError('Tạo tài khoản thất bại. Vui lòng thử lại.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSeedConfirmed = () => {
-    navigate('/login/existing');
-  };
-
-  const { unlock } = useWallet();
-
-  const handleLogin = async () => {
-    if (!password || password.length < 8) {
-      setError('Vui lòng nhập mật khẩu (tối thiểu 8 ký tự)');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await unlock(password);
-      
-      // Kiểm tra role sau khi đăng nhập để điều hướng đúng trang
-      const role = localStorage.getItem("role");
-      if (role === 'admin' || role === 'moet') {
-        navigate('/admin');
-      } else {
-        navigate('/home');
-      }
-    } catch (err) {
-      setError('Đăng nhập thất bại. Vui lòng kiểm tra lại mật khẩu.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Render content based on step - Scene3D stays mounted at root level
   const renderContent = () => {
     // Render home page
     if (step === 'home' && !showSeed) {
       return <LoginHome />;
     }
 
-    // Render seed display
+    // Render seed phrase display (after creation)
     if (showSeed) {
       return (
-        <div className="relative z-10 w-full max-w-md mx-4">
-          <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
-            <SeedDisplay 
-              seed={seed}
-              onBack={() => setShowSeed(false)}
-              onConfirmed={handleSeedConfirmed}
-            />
-          </div>
-        </div>
+        <SeedDisplay 
+          seed={seed} 
+          onBack={() => setStep('home')}
+          onConfirmed={() => navigate('/home')} 
+        />
       );
     }
 
-    // Render import/login page
+    // Render import existing wallet
     if (step === 'import') {
-      const address = localStorage.getItem('address');
-      
       const handleClearWallet = () => {
         clearOldSession();
         window.location.reload(); 
       };
 
+      const currentAddress = localStorage.getItem('address');
+
       return (
         <ImportWallet
-          error={error}
-          isLoading={isLoading}
-          showPassword={showPassword}
           password={password}
-          currentAddress={address}
+          showPassword={showPassword}
           onPasswordChange={setPassword}
           onTogglePassword={() => setShowPassword(!showPassword)}
           onLogin={handleLogin}
           onBack={() => navigate('/login')}
           onClearWallet={handleClearWallet}
+          isLoading={isLoading}
+          error={error}
+          currentAddress={currentAddress}
+          onGoToImportMnemonic={() => setStep('import-mnemonic')}
         />
       );
     }
 
-    // Render create password / school page
-    return (
-      <CreateWallet
-        isSchool={step === 'school-register'}
-        schoolName={schoolName}
-        onSchoolNameChange={setSchoolName}
-        taxId={taxId}
-        onTaxIdChange={setTaxId}
-        representative={representative}
-        onRepresentativeChange={setRepresentative}
-        email={email}
-        onEmailChange={setEmail}
-        phone={phone}
-        onPhoneChange={setPhone}
-        error={error}
-        isLoading={isLoading}
-        showPassword={showPassword}
-        password={password}
-        confirmPassword={confirmPassword}
-        onPasswordChange={setPassword}
-        onConfirmPasswordChange={setConfirmPassword}
-        onTogglePassword={() => setShowPassword(!showPassword)}
-        onCreateWallet={handleCreateWallet}
-        onBack={() => navigate('/login')}
-      />
-    );
+    // Render import mnemonic
+    if (step === 'import-mnemonic') {
+      return (
+        <ImportMnemonic
+          onImport={handleImportMnemonic}
+          onBack={() => navigate('/login')}
+          isLoading={isLoading}
+          error={error}
+        />
+      );
+    }
+
+    // Render create new wallet (set password)
+    if (step === 'set-password' || step === 'school-register') {
+      const isSchool = step === 'school-register';
+      return (
+        <CreateWallet
+          password={password}
+          confirmPassword={confirmPassword}
+          showPassword={showPassword}
+          onPasswordChange={setPassword}
+          onConfirmPasswordChange={setConfirmPassword}
+          onTogglePassword={() => setShowPassword(!showPassword)}
+          onCreateWallet={isSchool ? handleSchoolRegister : handleCreateWallet}
+          onBack={() => navigate('/login')}
+          isLoading={isLoading}
+          error={error}
+          isSchool={isSchool}
+          schoolName={schoolName}
+          onSchoolNameChange={setSchoolName}
+          taxId={taxId}
+          onTaxIdChange={setTaxId}
+          representative={representative}
+          onRepresentativeChange={setRepresentative}
+          email={email}
+          onEmailChange={setEmail}
+          phone={phone}
+          onPhoneChange={setPhone}
+        />
+      );
+    }
+
+    return null;
   };
 
-  // Always render Scene3D at root to prevent re-initialization when navigating
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden">
       <Suspense fallback={null}>
         <Scene3D />
       </Suspense>
-      {renderContent()}
+
+      <div className="relative z-10 w-full max-w-md mx-4">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step + (showSeed ? '-seed' : '')}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      <div className="fixed bottom-6 text-center w-full text-xs text-muted-foreground/60 font-medium tracking-widest uppercase">
+        EduChain Network • Security Layer v1.0
+      </div>
     </div>
   );
 };

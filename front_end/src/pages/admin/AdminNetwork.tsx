@@ -1,62 +1,28 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Network, Server, Activity, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { NetworkService } from "@/services/networkService";
-import { BlockService } from "@/services/blockService";
-import type { PeerInfo, NetworkStats, SlotInfo } from "@/services/networkService";
-import type { BlockInfo } from "@/services/blockService";
+import { useAdminNetwork } from "@/hooks/useAdminNetwork";
 
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-};
+const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-const item = {
-  hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-};
-
-const statusConfig: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
+const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   ACTIVE: { label: "Hoạt động", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
   PENDING: { label: "Đang chờ", icon: AlertCircle, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
   INACTIVE: { label: "Ngừng hoạt động", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
 export default function NetworkPage() {
-  const [loading, setLoading] = useState(true);
-  const [peers, setPeers] = useState<PeerInfo[]>([]);
-  const [stats, setStats] = useState<NetworkStats | null>(null);
-  const [slotInfo, setSlotInfo] = useState<SlotInfo | null>(null);
-  const [recentBlocks, setRecentBlocks] = useState<BlockInfo[]>([]);
-  const [blockCount, setBlockCount] = useState(0);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [peersRes, statsRes, slotRes, blocksRes, countRes] = await Promise.allSettled([
-          NetworkService.getPeers(),
-          NetworkService.getNetworkStats(),
-          NetworkService.getSlotInfo(),
-          BlockService.getAllBlocks(1, 5),
-          BlockService.countBlocks(),
-        ]);
-
-        if (peersRes.status === "fulfilled") setPeers(Array.isArray(peersRes.value) ? peersRes.value : []);
-        if (statsRes.status === "fulfilled") setStats(statsRes.value);
-        if (slotRes.status === "fulfilled") setSlotInfo(slotRes.value);
-        if (blocksRes.status === "fulfilled") setRecentBlocks(blocksRes.value.blocks || []);
-        if (countRes.status === "fulfilled") setBlockCount(countRes.value.total_blocks || 0);
-      } catch (err) {
-        console.error("Network fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  const {
+    loading,
+    peers,
+    stats,
+    slotInfo,
+    recentBlocks,
+    activePeersCount,
+    networkStatsDisplay
+  } = useAdminNetwork();
 
   if (loading) {
     return (
@@ -66,15 +32,6 @@ export default function NetworkPage() {
       </div>
     );
   }
-
-  const activePeers = peers.filter(p => p.status === "ACTIVE").length;
-
-  const networkStatsDisplay = [
-    { label: "Tổng Peers", value: stats?.total_peers?.toString() || peers.length.toString(), icon: Server, color: "text-primary" },
-    { label: "Peers hoạt động", value: stats?.active_peers?.toString() || activePeers.toString(), icon: Activity, color: "text-green-400" },
-    { label: "Validators", value: stats?.validator_peers?.toString() || "0", icon: Server, color: "text-blue-400" },
-    { label: "Tổng Blocks", value: blockCount.toString(), icon: HardDrive, color: "text-accent" },
-  ];
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -133,7 +90,7 @@ export default function NetworkPage() {
                   Danh sách Peers
                 </CardTitle>
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                  {activePeers}/{peers.length} đang hoạt động
+                  {activePeersCount}/{peers.length} đang hoạt động
                 </Badge>
               </div>
             </CardHeader>
@@ -172,7 +129,6 @@ export default function NetworkPage() {
 
         {/* Sync status */}
         <motion.div variants={item} className="space-y-4">
-          {/* Consensus Info */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="font-display text-lg flex items-center gap-2">
@@ -210,7 +166,6 @@ export default function NetworkPage() {
             </CardContent>
           </Card>
 
-          {/* Recent Blocks */}
           <Card className="glass-card">
             <CardHeader className="pb-3">
               <CardTitle className="font-display text-lg flex items-center gap-2">

@@ -29,6 +29,7 @@ export interface User {
   public_key: string;
   address: string;
   role: UserRole;
+  is_active?: number | string | boolean;
 }
 export interface AuthError {
   detail: string;
@@ -40,3 +41,19 @@ export type FormFields = {
   password: string;
   confirmPassword: string;
 };
+
+export interface WalletData {
+  mnemonic: string;
+  privateKey: Uint8Array;
+  publicKey: Uint8Array;
+  address: string;
+}
+
+export interface NodeInfo {
+  ipAddress: string;
+  port: string;
+  universityName: string;
+  universityCode: string;
+  website: string;
+  description: string;
+}
