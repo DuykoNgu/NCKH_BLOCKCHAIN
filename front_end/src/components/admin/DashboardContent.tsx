@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { DashboardSkeleton } from "./AdminSkeletons";
+import ChainHistoryModal from "./ChainHistoryModal";
+import { useState } from "react";
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -28,10 +30,17 @@ export default function DashboardContent() {
     copyAddress
   } = useAdminDashboard();
 
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
   if (loading) return <DashboardSkeleton />;
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
+      {/* Chain History Modal */}
+      <ChainHistoryModal 
+        isOpen={isHistoryOpen} 
+        onClose={() => setIsHistoryOpen(false)} 
+      />
       {/* Header with Greeting and Network Info */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -46,25 +55,30 @@ export default function DashboardContent() {
           </p>
         </div>
         
-        {/* Network Info Glass Card */}
-        <div className="flex items-center gap-6 p-1 pr-6 bg-card border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300">
-           <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center">
-             <Activity className="h-6 w-6 text-primary" />
+        {/* Network Info Floating Card */}
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6 p-2 pr-6 bg-white border border-slate-100 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] transition-all duration-500 group">
+           <div className="h-16 w-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-inner">
+             <Activity className="h-7 w-7" />
            </div>
-           <div className="flex gap-8">
-             <div>
-               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Mạng lưới</p>
-               <p className="text-sm font-bold">EduChain Mainnet</p>
+           <div className="flex flex-wrap items-center gap-6 sm:gap-10">
+             <div className="flex flex-col">
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1 group-hover:text-blue-500 transition-colors">Mạng lưới</p>
+               <p className="text-sm font-bold text-slate-900">EduChain Mainnet</p>
              </div>
-             <div className="h-8 w-px bg-border self-center" />
-             <div>
-               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Tổng Blocks</p>
-               <p className="text-sm font-bold font-mono">{blockCount.toLocaleString()}</p>
+             <div className="hidden sm:block h-10 w-px bg-slate-100" />
+             <div className="flex flex-col">
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Tổng Blocks</p>
+               <div className="flex items-center gap-2">
+                 <p className="text-sm font-black text-slate-900 font-mono">{blockCount.toLocaleString()}</p>
+                 <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+               </div>
              </div>
-             <div className="h-8 w-px bg-border self-center" />
-             <div>
-               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Latest Index</p>
-               <p className="text-sm font-bold font-mono text-primary">#{latestBlockIndex}</p>
+             <div className="hidden sm:block h-10 w-px bg-slate-100" />
+             <div className="flex flex-col">
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Latest Index</p>
+               <p className="text-sm font-black font-mono text-blue-600">
+                 {latestBlockIndex === "-" ? "# -" : `#${latestBlockIndex}`}
+               </p>
              </div>
            </div>
         </div>
@@ -221,7 +235,11 @@ export default function DashboardContent() {
                   ))}
                 </div>
               )}
-              <Button variant="ghost" className="w-full mt-6 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-xl h-12">
+              <Button 
+                variant="ghost" 
+                className="w-full mt-6 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-xl h-12"
+                onClick={() => setIsHistoryOpen(true)}
+              >
                 Xem lịch sử chuỗi
               </Button>
             </CardContent>
