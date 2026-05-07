@@ -2,7 +2,7 @@
 import time
 import json
 from typing import Optional, List, Dict
-from app.database.connection import get_connection
+from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -15,11 +15,19 @@ class PeerRepository:
     def add_or_update_peer(peer_id: str, ip_address: str, port: int, 
                           public_key: str, node_type: str = "validator", 
                           status: str = "PENDING") -> bool:
-        """Add or update a peer in database"""
-        max_retries = 3
-        retry_delay = 0.5
+        """Add or update a peer in database
         
-        for attempt in range(max_retries):
+        ⚠️  NOTE: Peer updates are NON-CRITICAL and non-blocking
+        If database is locked, skip (will retry later)
+        This prevents peer updates from blocking block saves
+        """
+        try:
+            # Try to acquire lock with SHORT timeout (non-blocking)
+            # If we can't get it, skip - peer update is not critical
+            if not acquire_write_lock(timeout=0.5):
+                logger.warning(f"⚠️  Could not acquire lock for peer {peer_id[:8]}... (skipping, not critical)")
+                return False
+            
             try:
                 conn = get_connection()
                 cursor = conn.cursor()
@@ -41,21 +49,14 @@ class PeerRepository:
                 
                 conn.commit()
                 conn.close()
-                logger.info(f"Peer {peer_id} added/updated with status {status}")
                 return True
-            except Exception as e:
-                if "locked" in str(e).lower() and attempt < max_retries - 1:
-                    logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for peer {peer_id[:16]}...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                    continue
-                logger.error(f"Error adding/updating peer: {e}")
-                try:
-                    conn.close()
-                except:
-                    pass
-                return False
-        return False
+            finally:
+                release_write_lock()
+                
+        except Exception as e:
+            release_write_lock()
+            logger.debug(f"Peer update skipped: {e} (not critical)")
+            return False
 
     @staticmethod
     def get_peer_by_id(peer_id: str) -> Optional[Dict]:

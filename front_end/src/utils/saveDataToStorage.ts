@@ -1,5 +1,7 @@
+import { STORAGE_KEYS } from "@/constants/storage";
+
 const saveUserData = (user: any) => {
-  const { user_id, public_key, address, vault, role, full_name, is_active } = user;
+  const { user_id, public_key, address, vault, role, full_name, is_active, org_name } = user;
 
   // 1. Maintain the "Current/Active" account flat keys for backward compatibility
   const entriesMap: Record<string, any> = {

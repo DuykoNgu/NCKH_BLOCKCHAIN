@@ -28,18 +28,6 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(storage_bp)
     
-    @app.after_request
-    def after_request(response):
-        # Explicitly handle preflight and allowed origins
-        origin = request.headers.get('Origin')
-        if origin:
-            response.headers.add('Access-Control-Allow-Origin', origin)
-            
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        response.headers.add('Access-Control-Max-Age', '3600')
-        return response
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(monitor_bp)

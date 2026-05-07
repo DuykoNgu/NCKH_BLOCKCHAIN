@@ -1,18 +1,14 @@
 import { motion } from "framer-motion";
-import { Network, Server, Activity, CheckCircle2, XCircle, AlertCircle, Zap, HardDrive, Wifi } from "lucide-react";
+import { Network, Server, Activity, CheckCircle2, Zap, HardDrive, Wifi } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAdminNetwork } from "@/hooks/useAdminNetwork";
+import { useAdminNetwork } from "@/hooks";
 import { NetworkPageSkeleton } from "@/components/admin/AdminSkeletons";
+import { PEER_STATUS_CONFIG } from "@/constants/ui";
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
-const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
-  ACTIVE: { label: "Hoạt động", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
-  PENDING: { label: "Đang chờ", icon: AlertCircle, className: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20" },
-  INACTIVE: { label: "Ngừng hoạt động", icon: XCircle, className: "bg-destructive/10 text-destructive border-destructive/20" },
-};
 
 export default function NetworkPage() {
   const {

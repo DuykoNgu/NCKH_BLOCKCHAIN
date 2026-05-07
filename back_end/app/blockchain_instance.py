@@ -126,30 +126,40 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
         
         print("→ Saving genesis block to database...")
         try:
-            from app.database.connection import get_connection
-            conn = get_connection()
-            cursor = conn.cursor()
-            
-            # Insert block header
-            cursor.execute('''
-                INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
-                  genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
-                  genesis_block.block_header.timestamp))
-            
-            header_id = cursor.lastrowid
-            
-            # Insert block (genesis block)
-            cursor.execute('''
-                INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (genesis_block.block_id, genesis_block.index, header_id, 
-                  genesis_block.block_hash, genesis_block.validator_signature))
-            
-            conn.commit()
-            conn.close()
-            print(f"✓ Genesis block saved to database")
+            from app.database.connection import get_connection, acquire_write_lock, release_write_lock
+            lock_acquired = False
+            try:
+                if not acquire_write_lock(timeout=30):
+                    print(f"⚠ Could not acquire lock for genesis block")
+                    return
+                lock_acquired = True
+                
+                conn = get_connection()
+                cursor = conn.cursor()
+                
+                # Insert block header
+                cursor.execute('''
+                    INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
+                      genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
+                      genesis_block.block_header.timestamp))
+                
+                header_id = cursor.lastrowid
+                
+                # Insert block (genesis block)
+                cursor.execute('''
+                    INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (genesis_block.block_id, genesis_block.index, header_id, 
+                      genesis_block.block_hash, genesis_block.validator_signature))
+                
+                conn.commit()
+                conn.close()
+                print(f"✓ Genesis block saved to database")
+            finally:
+                if lock_acquired:
+                    release_write_lock()
         except Exception as e:
             print(f"⚠ Failed to save genesis block to database: {e}")
         
@@ -222,41 +232,51 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                 
                 # Save to database
                 try:
-                    from app.database.connection import get_connection
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    
-                    # Insert block header
-                    cursor.execute('''
-                        INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
-                          genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
-                          genesis_block.block_header.timestamp))
-                    
-                    header_id = cursor.lastrowid
-                    
-                    # Insert block
-                    cursor.execute('''
-                        INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (genesis_block.block_id, genesis_block.index, header_id, 
-                          genesis_block.block_hash, genesis_block.validator_signature))
-                    
-                    # Insert transactions using same connection to avoid lock
-                    for tx in genesis_block.transactions:
-                        TransactionRepository.create_transaction(tx, conn=conn)
-                    
-                    conn.commit()
-                    conn.close()
-                    
-                    # Add to blockchain
-                    blockchain.chain.append(genesis_block)
-                    blockchain.super_validator_pubkey = super_validator_pubkey
-                    blockchain.authority_set.add(super_validator_pubkey)
-                    
-                    print(f"    ✓ Genesis block fetched and saved from {seed_name}")
-                    return True
+                    from app.database.connection import get_connection, acquire_write_lock, release_write_lock
+                    lock_acquired = False
+                    try:
+                        if not acquire_write_lock(timeout=30):
+                            print(f"    ⚠ Could not acquire lock for genesis from {seed_name}")
+                            continue
+                        lock_acquired = True
+                        
+                        conn = get_connection()
+                        cursor = conn.cursor()
+                        
+                        # Insert block header
+                        cursor.execute('''
+                            INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (genesis_block.index, genesis_block.block_header.pre_hash, 
+                              genesis_block.block_header.merkle_root, genesis_block.block_header.validator_pubkey,
+                              genesis_block.block_header.timestamp))
+                        
+                        header_id = cursor.lastrowid
+                        
+                        # Insert block
+                        cursor.execute('''
+                            INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (genesis_block.block_id, genesis_block.index, header_id, 
+                              genesis_block.block_hash, genesis_block.validator_signature))
+                        
+                        # Insert transactions using same connection to avoid lock
+                        for tx in genesis_block.transactions:
+                            TransactionRepository.create_transaction(tx, conn=conn)
+                        
+                        conn.commit()
+                        conn.close()
+                        
+                        # Add to blockchain
+                        blockchain.chain.append(genesis_block)
+                        blockchain.super_validator_pubkey = super_validator_pubkey
+                        blockchain.authority_set.add(super_validator_pubkey)
+                        
+                        print(f"    ✓ Genesis block fetched and saved from {seed_name}")
+                        return True
+                    finally:
+                        if lock_acquired:
+                            release_write_lock()
                 except Exception as e:
                     print(f"    ✗ Failed to save genesis from {seed_name}: {e}")
                     import traceback
@@ -341,29 +361,38 @@ def load_chain_from_db(blockchain: BlockChain) -> int:
     Called on node restart so that get_local_height() returns the correct
     persisted height instead of 0.
     
+    CRITICAL: Uses single connection to fetch all block IDs, then closes it
+    before loading individual blocks to avoid holding multiple connections open
+    (which blocks writes in SQLite)
+    
     Returns:
         Number of blocks loaded
     """
     from app.repositories.BlockRepository import BlockRepository
     
     try:
-        # Query all block IDs ordered by index
+        # IMPORTANT: Get all block IDs in one query, then close connection
+        # This prevents multiple concurrent connections which block writes in SQLite
         from app.database.connection import get_connection
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT block_id FROM block ORDER BY index_num ASC')
         rows = cursor.fetchall()
-        conn.close()
+        conn.close()  # Close immediately - don't hold connection while loading blocks
         
         if not rows:
             print("⚠ No blocks found in DB to load")
             return 0
         
+        # Extract block IDs (close connection before this loop)
+        block_ids = [row[0] for row in rows]
+        
         # Clear chain and reload entirely from DB
         blockchain.chain.clear()
         loaded = 0
         
-        for (block_id,) in rows:
+        # Now load each block (each will open/close its own connection)
+        for block_id in block_ids:
             block = BlockRepository.get_block_by_id(block_id)
             if block:
                 blockchain.chain.append(block)

@@ -503,19 +503,55 @@ class GossipProtocol:
         Triggers sync if block gap > 1 is detected
         """
         block_hash = block_data.get('block_hash')
+        block_id = block_data.get('block_id')
         block_index = block_data.get('index', 0)
         
-        if not block_hash:
-            print("✗ Block hash missing")
+        if not block_id:
+            print("✗ Block ID missing")
             return False
         
-        # Check if we've already seen this block
-        if block_hash in self.known_blocks:
-            print(f"⚠ Block {block_hash[:8]}... already known")
+        # Check if we've already seen this block by BOTH hash and ID
+        # Use block_id as primary key since hash might vary during transmission
+        if block_id in self.known_blocks:
+            print(f"⚠ Block {block_id} already processed")
             return False
         
-        # Mark as known
-        self.known_blocks.add(block_hash)
+        if block_hash and block_hash in self.known_blocks:
+            print(f"⚠ Block hash {block_hash[:8]}... already known")
+            return False
+        
+        # 🔥 CRITICAL: Check for block fork BEFORE marking as known
+        # If a block at this index already exists with different block_id, it's a fork
+        try:
+            from app.database.connection import get_connection
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT block_id FROM block WHERE index_num = ?', (block_index,))
+            existing = cursor.fetchone()
+            conn.close()
+            
+            if existing:
+                existing_block_id = existing[0]
+                if existing_block_id == block_id:
+                    print(f"⚠ Block {block_id} already in DB, skipping")
+                    return False
+                else:
+                    # Fork detected: same index, different block_id
+                    print(f"\n{'='*60}")
+                    print(f"🔴 FORK DETECTED at block index {block_index}!")
+                    print(f"{'='*60}")
+                    print(f"  Incoming: block_id={block_id}, hash={block_hash[:16] if block_hash else 'NONE'}...")
+                    print(f"  Existing: block_id={existing_block_id} (already in DB)")
+                    print(f"  Action: Rejecting incoming block to maintain fork-free state")
+                    print(f"{'='*60}\n")
+                    return False
+        except Exception as e:
+            print(f"⚠ Could not check DB for fork: {e}")
+        
+        # Mark as known by both block_id and hash
+        self.known_blocks.add(block_id)
+        if block_hash:
+            self.known_blocks.add(block_hash)
         
         # ✅ VERIFY AND COMMIT BLOCK
         from app.models.Block import Block
@@ -581,10 +617,26 @@ class GossipProtocol:
                 print(f"✗ Merkle root mismatch for block {block_hash[:8]}...")
                 return False
             
-            # 4. Verify block chain continuity
+            # 4. CRITICAL FIX: Ensure block_hash is calculated for received blocks
+            # When blocks come via gossip, block_hash might not be set yet
+            # We need to calculate it BEFORE validating chain continuity
+            if not block.block_hash or block.block_hash == "":
+                block.block_hash = BlockService.calculate_hash(block)
+                print(f"→ [GOSSIP] Calculated block_hash for {block_hash[:8]}... (was empty)")
+            
+            # 5. Verify block chain continuity
             if len(blockchain.chain) > 0:
-                if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
+                last_block = blockchain.get_last_block()
+                
+                # Debug: Show what we're validating
+                print(f"[DEBUG] Validating block continuity:")
+                print(f"  New block index: {block.index}, prev_hash: {block.block_header.pre_hash[:16]}...")
+                print(f"  Last block index: {last_block.index}, hash: {last_block.block_hash[:16]}...")
+                
+                if not BlockChainService.is_valid_new_block(blockchain, block, last_block):
                     print(f"✗ Block {block_hash[:8]}... validation failed")
+                    print(f"  Index mismatch: {block.index} vs {last_block.index + 1}")
+                    print(f"  Hash mismatch: {block.block_header.pre_hash[:16]}... vs {last_block.block_hash[:16]}...")
                     return False
             
             # 5. 🔥 CRITICAL FIX: EXECUTE transactions to update blockchain state
@@ -609,18 +661,12 @@ class GossipProtocol:
             if execution_errors > 0:
                 print(f"⚠️  [SYNC] {execution_errors}/{len(block.transactions)} transaction executions failed")
             
-            # 6. Add block to blockchain
-            print(f"→ Adding block {block_hash[:8]}... to chain")
-            blockchain.chain.append(block)
-            
-            # 7. Remove committed transactions from mempool
-            # This ensures all nodes have consistent mempool state
-            included_tx_hashes = {tx.tx_hash for tx in block.transactions}
-            blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
-            
-            # 7. Persist block and transactions to database
-            # Blocks received via gossip are already validated and committed on network
+            # 6. CRITICAL: Save to database BEFORE adding to RAM chain
+            # This ensures DB is always source of truth for fork detection
+            print(f"→ Persisting block {block_hash[:8]}... to database")
             BlockRepository.create_block(block)
+            
+            # 7. Save transactions to database
             for tx in block.transactions:
                 # Update transaction with block_id if not already set
                 if not tx.block_id:
@@ -633,17 +679,21 @@ class GossipProtocol:
                     # Transaction already saved, just ensure block_id is set
                     if not existing_tx.block_id:
                         TransactionRepository.update_transaction_block_id(tx.tx_hash, block.block_id)
-                    payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-                    if payload_op == "account_register":
-                        address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
-                        print(f"⚠ [BLOCK] account_register tx already in DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
                 else:
                     # New transaction, save it
                     TransactionRepository.create_transaction(tx)
-                    payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
-                    if payload_op == "account_register":
-                        address = tx.payload.get("address", "UNKNOWN") if isinstance(tx.payload, dict) else "UNKNOWN"
-                        print(f"[BLOCK] account_register tx saved to DB: {address} (tx_hash={tx.tx_hash[:8]}...)")
+            
+            print(f"✓ Block persisted to database")
+            
+            # 8. NOW add block to RAM chain (after DB persistence confirmed)
+            print(f"→ Adding block {block_hash[:8]}... to local chain")
+            blockchain.chain.append(block)
+            print(f"✓ Block added to local chain")
+            
+            # 9. Remove committed transactions from mempool
+            # This ensures all nodes have consistent mempool state
+            included_tx_hashes = {tx.tx_hash for tx in block.transactions}
+            blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
             
             print(f"✓ Block {block_hash[:8]}... verified and committed (index={block.index})")
         

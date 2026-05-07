@@ -57,6 +57,10 @@ const AdminLoginPage = () => {
     } finally {
       setIsLoading(false);
     }
+  });
+
+  const onSubmit = (values: LoginFormValues) => {
+    loginMutation.mutate(values);
   };
 
   const handleClearAndReset = () => {

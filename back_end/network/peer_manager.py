@@ -111,11 +111,20 @@ class PeerManager:
             conn.close()
     
     def save_peer_to_db(self, peer: Peer) -> bool:
-        """Save peer to database"""
-        conn = get_connection()
-        cursor = conn.cursor()
+        """Save peer to database with write lock (non-blocking)"""
+        from app.database.connection import acquire_write_lock, release_write_lock
         
+        lock_acquired = False
         try:
+            # Non-blocking: peer updates are not critical, skip if busy
+            if not acquire_write_lock(timeout=0.5):
+                print(f"⚠ Database busy, skipping peer save for {peer.peer_id}")
+                return False
+            
+            lock_acquired = True
+            conn = get_connection()
+            cursor = conn.cursor()
+            
             cursor.execute("""
                 INSERT OR REPLACE INTO peers 
                 (peer_id, ip_address, port, public_key, node_type, status, last_seen)
@@ -131,12 +140,14 @@ class PeerManager:
             ))
             
             conn.commit()
+            conn.close()
             return True
         except sqlite3.Error as e:
             print(f"✗ Error saving peer: {e}")
             return False
         finally:
-            conn.close()
+            if lock_acquired:
+                release_write_lock()
     
     def generate_peer_id(self, ip: str, port: int) -> str:
         """Generate unique peer ID from IP and port"""

@@ -1,12 +1,9 @@
-import { useState, useEffect } from 'react';
 import { FileText, Shield, Copy, ExternalLink, CheckCircle, XCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth, useNFTDetail, useVerifyNFT, useMetadataHash, useRevokeNFT } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { NFTService } from '@/services/nftService';
-import type { NFT, VerifyResult } from '@/services/nftService';
 import { toast } from 'sonner';
 
 interface NFTDetailProps {
@@ -16,56 +13,18 @@ interface NFTDetailProps {
 
 export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
   const { isAdmin, isUser } = useAuth();
-  const [nft, setNft] = useState<NFT | null>(null);
-  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
-  const [metadataHash, setMetadataHash] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isRevoking, setIsRevoking] = useState(false);
-
-  useEffect(() => {
-    fetchNFTDetails();
-  }, [tokenId]);
-
-  const fetchNFTDetails = async () => {
-    setIsLoading(true);
-    try {
-      const response = await NFTService.getNFT(tokenId);
-      if ('nft' in response) {
-        setNft(response.nft);
-        // Tự động xác minh ngay khi tải xong thông tin NFT
-        const result = await NFTService.verifyNFT(tokenId);
-        setVerifyResult(result);
-      }
-
-      try {
-        const hashResponse = await NFTService.getMetadataHash(tokenId);
-        setMetadataHash(hashResponse.metadata_hash);
-      } catch (hashError) {
-        console.error('Failed to fetch metadata hash:', hashError);
-        setMetadataHash(null);
-      }
-    } catch (error) {
-      console.error('Failed to fetch NFT details:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+  const { data: nft, isLoading, isError } = useNFTDetail(tokenId);
+  const { data: verifyResult, isLoading: isVerifying, refetch: verify } = useVerifyNFT(tokenId);
+  const { data: hashData } = useMetadataHash(tokenId);
+  const revokeMutation = useRevokeNFT();
 
   const handleVerify = async () => {
-    setIsVerifying(true);
-    try {
-      const result = await NFTService.verifyNFT(tokenId);
-      setVerifyResult(result);
-      if (result.is_valid) {
-        toast.success('Chứng chỉ hợp lệ!');
-      } else {
-        toast.error('Chứng chỉ không hợp lệ hoặc đã bị thu hồi');
-      }
-    } catch (error) {
-      toast.error('Không thể xác minh chứng chỉ');
-    } finally {
-      setIsVerifying(false);
+    const result = await verify();
+    if (result.data?.is_valid) {
+      toast.success('Chứng chỉ hợp lệ!');
+    } else {
+      toast.error('Chứng chỉ không hợp lệ hoặc đã bị thu hồi');
     }
   };
 
@@ -73,21 +32,7 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
     if (!confirm('Bạn có chắc chắn muốn thu hồi chứng chỉ này? Hành động này không thể hoàn tác.')) {
       return;
     }
-
-    setIsRevoking(true);
-    try {
-      const result = await NFTService.revokeNFT(tokenId);
-      if (result.message) {
-        toast.success('Đã thu hồi chứng chỉ thành công');
-        fetchNFTDetails();
-      } else {
-        toast.error(result.error || 'Không thể thu hồi chứng chỉ');
-      }
-    } catch (error) {
-      toast.error('Không thể thu hồi chứng chỉ');
-    } finally {
-      setIsRevoking(false);
-    }
+    revokeMutation.mutate(tokenId);
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -110,12 +55,12 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
     );
   }
 
-  if (!nft) {
+  if (isError || !nft) {
     return (
       <Card className="glass-card border-border/50">
         <CardContent className="flex flex-col items-center justify-center py-12">
           <AlertTriangle className="w-12 h-12 text-warning mb-4" />
-          <p className="text-muted-foreground">Không tìm thấy NFT</p>
+          <p className="text-muted-foreground">{isError ? "Lỗi tải thông tin NFT" : "Không tìm thấy NFT"}</p>
           {onBack && (
             <Button variant="outline" className="mt-4" onClick={onBack}>
               Quay lại
@@ -222,13 +167,13 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
                   </Button>
                 </div>
 
-                {metadataHash && (
+                {hashData?.metadata_hash && (
                   <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
                     <div>
                       <p className="text-xs text-muted-foreground">Mã xác thực tính toàn vẹn</p>
-                      <p className="font-mono text-sm">{formatAddress(metadataHash)}</p>
+                      <p className="font-mono text-sm">{formatAddress(hashData.metadata_hash)}</p>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(metadataHash, 'Mã xác thực')}>
+                    <Button variant="ghost" size="sm" onClick={() => copyToClipboard(hashData.metadata_hash, 'Mã xác thực')}>
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
@@ -298,8 +243,8 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
             </Button>
           )}
           {isAdmin && nft.is_valid && (
-            <Button variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
-              {isRevoking ? (
+            <Button variant="destructive" onClick={handleRevoke} disabled={revokeMutation.isPending}>
+              {revokeMutation.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               ) : (
                 <XCircle className="w-4 h-4 mr-2" />

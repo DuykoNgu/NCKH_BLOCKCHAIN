@@ -18,8 +18,6 @@ const LoginPage = () => {
     seed,
     password,
     setPassword,
-    confirmPassword,
-    setConfirmPassword,
     showPassword,
     setShowPassword,
     isLoading,
@@ -105,16 +103,9 @@ const LoginPage = () => {
       const isSchool = step === 'school-register';
       return (
         <CreateWallet
-          password={password}
-          confirmPassword={confirmPassword}
-          showPassword={showPassword}
-          onPasswordChange={setPassword}
-          onConfirmPasswordChange={setConfirmPassword}
-          onTogglePassword={() => setShowPassword(!showPassword)}
-          onCreateWallet={isSchool ? handleSchoolRegister : handleCreateWallet}
+          onSubmit={isSchool ? handleSchoolRegister : handleCreateWallet}
           onBack={() => navigate('/login')}
           isLoading={isLoading}
-          error={error}
           isSchool={isSchool}
           schoolName={schoolName}
           onSchoolNameChange={setSchoolName}

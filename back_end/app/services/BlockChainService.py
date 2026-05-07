@@ -84,11 +84,19 @@ class BlockChainService:
         invalid_count = 0
         
         for tx in blockchain.mempool:
-            if TransactionService.is_valid(tx):
+            is_valid = TransactionService.is_valid(tx)
+            if is_valid:
                 valid_tx.append(tx)
             else:
                 invalid_count += 1
+                # Debug: Show why transaction is invalid
                 print(f"⚠️ [MEMPOOL] Removed invalid transaction {tx.tx_hash[:8]}...")
+                print(f"    - sender_pubkey: {tx.sender_pubkey[:16] if tx.sender_pubkey else 'None'}...")
+                print(f"    - sender_address: {tx.sender_address}")
+                print(f"    - signature: {tx.signature[:16] if tx.signature else 'None'}...")
+                print(f"    - payload type: {type(tx.payload)}")
+                if isinstance(tx.payload, dict):
+                    print(f"    - payload op: {tx.payload.get('op')}")
         
         blockchain.mempool = valid_tx
         
