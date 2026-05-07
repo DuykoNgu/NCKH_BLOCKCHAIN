@@ -13,7 +13,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles = [],
   redirectTo = "/login",
 }) => {
-  const { isLoggedIn, role } = useAuth();
+  const { isLoggedIn, role, isLoading } = useAuth();
+
+  // Đợi cho đến khi AuthContext nạp xong dữ liệu từ localStorage
+  if (isLoading) {
+    return null; // Hoặc một cái Spinner/Skeleton nếu muốn
+  }
 
   if (!isLoggedIn || !role) {
     return <Navigate to={redirectTo} replace />;

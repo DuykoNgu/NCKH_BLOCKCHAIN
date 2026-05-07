@@ -1,53 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Award, Search, RefreshCw, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { NFTService } from '@/services/nftService';
-import type { NFT } from '@/services/nftService';
+import { useAllNFTs } from '@/hooks';
 
 interface NFTListProps {
   onSelectNFT?: (tokenId: string) => void;
 }
 
 export const NFTList = ({ onSelectNFT }: NFTListProps) => {
-  const [nfts, setNfts] = useState<NFT[]>([]);
-  const [filteredNfts, setFilteredNfts] = useState<NFT[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, isLoading, refetch } = useAllNFTs();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchNFTs = async () => {
-    setIsLoading(true);
-    try {
-      const issuerAddress = localStorage.getItem('address');
-      const response = await NFTService.getNFTsByIssuer(issuerAddress || '');
-      setNfts(response.nfts || []);
-      setFilteredNfts(response.nfts || []);
-    } catch (error) {
-      console.error('Failed to fetch NFTs:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const nfts = data?.nfts || [];
 
-  useEffect(() => {
-    fetchNFTs();
-  }, []);
-
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = nfts.filter(
-        (nft) =>
-          nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata?.student_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          nft.metadata.institution.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredNfts(filtered);
-    } else {
-      setFilteredNfts(nfts);
-    }
+  const filteredNfts = useMemo(() => {
+    if (!searchTerm) return nfts;
+    return nfts.filter(
+      (nft) =>
+        nft.token_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (nft.metadata?.student_id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (nft.metadata?.institution || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
   }, [searchTerm, nfts]);
 
   const formatAddress = (address: string) => {
@@ -55,8 +32,8 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+  const formatDate = (date: string | number) => {
+    return new Date(date).toLocaleDateString('vi-VN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -76,7 +53,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
               <CardDescription>Tổng cộng: {nfts.length} chứng chỉ đã cấp</CardDescription>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchNFTs} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Làm mới
           </Button>
@@ -146,7 +123,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                          {nft.minted_at ? formatDate((nft.minted_at * 1000).toString()) : '-'}
+                      {nft.minted_at ? formatDate(nft.minted_at) : '-'}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm">

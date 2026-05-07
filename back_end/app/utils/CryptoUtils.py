@@ -70,20 +70,42 @@ class CryptoUtils:
             
             vk = VerifyingKey.from_string(key_bytes, curve=SECP256k1)
             
+            from ecdsa.util import sigdecode_der, sigdecode_string
+            
             sig_bytes = bytes.fromhex(signature_hex)
             print(f"Signature length: {len(sig_bytes)} bytes")
-            import hashlib
-            print(f"DEBUG - Hash BE: {hashlib.sha256(data_bytes).hexdigest()}")
-            vk.verify(sig_bytes, data_bytes,
-                      hashfunc=hashlib.sha256, sigdecode=sigdecode_der)
+            
+            # Detection: If data is a 64-char hex string, it's likely a pre-computed hash
+            is_prehashed = False
+            if isinstance(data, str) and len(data) == 64:
+                try:
+                    bytes.fromhex(data)
+                    is_prehashed = True
+                except ValueError:
+                    pass
+
+            try:
+                if is_prehashed:
+                    print(f"DEBUG - [verify_signature] Data is pre-hashed. Using verify_digest (DER).")
+                    vk.verify_digest(sig_bytes, bytes.fromhex(data), sigdecode=sigdecode_der)
+                else:
+                    print(f"DEBUG - [verify_signature] Data is raw. Hashing with SHA256 (DER).")
+                    vk.verify(sig_bytes, data_bytes, hashfunc=hashlib.sha256, sigdecode=sigdecode_der)
+            except Exception as der_err:
+                # If DER fails, try raw 64-byte format if the length is 64
+                if len(sig_bytes) == 64:
+                    print(f"DEBUG - [verify_signature] DER failed, trying raw 64-byte format...")
+                    if is_prehashed:
+                        vk.verify_digest(sig_bytes, bytes.fromhex(data), sigdecode=sigdecode_string)
+                    else:
+                        vk.verify(sig_bytes, data_bytes, hashfunc=hashlib.sha256, sigdecode=sigdecode_string)
+                else:
+                    raise der_err
+                
             print(f"✓ Signature verification PASSED")
             return True
         except Exception as e:
             print(f"✗ Verification failed: {str(e)}")
-            print(f"Data to verify: {data_bytes}")
-            print(f"Signature hex: {signature_hex}")
-            import traceback
-            traceback.print_exc()
             return False
 
     # Key management methods

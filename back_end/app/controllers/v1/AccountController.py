@@ -12,7 +12,71 @@ from app.utils.CryptoUtils import CryptoUtils
 from utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 logger = get_logger(__name__)
-r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+# --- Redis & Fallback Storage Configuration ---
+nonce_fallback = {}
+_redis_available = False
+
+# Initialize Redis client with very short timeout for the initial check
+r = redis.StrictRedis(
+    host=REDIS_HOST, 
+    port=REDIS_PORT, 
+    db=REDIS_DB, 
+    decode_responses=True, 
+    socket_connect_timeout=0.5, 
+    socket_timeout=0.5,
+    retry_on_timeout=False
+)
+
+try:
+    # Force disable Redis for debugging performance issues
+    # r.ping()
+    _redis_available = False
+    logger.info("ℹ️ Redis is manually disabled. Using In-Memory fallback for nonces.")
+except Exception as e:
+    _redis_available = False
+    logger.warning(f"⚠️ Redis unavailable ({e}). Using In-Memory fallback for nonces.")
+
+def set_nonce(address, nonce):
+    if _redis_available:
+        try:
+            r.set(f"nonce:{address}", nonce, ex=300)
+            return
+        except Exception as e:
+            logger.warning(f"Redis set failed: {e}")
+    
+    # Fallback to dictionary
+    nonce_fallback[address] = (nonce, datetime.datetime.now() + datetime.timedelta(seconds=300))
+
+def get_nonce_from_storage(address):
+    if _redis_available:
+        try:
+            val = r.get(f"nonce:{address}")
+            if val: return val
+        except Exception as e:
+            logger.warning(f"Redis get failed: {e}")
+
+    # Check fallback
+    if address in nonce_fallback:
+        nonce, expiry = nonce_fallback[address]
+        if datetime.datetime.now() < expiry:
+            return nonce
+        else:
+            del nonce_fallback[address]
+    return None
+
+def delete_nonce(address):
+    if _redis_available:
+        try:
+            r.delete(f"nonce:{address}")
+            return
+        except Exception:
+            pass
+            
+    if address in nonce_fallback:
+        del nonce_fallback[address]
+
+# --- Routes ---
+
 @user_bp.route('/auth/get_nonce', methods=['GET'])
 def get_nonce():
     addr_raw = request.args.get('address')
@@ -20,7 +84,7 @@ def get_nonce():
         return jsonify({"error": "address is required"}), 400
     address = addr_raw.lower()
     nonce = uuid.uuid4().hex
-    r.set(f"nonce:{address}", nonce, ex=300) 
+    set_nonce(address, nonce)
     return jsonify({"nonce": nonce})
 
 @user_bp.route('/auth/register', methods=['POST']) 
@@ -83,31 +147,29 @@ def register():
 @user_bp.route('/auth/verify', methods=['POST'])
 def verify():
     data = request.json
-    address = data.get('address')
+    address = data.get('address').lower()
     signature = data.get('signature')
     msg_hash = data.get('msg_hash')
 
-    stored_nonce = r.get(f"nonce:{address}")
-    print(f"DEBUG: Verifying signature for address {stored_nonce}")
+    stored_nonce = get_nonce_from_storage(address)
     if not stored_nonce:
-        return jsonify({"status":"fail", "message":"Nonce expired"}), 401
+        return jsonify({"Status":"fail", "message":"Nonce expired"}), 401
     
     try:
         account = AccountService.get_account_by_address(address)
         if not account:
-            return jsonify({"status":"fail", "message":"account not found"}),404
+            return jsonify({"status":"fail", "message":"account not found"}), 404
         
         public_key = account.public_key
 
-        vk = VerifyingKey.from_string(bytes.fromhex(public_key), curve=SECP256k1)
-        # Frontend sends msg_hash (SHA-256 of nonce), so we use verify_digest
-        is_valid = vk.verify_digest(bytes.fromhex(signature), bytes.fromhex(msg_hash))
+        # Use centralized signature verification
+        is_valid = CryptoUtils.verify_signature(msg_hash, signature, public_key)
         
         if is_valid:
-            r.delete(f"nonce:{address}")
+            delete_nonce(address)
             token = jwt.encode({
                 'address': address,
-                'role': account.role,
+                'role': account.role.value if hasattr(account.role, 'value') else str(account.role),
                 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
             }, SECRET_KEY, algorithm="HS256")
             return jsonify({
@@ -122,13 +184,27 @@ def verify():
                     "is_active": account.is_active
                 }
             })
+        else:
+            return jsonify({
+                "status":"fail", 
+                "message": "Invalid signature",
+                "debug": {
+                    "nonce_used": msg_hash,
+                    "pubkey_used": public_key,
+                    "sig_provided": signature[:20] + "..."
+                }
+            }), 401
     
     except Exception as e:
-        return jsonify({"status":"fail", "message": "Invalid signature"}),401
+        logger.error(f"Login error: {e}")
+        return jsonify({
+            "status":"fail", 
+            "message": str(e),
+            "traceback": "Check server logs for details"
+        }), 500
 @user_bp.route('/profile/update', methods=['POST'])
 def update_profile():
     data = request.json
-    print(f"DEBUG: update_profile data: {data}")
     address = data.get('address')
     full_name = data.get('full_name')
     avatar_url = data.get('avatar_url')
@@ -170,7 +246,6 @@ def update_profile():
             "user": account.to_dict()
         }), 200
     else:
-        print(f"DEBUG: update_profile failed: {message}")
         return jsonify({
             "status": "fail",
             "error": message

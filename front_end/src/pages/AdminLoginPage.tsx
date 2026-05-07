@@ -1,36 +1,49 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { ShieldCheck, KeyRound, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { adminLoginWithPrivateKey } from '@/services/authService';
+import { toast } from 'sonner';
+
+const loginSchema = z.object({
+  privateKey: z.string()
+    .min(1, "Vui lòng nhập Private Key")
+    .length(64, "Private Key phải có độ dài đúng 64 ký tự hex")
+    .regex(/^[0-9a-fA-F]+$/, "Private Key chỉ chứa ký tự hex (0-9, a-f)")
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
-  const [privateKey, setPrivateKey] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isValid }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    mode: "onChange"
+  });
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!privateKey) {
-      setError('Vui lòng nhập Private Key');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      await adminLoginWithPrivateKey(privateKey);
+  const loginMutation = useMutation({
+    mutationFn: (values: LoginFormValues) => adminLoginWithPrivateKey(values.privateKey),
+    onSuccess: () => {
       navigate('/admin');
-    } catch (err: any) {
-      setError(err.message || 'Đăng nhập thất bại. Private Key không hợp lệ hoặc lỗi server.');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
+      toast.success('Đăng nhập Admin thành công');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Đăng nhập thất bại. Private Key không hợp lệ.');
     }
+  });
+
+  const onSubmit = (values: LoginFormValues) => {
+    loginMutation.mutate(values);
   };
 
   return (
@@ -55,10 +68,12 @@ const AdminLoginPage = () => {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            {error && (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {loginMutation.isError && (
               <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                <p className="text-sm text-destructive font-medium">{error}</p>
+                <p className="text-sm text-destructive font-medium">
+                  {(loginMutation.error as any)?.message || "Đăng nhập thất bại"}
+                </p>
               </div>
             )}
 
@@ -71,21 +86,25 @@ const AdminLoginPage = () => {
                   <KeyRound className="h-4 w-4 text-muted-foreground" />
                 </div>
                 <Input
+                  {...register("privateKey")}
                   type="password"
-                  value={privateKey}
-                  onChange={(e) => setPrivateKey(e.target.value)}
                   placeholder="Nhập Private Key (Hex format)..."
-                  className="pl-10 h-12 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors font-mono text-sm"
+                  className={`pl-10 h-12 bg-secondary/50 border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground/50 focus:bg-background transition-colors font-mono text-sm ${errors.privateKey ? 'border-destructive/50 ring-destructive/20' : ''}`}
                 />
               </div>
+              {errors.privateKey && (
+                <p className="text-[10px] text-destructive font-bold uppercase tracking-tight ml-1 animate-in fade-in slide-in-from-top-1">
+                  {errors.privateKey.message}
+                </p>
+              )}
             </div>
 
             <Button
               type="submit"
-              disabled={isLoading || !privateKey}
+              disabled={loginMutation.isPending || !isValid}
               className="w-full h-12 rounded-xl font-display font-semibold transition-all group"
             >
-              {isLoading ? (
+              {loginMutation.isPending ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   Đang xác thực...

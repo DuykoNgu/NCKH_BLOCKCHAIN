@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
 import { Award, RefreshCw, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NFTService } from '@/services/nftService';
-import type { NFT } from '@/services/nftService';
+import { useUserNFTs } from '@/hooks';
 
 interface MyNFTsProps {
   account: string;
@@ -12,26 +10,8 @@ interface MyNFTsProps {
 }
 
 export const MyNFTs = ({ account, onSelectNFT }: MyNFTsProps) => {
-  const [nfts, setNfts] = useState<NFT[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const fetchMyNFTs = async () => {
-    setIsLoading(true);
-    try {
-      const response = await NFTService.getUserNFTs(account);
-      setNfts(response.nfts || []);
-    } catch (error) {
-      console.error('Failed to fetch user NFTs:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (account) {
-      fetchMyNFTs();
-    }
-  }, [account]);
+  const { data, isLoading, refetch } = useUserNFTs(account);
+  const nfts = data?.nfts || [];
 
   return (
     <Card className="glass-card border-border/50">
@@ -46,7 +26,7 @@ export const MyNFTs = ({ account, onSelectNFT }: MyNFTsProps) => {
               <CardDescription>{nfts.length} chứng chỉ NFT</CardDescription>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchMyNFTs} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

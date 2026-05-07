@@ -1,70 +1,24 @@
-import { useState } from 'react';
 import { Shield, Search, CheckCircle, XCircle, Loader2, ArrowLeft, FileText, Copy, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { NFTService } from '@/services/nftService';
-import type { NFT, VerifyResult } from '@/services/nftService';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
+import { useVerify } from '@/hooks';
+import { truncateHash } from '@/utils/formatUtils';
 
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
 const PublicVerify = () => {
-  const [tokenId, setTokenId] = useState('');
-  const [nft, setNft] = useState<NFT | null>(null);
-  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const { query: tokenId, setQuery: setTokenId, loading: isVerifying, nft, verifyResult, handleVerify } = useVerify();
   const navigate = useNavigate();
-
-  const handleVerify = async () => {
-    if (!tokenId.trim()) {
-      toast.error('Vui lòng nhập Mã chứng chỉ');
-      return;
-    }
-
-    setIsVerifying(true);
-    setNft(null);
-    setVerifyResult(null);
-
-    try {
-      // 1. Lấy thông tin NFT
-      const response = await NFTService.getNFT(tokenId);
-      if ('nft' in response) {
-        setNft(response.nft);
-        
-        // 2. Xác minh chữ ký
-        const result = await NFTService.verifyNFT(tokenId);
-        setVerifyResult(result);
-        
-        if (result.is_valid && !result.is_revoked) {
-          toast.success('Chứng chỉ hợp lệ!');
-        } else if (result.is_revoked) {
-          toast.warning('Chứng chỉ đã bị thu hồi');
-        } else {
-          toast.warning('Chứng chỉ không hợp lệ');
-        }
-      } else {
-        toast.error('Không tìm thấy chứng chỉ với mã số này');
-      }
-    } catch (error) {
-      toast.error('Có lỗi xảy ra khi truy vấn hệ thống');
-    } finally {
-      setIsVerifying(false);
-    }
-  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Đã sao chép vào bộ nhớ tạm');
-  };
-
-  const formatAddress = (address: string) => {
-    if (!address) return '-';
-    return `${address.slice(0, 10)}...${address.slice(-8)}`;
   };
 
   return (
@@ -118,7 +72,7 @@ const PublicVerify = () => {
                     </div>
                     <div>
                       <h4 className="font-semibold text-white">{nft.metadata?.degree_type || 'Chứng chỉ số'}</h4>
-                      <p className="text-xs text-slate-400 font-mono">{formatAddress(nft.token_id)}</p>
+                      <p className="text-xs text-slate-400 font-mono">{truncateHash(nft.token_id)}</p>
                     </div>
                   </div>
                   {verifyResult?.is_valid ? (

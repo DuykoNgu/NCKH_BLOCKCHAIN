@@ -7,9 +7,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";
 
 const Home: React.FC = () => {
-  const { isPendingApproval } = useAuth();
+  const { isPendingApproval, isAdmin } = useAuth();
   const address = localStorage.getItem("address") || "";
   const { lock } = useWallet();
+
+  React.useEffect(() => {
+    if (isAdmin) {
+      window.location.replace("/admin");
+    }
+  }, [isAdmin]);
 
   const handleDisconnect = () => {
     lock();

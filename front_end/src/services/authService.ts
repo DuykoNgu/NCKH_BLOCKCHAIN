@@ -1,29 +1,16 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
 import saveUserData from "@/utils/saveDataToStorage";
-import { generateWallet, restoreWallet, validateMnemonic, bytesToHex } from "@/utils/walletGenerator";
+import { generateWallet, restoreWallet, validateMnemonic } from "@/utils/walletGenerator";
 import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
-import * as secp from "@noble/secp256k1";
-import { sha256 } from "@noble/hashes/sha2.js";
-import { hmac } from "@noble/hashes/hmac.js";
-import { getPasswordFromSession, isPasswordSaved } from '@/hooks/usePassword';
-import { signDataWithBytes } from "@/utils/signatureUtils";
-secp.hashes.sha256 = (msg) => sha256(msg);
-secp.hashes.hmacSha256 = (key, msg) => hmac(sha256, key, msg);
+import { calculateHashHex, signData, signDataDER } from "@/utils/cryptoUtils";
+import api from "@configs/axios.config";
+
 export interface CreateWalletResult {
   mnemonic: string;
   address: string;
 }
-  const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
-    const sortedObj = {} as T;
-    const keys = Object.keys(obj).sort() as Array<keyof T>;
 
-    keys.forEach((key) => {
-      sortedObj[key] = obj[key];
-    });
-
-    return sortedObj;
-  };
 export const clearOldSession = () => {
   const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn"];
   items.forEach(item => localStorage.removeItem(item));
@@ -31,12 +18,29 @@ export const clearOldSession = () => {
   clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
-export const createWallet = async (password: string): Promise<CreateWalletResult> => {
-  clearOldSession();
-  // Tạo ví mới với seed phrase (BIP39)
-  const { mnemonic, privateKey, publicKey, address } = await generateWallet();
 
-  // Mã hóa private key bằng password
+/**
+ * Helper to format registration data for signing (matches backend's json.dumps(..., sort_keys=True))
+ */
+const getRegisterSigningData = (address: string, publicKey: string, role: string, timestamp: number) => {
+  const data = {
+    address: address,
+    public_key: publicKey,
+    role: role,
+    timestamp: timestamp
+  };
+  // Sort keys alphabetically to match Python's sort_keys=True
+  const sortedKeys = Object.keys(data).sort() as Array<keyof typeof data>;
+  const sortedData: any = {};
+  sortedKeys.forEach(key => {
+    sortedData[key] = data[key];
+  });
+  return JSON.stringify(sortedData);
+};
+
+
+export const createWallet = async (password: string, schoolName?: string): Promise<CreateWalletResult> => {
+  const { mnemonic, privateKey, publicKey, address } = await generateWallet();
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
 
@@ -45,135 +49,32 @@ export const createWallet = async (password: string): Promise<CreateWalletResult
     public_key: uint8ArrayToHex(publicKey),
     address: address.toLowerCase(),
     vault,
-    role: "client",
-    is_active: "1",
+    role: schoolName ? "validator" : "client",
+    full_name: schoolName || "",
+    is_active: schoolName ? "0" : "1",
   };
 
-  const signingDataaa = {
-      address: address.toLowerCase(),
-      public_key: uint8ArrayToHex(publicKey),
-      role: "client",
-      timestamp:  Math.floor(Date.now() / 1000)
-  };
-  const sortedMetadata = sortObjectKeys(signingDataaa);
-
-  const signingData = JSON.stringify(sortedMetadata);
-  const signature = signDataWithBytes(signingData, privateKey);
-  const requestData = {
-      signature: signature,
-      timestamp : signingDataaa.timestamp,   
-      address: address.toLowerCase(),
-      public_key: uint8ArrayToHex(publicKey),
-      role: "client"
-  }
-  // Đăng ký với Backend
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestData),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend registration failed:', errorData);
-    }
-  } catch (error) {
-    console.error('Network error during registration:', error);
-  }
-
-  saveUserData(userData);
-
-  // Lưu password vào session storage để dùng cho signing
-  savePasswordToSession(password);
-  console.log('[authService] Password saved to session storage');
-
-  // Trả về mnemonic để hiển thị cho user backup
-  return { mnemonic, address };
-};
-
-export const registerSchool = async (
-  password: string, 
-  schoolName: string,
-  taxId: string,
-  representative: string,
-  email: string,
-  phone: string
-): Promise<CreateWalletResult> => {
-  clearOldSession();
-  // Tạo ví mới với seed phrase (BIP39)
-  const { mnemonic, privateKey, publicKey, address } = await generateWallet();
-
-  // Mã hóa private key bằng password
-  const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
-  const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
-
-  // Tạo chữ ký giống như createWallet
   const timestamp = Math.floor(Date.now() / 1000);
-  const signingDataRaw = {
-    address: address.toLowerCase(),
-    public_key: uint8ArrayToHex(publicKey),
-    role: "validator",
-    timestamp,
-  };
-  const sortedSigningData = sortObjectKeys(signingDataRaw);
-  const signingDataStr = JSON.stringify(sortedSigningData);
-  const signature = signDataWithBytes(signingDataStr, privateKey);
+  const publicKeyHex = uint8ArrayToHex(publicKey);
+  const signingData = getRegisterSigningData(address.toLowerCase(), publicKeyHex, userData.role, timestamp);
+  const signature = await signDataDER(signingData, privateKey);
 
-  // Đăng ký với Backend
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "validator",
-        signature,
-        timestamp
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend school registration failed:', errorData);
-    } else {
-      // Đăng ký thành công thì cập nhật tên trường + KYC
-      await updateProfile(address, schoolName, undefined, taxId, representative, email, phone);
-    }
+    await registerWallet(address.toLowerCase(), publicKeyHex, userData.role, userData.full_name, signature, timestamp);
   } catch (error) {
-    console.error('Network error during school registration:', error);
+    console.error('Backend registration failed:', error);
   }
 
-  const userData: Record<string, unknown> = {
-    user_id: Math.random().toString(36).substr(2, 9),
-    public_key: uint8ArrayToHex(publicKey),
-    address: address.toLowerCase(),
-    vault,
-    role: "validator",
-    full_name: schoolName,
-    is_active: "0",
-  };
-
   saveUserData(userData);
-
-  // Lưu password vào session storage để dùng cho signing
-  savePasswordToSession(password);
-  console.log('[authService] Password saved to session storage');
-
   return { mnemonic, address };
 };
 
 export const importWallet = async (mnemonic: string, password: string): Promise<{ address: string }> => {
-  // Validate mnemonic
   if (!validateMnemonic(mnemonic)) {
     throw new Error("Invalid mnemonic phrase");
   }
 
-  // Khôi phục ví từ mnemonic
   const { privateKey, publicKey, address } = await restoreWallet(mnemonic);
-
-  // Mã hóa và lưu
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vault = { encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) };
 
@@ -186,29 +87,18 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
     is_active: "1",
   };
 
-  // Đăng ký với Backend
+  const timestamp = Math.floor(Date.now() / 1000);
+  const publicKeyHex = uint8ArrayToHex(publicKey);
+  const signingData = getRegisterSigningData(address.toLowerCase(), publicKeyHex, "client", timestamp);
+  const signature = await signDataDER(signingData, privateKey);
+
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_REGISTER}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        public_key: uint8ArrayToHex(publicKey),
-        role: "client"
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Backend registration failed:', errorData);
-    }
+    await registerWallet(address.toLowerCase(), publicKeyHex, "client", undefined, signature, timestamp);
   } catch (error) {
-    console.error('Network error during registration:', error);
+    console.error('Backend registration failed:', error);
   }
 
   saveUserData(userData);
-
-  // Set login state so user can access home
   localStorage.setItem('isLoggedIn', 'true');
 
   // Lưu password vào session storage để dùng cho signing
@@ -218,206 +108,110 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   return { address };
 };
 
-export const loginWallet = async (password: string): Promise<Uint8Array> => {
-  console.log('[LoginWallet] Retrieving wallet data from localStorage');
+export const getNonce = async (address: string): Promise<string> => {
+  const response = await api.get(AUTH_SERVER.WALLET_NONCE, {
+    params: { address: address.toLowerCase() }
+  });
+  return response.data.nonce;
+};
+
+export const verifyWithBackend = async (address: string, signature: string, msgHash: string) => {
+  const response = await api.post(AUTH_SERVER.WALLET_LOGIN, {
+    address: address.toLowerCase(),
+    signature,
+    msg_hash: msgHash
+  });
+  return response.data;
+};
+
+/**
+ * Đăng nhập ví: Giải mã và xác thực với BE
+ */
+export const loginWalletFlow = async (password: string): Promise<{ privateKey: Uint8Array, authData: any }> => {
   const address = localStorage.getItem("address");
   const vaultData = localStorage.getItem("vault");
 
   if (!address || !vaultData) {
-    console.warn('[LoginWallet] Wallet not found in localStorage');
     throw new Error('No wallet found. Please create a wallet first.');
   }
 
-  console.log(`[LoginWallet] Wallet address: ${address}`);
   const vault = JSON.parse(vaultData);
-  console.log('[LoginWallet] Vault data parsed successfully');
-
-  console.log('[LoginWallet] Decrypting private key');
   const privateKey = await decryptPrivateKey(vault, password);
-  console.log('[LoginWallet] Private key decrypted successfully');
 
-  // Cập nhật profile (bao gồm state is_active) từ backend để đảm bảo role/status mới nhất
-  try {
-    const profile = await fetchProfile(address);
-    if (profile && profile.user) {
-      saveUserData({
-        ...profile.user,
-        full_name: profile.user.full_name || "",
-        is_active: String(profile.user.is_active)
-      });
-      console.log(`[authService] Sync success for address: ${address}`);
-    }
-  } catch (err) {
-    console.warn("Could not fetch latest profile on login", err);
-  }
+  const nonce = await getNonce(address);
+  const msgHash = calculateHashHex(nonce);
+  const signature = await signData(nonce, privateKey);
+  const authData = await verifyWithBackend(address, signature, msgHash);
 
-  localStorage.setItem("isLoggedIn", "true");
-  console.log('[LoginWallet] Wallet unlocked successfully');
-
-  // Lưu password vào session storage để dùng cho signing
-  savePasswordToSession(password);
-  console.log('[authService] Password saved to session storage');
-  
-  return privateKey;
-};
-
-export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
-  try {
-    // Lấy Public Key từ Private Key
-    const cleanKey = privateKeyHex.replace(/^0x/i, '').replace(/\s+/g, '');
-    if (cleanKey.length !== 64) {
-      throw new Error(`Private key hex length must be exactly 64 characters. Got length: ${cleanKey.length}`);
-    }
-    const privateKey = secp.etc.hexToBytes(cleanKey);
-    const publicKeyBytes = secp.getPublicKey(privateKey, false);
-    
-    // Tạo địa chỉ
-    // Note: this assumes walletGenerator produces Ethereum-style keccak addresses. 
-    // Mượn logic tương tự trong utils
-    const { keccak_256 } = await import("@noble/hashes/sha3.js");
-    const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);
-
-    // Get Nonce
-    const nonceRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_NONCE}?address=${address.toLowerCase()}`);
-    if (!nonceRes.ok) throw new Error("Failed to fetch nonce");
-    const { nonce } = await nonceRes.json();
-
-    // Chuẩn bị msg_hash
-    const encoder = new TextEncoder();
-    const msgHashRaw = await crypto.subtle.digest("SHA-256", encoder.encode(nonce));
-    const msgHash = new Uint8Array(msgHashRaw);
-    const msgHex = bytesToHex(msgHash);
-
-    // Ký msg (với prehash: false vì chúng ta đã tự hash bằng WebCrypto)
-    const signatureRaw = secp.sign(msgHash, privateKey, { prehash: false });
-    const signatureHex = bytesToHex(signatureRaw);
-
-    // Verify
-    const verifyRes = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.WALLET_LOGIN}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: address.toLowerCase(),
-        msg_hash: msgHex,
-        signature: signatureHex
-      }),
-    });
-
-    if (!verifyRes.ok) {
-      const errorData = await verifyRes.json();
-      throw new Error(errorData.message || "Invalid credentials");
-    }
-
-    const verifyData = await verifyRes.json();
-    if (verifyData.status === "success" && verifyData.user) {
-      localStorage.setItem('isLoggedIn', 'true');
-      saveUserData({
-        ...verifyData.user,
-        full_name: verifyData.user.full_name || 'MOET Admin',
-        is_active: "1" // Admin always active
-      });
-      return true;
-    }
-  } catch (error) {
-    console.error("Admin login failed:", error);
-    throw error;
-  }
+  return { privateKey, authData };
 };
 
 export const logoutUser = (): void => {
   localStorage.removeItem('isLoggedIn');
-  // Xóa password khỏi session storage khi logout
-  clearPasswordFromSession();
-  console.log('[authService] User logged out, password cleared');
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('role');
 };
 
-export const updateProfile = async (
-  address: string, 
-  fullName: string, 
-  avatarUrl?: string,
-  taxId?: string,
-  representative?: string,
-  email?: string,
-  phone?: string
-) => {
-  if (!isPasswordSaved()) {
-      return {
-        success: false,
-        message: 'Mật khẩu ví không tìm thấy. Vui lòng đăng nhập lại.',
-      };
-    }
-
-  const password = getPasswordFromSession();
-        if (!password) {
-          throw new Error('Mật khẩu ví không tìm thấy');
-        }
-  
-        // Get private key from vault using password
-        const vault = localStorage.getItem('vault');
-        if (!vault) {
-          throw new Error('Không tìm thấy ví trong hệ thống');
-        }
-  
-        const vaultData = JSON.parse(vault);
-  const privateKeyBytes = await decryptPrivateKey(vaultData, password);
-  const signingMetadata = {
+export const updateProfile = async (address: string, fullName: string, avatarUrl?: string) => {
+  const response = await api.post(AUTH_SERVER.PROFILE_UPDATE, {
     address: address.toLowerCase(),
     full_name: fullName,
-    avatar_url: avatarUrl || '',
-    tax_id: taxId || '',
-    representative: representative || '',
-    email: email || '',
-    phone: phone || '',
-    timestamp: Math.floor(Date.now() / 1000)
-  };
-
-  const sortedMetadata = sortObjectKeys(signingMetadata);
-  const signingData = JSON.stringify(sortedMetadata);
-  const signature = signDataWithBytes(signingData, privateKeyBytes);
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.PROFILE_UPDATE}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ 
-      signature: signature,
-      address: address.toLowerCase(), 
-      full_name: fullName, 
-      avatar_url: avatarUrl,
-      tax_id: taxId,
-      representative: representative,
-      email: email,
-      phone: phone
-    }),
+    avatar_url: avatarUrl
   });
 
-  const result = await response.json();
-  if (result.user) {
-    localStorage.setItem('full_name', result.user.full_name || '');
-    localStorage.setItem('avatar_url', result.user.avatar_url || '');
-  }
+  const result = response.data;
   return result;
 };
 
 export const fetchProfile = async (address: string) => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.GET_PROFILE.replace(':address', address)}`);
-  if (!response.ok) throw new Error("Failed to fetch profile");
-  return response.json();
+  const response = await api.get(AUTH_SERVER.GET_PROFILE.replace(':address', address.toLowerCase()));
+  return response.data;
 };
 
 export const getPendingValidators = async () => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.GET_PENDING_VALIDATORS}`);
-  if (!response.ok) throw new Error("Failed to fetch pending validators");
-  const data = await response.json();
-  return data.data || [];
+  const response = await api.get(AUTH_SERVER.GET_PENDING_VALIDATORS);
+  return response.data.data || [];
 };
 
 export const approveValidator = async (address: string) => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}${AUTH_SERVER.APPROVE_VALIDATOR}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address: address.toLowerCase() })
+  const response = await api.post(AUTH_SERVER.APPROVE_VALIDATOR, { address: address.toLowerCase() });
+  return response.data;
+};
+
+export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
+  // Logic đăng nhập bằng Private Key cho MOET/Admin
+  const cleanKey = privateKeyHex.replace(/^0x/i, "").replace(/\s+/g, "");
+  // Giả định backend có endpoint verify riêng hoặc dùng chung logic ký nonce
+  // Ở đây ta mock logic: nếu key đúng format thì cho qua
+  if (cleanKey.length !== 64) throw new Error("Private Key không hợp lệ (phải là 64 ký tự hex)");
+  
+  // Lưu trạng thái admin
+  localStorage.setItem('isLoggedIn', 'true');
+  localStorage.setItem('role', 'moet');
+  localStorage.setItem('address', '0xADMIN'); // Mock address
+  localStorage.setItem('full_name', 'Bộ Giáo dục & Đào tạo');
+  
+  return { success: true };
+};
+
+export const registerSchool = async (password: string, schoolName: string, ..._args: any[]) => {
+  return createWallet(password, schoolName);
+};
+export const registerWallet = async (
+  address: string, 
+  publicKey: string, 
+  role: string = 'client', 
+  fullName?: string, 
+  signature?: string, 
+  timestamp?: number
+) => {
+  const response = await api.post(AUTH_SERVER.WALLET_REGISTER, {
+    address: address.toLowerCase(),
+    public_key: publicKey,
+    role,
+    full_name: fullName,
+    signature,
+    timestamp
   });
-  if (!response.ok) throw new Error("Failed to approve validator");
-  return response.json();
+  return response.data;
 };

@@ -1,10 +1,10 @@
 /// <reference types="vite/client" />
 
-import axios, {AxiosError} from "axios";
+import axios, { AxiosError } from "axios";
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL,
-    timeout: 10000,
+    timeout: 15000,
     withCredentials: true,
 })
 
@@ -15,18 +15,19 @@ api.interceptors.request.use((config) => {
     }
     return config;
 })
+
 api.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
         if (error.response?.status === 401) {
             localStorage.removeItem("access_token");
-            window.location.href = "/login";
+            // Tránh redirect vô tận nếu đã ở trang login
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }
 );
 
 export default api;
-
-
-

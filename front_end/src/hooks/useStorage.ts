@@ -1,87 +1,61 @@
-import { useState, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import StorageService, { StorageService as StorageServiceClass } from '../services/StorageService';
 import type { UploadOptions } from '../services/StorageService';
 
-interface UseStorageReturn {
-  uploading: boolean;
-  error: string | null;
-  uploadFile: (file: File, options?: UploadOptions) => Promise<string>;
-  uploadImage: (file: File, options?: UploadOptions) => Promise<string>;
-  uploadVideo: (file: File, options?: UploadOptions) => Promise<string>;
-  uploadPDF: (file: File, options?: UploadOptions) => Promise<string>;
-  uploadMultipleFiles: (files: File[], options?: UploadOptions) => Promise<string[]>;
-  clearError: () => void;
-}
-
 /**
- * React Hook để sử dụng Storage Service
- * @param storageService - Instance của StorageService (mặc định là singleton)
- * @returns Upload handlers và state
+ * React Hook để sử dụng Storage Service bằng TanStack Query
  */
-export const useStorage = (storageService: StorageServiceClass = StorageService): UseStorageReturn => {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export const useStorage = (storageService: StorageServiceClass = StorageService) => {
+  const uploadFileMutation = useMutation({
+    mutationFn: ({ file, options }: { file: File; options?: UploadOptions }) => 
+      storageService.uploadFile(file, options)
+  });
 
-  const handleUpload = useCallback(
-    async <T,>(uploadFn: () => Promise<T>): Promise<T> => {
-      try {
-        setUploading(true);
-        setError(null);
-        const result = await uploadFn();
-        return result;
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setUploading(false);
-      }
-    },
-    []
-  );
+  const uploadImageMutation = useMutation({
+    mutationFn: ({ file, options }: { file: File; options?: UploadOptions }) => 
+      storageService.uploadImage(file, options)
+  });
 
-  const uploadFile = useCallback(
-    (file: File, options?: UploadOptions) =>
-      handleUpload(() => storageService.uploadFile(file, options)),
-    [storageService, handleUpload]
-  );
+  const uploadVideoMutation = useMutation({
+    mutationFn: ({ file, options }: { file: File; options?: UploadOptions }) => 
+      storageService.uploadVideo(file, options)
+  });
 
-  const uploadImage = useCallback(
-    (file: File, options?: UploadOptions) =>
-      handleUpload(() => storageService.uploadImage(file, options)),
-    [storageService, handleUpload]
-  );
+  const uploadPDFMutation = useMutation({
+    mutationFn: ({ file, options }: { file: File; options?: UploadOptions }) => 
+      storageService.uploadPDF(file, options)
+  });
 
-  const uploadVideo = useCallback(
-    (file: File, options?: UploadOptions) =>
-      handleUpload(() => storageService.uploadVideo(file, options)),
-    [storageService, handleUpload]
-  );
-
-  const uploadPDF = useCallback(
-    (file: File, options?: UploadOptions) =>
-      handleUpload(() => storageService.uploadPDF(file, options)),
-    [storageService, handleUpload]
-  );
-
-  const uploadMultipleFiles = useCallback(
-    (files: File[], options?: UploadOptions) =>
-      handleUpload(() => storageService.uploadMultipleFiles(files, options)),
-    [storageService, handleUpload]
-  );
-
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const uploadMultipleMutation = useMutation({
+    mutationFn: ({ files, options }: { files: File[]; options?: UploadOptions }) => 
+      storageService.uploadMultipleFiles(files, options)
+  });
 
   return {
-    uploading,
-    error,
-    uploadFile,
-    uploadImage,
-    uploadVideo,
-    uploadPDF,
-    uploadMultipleFiles,
-    clearError,
+    uploading: 
+      uploadFileMutation.isPending || 
+      uploadImageMutation.isPending || 
+      uploadVideoMutation.isPending || 
+      uploadPDFMutation.isPending || 
+      uploadMultipleMutation.isPending,
+    error: 
+      (uploadFileMutation.error as any)?.message || 
+      (uploadImageMutation.error as any)?.message || 
+      (uploadVideoMutation.error as any)?.message || 
+      (uploadPDFMutation.error as any)?.message || 
+      (uploadMultipleMutation.error as any)?.message || 
+      null,
+    uploadFile: (file: File, options?: UploadOptions) => uploadFileMutation.mutateAsync({ file, options }),
+    uploadImage: (file: File, options?: UploadOptions) => uploadImageMutation.mutateAsync({ file, options }),
+    uploadVideo: (file: File, options?: UploadOptions) => uploadVideoMutation.mutateAsync({ file, options }),
+    uploadPDF: (file: File, options?: UploadOptions) => uploadPDFMutation.mutateAsync({ file, options }),
+    uploadMultipleFiles: (files: File[], options?: UploadOptions) => uploadMultipleMutation.mutateAsync({ files, options }),
+    clearError: () => {
+      uploadFileMutation.reset();
+      uploadImageMutation.reset();
+      uploadVideoMutation.reset();
+      uploadPDFMutation.reset();
+      uploadMultipleMutation.reset();
+    },
   };
 };

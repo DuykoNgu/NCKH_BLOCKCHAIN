@@ -120,85 +120,32 @@ CREATE TABLE IF NOT EXISTS peers (
 """
 
 def init_db():
-     conn = sqlite3.connect(DB_PATH)
-     cursor = conn.cursor()
-     
-     cursor.executescript(schema_sql)
-     
-     # Migration: Add columns if they don't exist
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN full_name TEXT")
-     except sqlite3.OperationalError:
-          pass # column already exists
-          
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN avatar_url TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN tax_id TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN representative TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN email TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE account ADD COLUMN phone TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN owner_address TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_pubkey TEXT")
-     except sqlite3.OperationalError:
-          pass
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Enable foreign keys
+    cursor.execute("PRAGMA foreign_keys = ON")
+    
+    # Execute full schema
+    cursor.executescript(schema_sql)
+    
+    # Individual Migrations/Check columns
+    tables_to_check = {
+        "account": ["full_name", "avatar_url"],
+        "nft": ["owner_address", "issuer_pubkey", "issuer_address", "issuer_signature"]
+    }
+    
+    for table, columns in tables_to_check.items():
+        for col in columns:
+            try:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
+            except sqlite3.OperationalError:
+                pass # column already exists
+                
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print("Database initialized successfully.")
 
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_address TEXT")
-     except sqlite3.OperationalError:
-          pass
-          
-     try:
-          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_signature TEXT")
-     except sqlite3.OperationalError:
-          pass
-     
-     # Migration: Convert "system" sender_address to NULL for existing system transactions
-     try:
-          cursor.execute("""
-               UPDATE transactions 
-               SET sender_address = NULL 
-               WHERE sender_address = 'system'
-          """)
-          rows_updated = cursor.rowcount
-          if rows_updated > 0:
-               print(f"✓ Migrated {rows_updated} system transactions (converted sender_address='system' to NULL)")
-     except sqlite3.Error as e:
-          print(f"⚠ Migration warning: {e}")
-          
-     conn.commit()
-     cursor.close()
-     print(f"Database initialized successfully at {DB_PATH}")
-     
-     # Run database migrations (e.g., add new columns)
-     try:
-          from app.database.migrations import run_all_migrations
-          run_all_migrations()
-     except Exception as e:
-          print(f"⚠️  Migrations warning: {e}")
-     
 if __name__ == "__main__":
      init_db()
