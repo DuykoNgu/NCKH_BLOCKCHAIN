@@ -119,7 +119,7 @@ def create_nft():
         # Calculate tx_hash (no private-key signing needed for NFT tx at this stage)
         tx.tx_hash = TransactionService.calculate_hash(tx)
         tx.tx_id = tx.tx_hash
-        
+        tx.signature= data['signature']
         # Add to mempool
         blockchain = get_blockchain_instance()
         if not BlockChainService.add_transaction_to_mempool(blockchain, tx):

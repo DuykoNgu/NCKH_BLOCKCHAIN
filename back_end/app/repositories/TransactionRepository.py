@@ -1,6 +1,6 @@
 """TransactionRepository - Data access layer for Transaction operations"""
 from typing import Optional, List
-from app.database.connection import get_connection
+from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.models.Transaction import Transaction
 from app.utils.logger import get_logger
 from json import dumps
@@ -17,20 +17,32 @@ class TransactionRepository:
     """Repository for Transaction database operations"""
     
     @staticmethod
-    def create_transaction(transaction: Transaction, conn=None) -> bool:
+    def create_transaction(transaction: Transaction, conn=None, max_retries=3) -> bool:
         """Tạo transaction mới với retry logic, bao gồm status tracking
         
         Args:
             transaction: Transaction object to create
             conn: Optional existing database connection. If provided, uses it instead of creating new one.
                  Caller is responsible for commit/close.
+            max_retries: Maximum number of retries on database lock
         """
-        max_retries = 3
-        retry_delay = 0.5
+        retry_delay = 0.1
         should_close = conn is None  # Only close if we created the connection
+        use_lock = conn is None  # Only use lock if we're creating a new connection
         
         for attempt in range(max_retries):
+            lock_acquired = False
             try:
+                # Only acquire lock if creating new connection
+                if use_lock and not acquire_write_lock(timeout=30):
+                    logger.warning(f"⚠ Could not acquire lock, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                
+                if use_lock:
+                    lock_acquired = True
+                
                 if conn is None:
                     conn = get_connection()
                 cursor = conn.cursor()
@@ -65,16 +77,27 @@ class TransactionRepository:
                     conn.close()
                 logger.info(f"✓ Transaction created: {transaction.tx_hash[:16]}...")
                 return True
+                        
             except Exception as e:
                 if "locked" in str(e).lower() and attempt < max_retries - 1:
                     # Retry on database lock
                     logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
                     time.sleep(retry_delay)
                     retry_delay *= 2
+                    # Reset connection on retry
+                    if should_close and conn:
+                        try:
+                            conn.close()
+                        except:
+                            pass
+                        conn = None
                     continue
                 
-                # Detailed FK constraint error logging
+                # Detailed FK constraint error logging - TRY FALLBACK
                 if "FOREIGN KEY" in str(e):
+                    sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
+                    block_id = transaction.block_id if transaction.block_id else None
+                    
                     logger.error(f"✗ FOREIGN KEY Constraint Error for TX {transaction.tx_hash[:16]}...")
                     logger.error(f"  SQL Values: tx_id={transaction.tx_id[:16]}, sender_addr={sender_addr}, recipient_addr={transaction.recipient_address}, block_id={block_id}")
                     logger.error(f"  Check: Does account '{sender_addr}' exist? Does block '{block_id}' exist?")
@@ -85,6 +108,7 @@ class TransactionRepository:
                     # this node (e.g. account_register gossip received out of order).
                     if sender_addr is not None and conn is not None:
                         try:
+                            cursor = conn.cursor()
                             cursor.execute('''
                                 INSERT OR IGNORE INTO transactions 
                                 (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
@@ -104,19 +128,109 @@ class TransactionRepository:
                             ))
                             if should_close:
                                 conn.commit()
-                                conn.close()
                             logger.warning(f"⚠ TX {transaction.tx_hash[:16]}... saved with sender_address=NULL (account not yet in DB)")
                             return True
                         except Exception as fallback_e:
                             logger.error(f"✗ Fallback save also failed: {fallback_e}")
                 
                 logger.error(f"✗ Error creating transaction {transaction.tx_hash[:16]}...: {e}")
-                if should_close:
+                return False
+                
+            finally:
+                if lock_acquired:
+                    release_write_lock()
+                if should_close and conn:
                     try:
                         conn.close()
                     except:
                         pass
-                return False
+        
+        return False
+        
+    @staticmethod
+    def create_transactions_batch(transactions: List[Transaction], max_retries=3) -> bool:
+        """Create multiple transactions in a single batch operation (holds lock once)
+        
+        More efficient than calling create_transaction() multiple times
+        since lock is acquired and released only once for all transactions
+        
+        Args:
+            transactions: List of Transaction objects to create
+            max_retries: Maximum number of retries on database lock
+            
+        Returns:
+            bool: True if all transactions created successfully
+        """
+        if not transactions:
+            return True
+            
+        retry_delay = 0.1
+        
+        for attempt in range(max_retries):
+            lock_acquired = False
+            try:
+                # Acquire lock ONCE for all transactions
+                if not acquire_write_lock(timeout=30):
+                    logger.warning(f"⚠ Could not acquire lock, retry #{attempt + 1}/{max_retries} for batch ({len(transactions)} TXs)")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                
+                lock_acquired = True
+                conn = get_connection()
+                cursor = conn.cursor()
+                
+                # Insert all transactions in one connection
+                failed_txs = []
+                for tx in transactions:
+                    try:
+                        # Handle NULL sender_address for system transactions
+                        sender_addr = None if tx.sender_address and tx.sender_address.lower() == "system" else tx.sender_address
+                        block_id = tx.block_id if tx.block_id else None
+                        
+                        cursor.execute('''
+                            INSERT OR IGNORE INTO transactions 
+                            (tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, payload, signature, timestamp, block_id, tx_status, error_reason)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ''', (
+                            tx.tx_id,
+                            tx.tx_hash, 
+                            tx.sender_pubkey,
+                            sender_addr,
+                            tx.recipient_address, 
+                            dumps(tx.payload), 
+                            tx.signature,
+                            tx.timestamp, 
+                            block_id,
+                            tx.tx_status,
+                            tx.error_reason
+                        ))
+                    except Exception as e:
+                        logger.warning(f"⚠ Failed to batch insert TX {tx.tx_hash[:16]}...: {e}")
+                        failed_txs.append(tx)
+                
+                conn.commit()
+                conn.close()
+                
+                if failed_txs:
+                    logger.warning(f"⚠ Batch insert: {len(transactions) - len(failed_txs)}/{len(transactions)} succeeded")
+                    return False
+                
+                logger.info(f"✓ Batch created {len(transactions)} transactions")
+                return True
+                
+            except Exception as e:
+                if "locked" in str(e).lower() and attempt < max_retries - 1:
+                    logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for batch")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                else:
+                    logger.error(f"✗ Error in batch create: {e}")
+                    return False
+            finally:
+                if lock_acquired:
+                    release_write_lock()
         
         return False
 

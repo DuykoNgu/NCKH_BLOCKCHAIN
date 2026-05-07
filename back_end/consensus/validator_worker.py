@@ -393,22 +393,36 @@ class ValidatorWorker:
                 
                 # Only add block if it's a NEW block (not already in chain)
                 if is_new_block:
-                    # Add block to local blockchain (this removes included transactions from mempool)
-                    BlockChainService.add_block(self.blockchain, block)
-                    
-                    # Save to database
+                    # CRITICAL: Save to database FIRST before adding to RAM
+                    # This ensures DB is always the source of truth for fork detection
                     from app.repositories.BlockRepository import BlockRepository
                     from app.repositories.TransactionRepository import TransactionRepository
                     
-                    BlockRepository.create_block(block)
+                    # 1. Prepare transaction records
                     for tx in block.transactions:
                         tx.block_id = block.block_id
                         tx.tx_status = "COMMITTED"
-                        TransactionRepository.create_transaction(tx)
                     
-                    print(f"✓ Block saved to database")
+                    # 2. CRITICAL: Save ALL transactions in ONE batch (efficient lock usage)
+                    # This prevents FK constraint violations when the block references them
+                    # Batch method acquires lock once for all transactions instead of per-transaction
+                    if not TransactionRepository.create_transactions_batch(block.transactions):
+                        print(f"✗ Failed to save transactions to database - skipping this block")
+                        break
                     
-                    # Broadcast block to P2P network
+                    # 3. Now save the block (transactions already in DB, FK constraint satisfied)
+                    if not BlockRepository.create_block(block):
+                        print(f"✗ Failed to save block to database - skipping this block")
+                        # Don't add to RAM or broadcast if DB save failed
+                        break
+                    
+                    print(f"✓ Block and transactions saved to database")
+                    
+                    # 4. NOW add to local blockchain RAM (after DB persistence)
+                    BlockChainService.add_block(self.blockchain, block)
+                    print(f"✓ Block added to local chain")
+                    
+                    # 4. Broadcast to peers (after both DB and RAM are updated)
                     propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=False)
                     
                     print(f"✓ Block propagated to {propagated} peers")
