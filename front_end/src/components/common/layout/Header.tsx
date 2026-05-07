@@ -1,7 +1,7 @@
-import { ShieldCheck, User as UserIcon, LogOut, Info, LayoutDashboard } from "lucide-react"
+import { ShieldCheck, LogOut, Info, LayoutDashboard } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useNavigate, Link } from "react-router-dom"
-import { logoutUser } from "@/services/authService"
+import { clearOldSession } from "@/services/authService"
 import { Button } from "@/components/ui/button"
 
 export const Header = () => {
@@ -9,7 +9,7 @@ export const Header = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    logoutUser();
+    clearOldSession();
     navigate('/login');
   };
 

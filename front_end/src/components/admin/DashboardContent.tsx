@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Copy, GraduationCap, Activity } from "lucide-react";
+import { Copy, GraduationCap, Activity, Shield, Clock, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,11 +19,13 @@ export default function DashboardContent() {
     isLoading,
     nftListQuery,
     txListQuery,
-    latestBlockQuery,
     walletAddress,
     blockCount,
     latestBlockIndex,
-    stats,
+    totalNfts,
+    verifiedNfts,
+    pendingNfts,
+    totalTxs,
     recentDegrees,
     recentTxs,
     copyAddress
@@ -37,7 +39,7 @@ export default function DashboardContent() {
   const statCards = [
     {
       label: "Tổng NFT phát hành",
-      value: stats?.total_nfts ?? 0,
+      value: totalNfts,
       icon: GraduationCap,
       bgColor: "bg-primary/15",
       iconColor: "text-primary",
@@ -46,7 +48,7 @@ export default function DashboardContent() {
     },
     {
       label: "Đã xác thực",
-      value: stats?.verified_nfts ?? 0,
+      value: verifiedNfts,
       icon: Shield,
       bgColor: "bg-green-400/15",
       iconColor: "text-green-400",
@@ -55,7 +57,7 @@ export default function DashboardContent() {
     },
     {
       label: "Yêu cầu chờ duyệt",
-      value: stats?.pending_validators ?? 0,
+      value: pendingNfts,
       icon: Clock,
       bgColor: "bg-yellow-400/15",
       iconColor: "text-yellow-400",
@@ -64,7 +66,7 @@ export default function DashboardContent() {
     },
     {
       label: "Giao dịch hôm nay",
-      value: stats?.transactions_today ?? 0,
+      value: totalTxs,
       icon: Activity,
       bgColor: "bg-accent/15",
       iconColor: "text-accent",
@@ -117,7 +119,7 @@ export default function DashboardContent() {
              <div className="flex flex-col">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Latest Index</p>
                <p className="text-sm font-black font-mono text-blue-600">
-                 {latestBlockQuery.isLoading ? "..." : (latestBlockIndex === "-" ? "# -" : latestBlockIndex)}
+                 {latestBlockIndex === "-" ? "# -" : latestBlockIndex}
                </p>
              </div>
            </div>
@@ -175,7 +177,7 @@ export default function DashboardContent() {
 
       {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, idx) => (
+        {statCards.map((stat) => (
           <Card key={stat.label} className="group relative overflow-hidden glass-card border-none shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
             <div className={`absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity`} />
             <CardContent className="p-6">
@@ -234,9 +236,9 @@ export default function DashboardContent() {
                 </div>
               ) : (
                 <div className="space-y-1">
-                  {recentDegrees.map((deg) => {
-                    const status = deg.is_valid === 0 ? "revoked" : (deg.status || "verified");
-                    const sc = statusConfig[status] || statusConfig.pending;
+                  {recentDegrees.map((deg: any) => {
+                    const status = deg.is_valid === false ? "revoked" : (deg.status || "verified");
+                    const sc = NFT_STATUS_CONFIG[status as keyof typeof NFT_STATUS_CONFIG] || NFT_STATUS_CONFIG.pending;
                     return (
                       <div key={deg.id} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-primary/[0.03] transition-all duration-300">
                         <div className="flex items-center gap-4 min-w-0">

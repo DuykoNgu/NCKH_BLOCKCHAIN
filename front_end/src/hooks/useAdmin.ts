@@ -7,7 +7,7 @@ import { NetworkService } from "@/services/networkService";
 import { AccountService } from "@/services/accountService";
 import type { AccountInfo } from "@/services/accountService";
 import { toast } from "sonner";
-import { GraduationCap, CheckCircle2, Clock, Activity, Server, HardDrive } from "lucide-react";
+import { Activity, Server, HardDrive } from "lucide-react";
 import { truncateHash, truncateAddress, formatTimeAgo, getNftStatus } from "@/utils/formatUtils";
 import { STORAGE_KEYS } from "@/constants/storage";
 
@@ -66,19 +66,7 @@ export const useAdminDashboard = () => {
   const nfts = nftListQuery.data?.nfts || [];
   const transactions = txListQuery.data?.transactions || [];
 
-  const statsDisplay = useMemo(() => {
-    const total = nfts.length;
-    const verified = nfts.filter((n) => n.is_valid !== false).length;
-    const pending = total - verified;
-    const txCount = transactions.length;
 
-    return [
-      { label: "Tổng NFT phát hành", value: total.toLocaleString(), icon: GraduationCap, color: "text-primary" },
-      { label: "Đã xác thực", value: verified.toLocaleString(), icon: CheckCircle2, color: "text-green-400" },
-      { label: "Đang chờ / Đã thu hồi", value: pending.toLocaleString(), icon: Clock, color: "text-yellow-400" },
-      { label: "Tổng giao dịch", value: txCount.toLocaleString(), icon: Activity, color: "text-accent" },
-    ];
-  }, [nfts, transactions]);
 
   const recentDegrees = useMemo(() => nfts.slice(0, 5).map((nft) => ({
     id: truncateHash(nft.token_id, 6, 4),
@@ -87,6 +75,8 @@ export const useAdminDashboard = () => {
     university: nft.metadata?.institution_address ? truncateHash(nft.metadata.institution_address, 6, 4) : "-",
     date: nft.minted_at ? new Date(nft.minted_at).toLocaleDateString("vi-VN") : "-",
     status: nft.is_valid !== false ? "verified" : "rejected",
+    recipient_name: nft.metadata?.student_id || "-",
+    is_valid: nft.is_valid !== false,
   })), [nfts]);
 
   const recentTxs = useMemo(() => transactions.slice(0, 3).map((tx) => ({
@@ -108,7 +98,10 @@ export const useAdminDashboard = () => {
     walletAddress,
     blockCount: stats.blockCount,
     latestBlockIndex: latestBlockQuery.data?.block ? `#${latestBlockQuery.data.block.index}` : "-",
-    stats: statsDisplay,
+    totalNfts: nfts.length,
+    verifiedNfts: nfts.filter(n => n.is_valid !== false).length,
+    pendingNfts: nfts.filter(n => n.is_valid === false).length,
+    totalTxs: transactions.length,
     recentDegrees,
     recentTxs,
     copyAddress

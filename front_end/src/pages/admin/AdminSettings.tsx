@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Shield, Bell, Database, Globe, Save, Key } from "lucide-react";
+import { Shield, Bell, Database, Globe, Save } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { AdminPageContainer, AdminPageHeader, itemVariants } from "@/components/admin/AdminShared";
 import { toast } from "sonner";
 

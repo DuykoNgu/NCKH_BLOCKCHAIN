@@ -18,6 +18,7 @@ export const useLoginPage = () => {
   
   // Form states
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -89,29 +90,14 @@ export const useLoginPage = () => {
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
       toast.success('Tạo ví thành công');
-    },
-    onError: (err: any) => toast.error(err.message || 'Không thể tạo ví')
-  });
+    } catch (err: any) {
+      toast.error(err.message || 'Không thể tạo ví');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const importMnemonicMutation = useMutation({
-    mutationFn: ({ mnemonic, pwd }: { mnemonic: string; pwd: string }) => importWallet(mnemonic, pwd),
-    onSuccess: () => {
-      const role = localStorage.getItem(STORAGE_KEYS.ROLE);
-      navigate(role === 'admin' || role === 'moet' ? '/admin' : '/home');
-      toast.success('Khôi phục ví thành công');
-    },
-    onError: (err: any) => toast.error(err.message || 'Khôi phục ví thất bại')
-  });
 
-  const schoolRegisterMutation = useMutation({
-    mutationFn: ({ pwd, name }: { pwd: string; name: string }) => registerSchool(pwd, name),
-    onSuccess: () => {
-      const role = localStorage.getItem(STORAGE_KEYS.ROLE);
-      navigate(role === 'admin' || role === 'moet' ? '/admin' : '/home');
-      toast.success('Đăng ký trường thành công');
-    },
-    onError: (err: any) => toast.error(err.message || 'Đăng ký trường thất bại')
-  });
 
   const handleLogin = () => {
     if (!password) return toast.error('Vui lòng nhập mật khẩu');

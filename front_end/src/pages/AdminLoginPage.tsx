@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { adminUnlockVault, adminClearVault, adminImportAndSaveVault } from '@/services/authService';
-import saveUserData from '@/utils/saveDataToStorage';
+
 
 type AdminLoginMode = 'unlock' | 'new-device';
 
@@ -57,10 +57,6 @@ const AdminLoginPage = () => {
     } finally {
       setIsLoading(false);
     }
-  });
-
-  const onSubmit = (values: LoginFormValues) => {
-    loginMutation.mutate(values);
   };
 
   const handleClearAndReset = () => {

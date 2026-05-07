@@ -89,9 +89,9 @@ export default function NetworkPage() {
                 <div className="px-6 py-8 text-center text-muted-foreground text-sm">Chưa có peer nào kết nối</div>
               ) : (
                 <div className="divide-y divide-border">
-                  {peers.map((peer) => {
-                    const status = peer.is_active ? "ACTIVE" : (peer.status || "PENDING");
-                    const sc = statusConfig[status] || statusConfig.PENDING;
+                  {peers.map((peer: any) => {
+                    const status = (peer.status || "PENDING") as keyof typeof PEER_STATUS_CONFIG;
+                    const sc = PEER_STATUS_CONFIG[status] || PEER_STATUS_CONFIG.PENDING;
                     return (
                       <div key={peer.peer_id || peer.address} className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors">
                         <div className="flex items-center gap-4 min-w-0">
@@ -173,7 +173,7 @@ export default function NetworkPage() {
                       <span className="font-mono text-primary">#{block.index}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-muted-foreground">{block.transactions_count || block.tx_count || 0} tx</span>
+                      <span className="text-muted-foreground">{block.transactions_count || 0} tx</span>
                     </div>
                   </div>
                 ))

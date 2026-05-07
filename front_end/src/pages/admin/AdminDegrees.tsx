@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAdminDegrees } from "@/hooks";
 import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
 import { motion } from "framer-motion";
-import { Pagination } from "@/components/ui/pagination";
+
 
 const statusConfig: Record<string, { label: string; icon: any; className: string }> = {
   verified: { label: "Đã xác thực", icon: CheckCircle2, className: "bg-green-400/10 text-green-400 border-green-400/20" },
@@ -62,8 +62,8 @@ export default function Degrees() {
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <AdminStatCard label="Tổng NFT" value={nfts.length} icon={GraduationCap} />
-        <AdminStatCard label="Đã xác thực" value={degrees.filter(d => d.is_valid !== 0).length} icon={CheckCircle2} iconColor="text-green-400" bgColor="bg-green-400/20" />
-        <AdminStatCard label="Đã thu hồi" value={degrees.filter(d => d.is_valid === 0).length} icon={XCircle} iconColor="text-destructive" bgColor="bg-destructive/20" />
+        <AdminStatCard label="Đã xác thực" value={degrees.filter(d => d.is_valid !== false).length} icon={CheckCircle2} iconColor="text-green-400" bgColor="bg-green-400/20" />
+        <AdminStatCard label="Đã thu hồi" value={degrees.filter(d => d.is_valid === false).length} icon={XCircle} iconColor="text-destructive" bgColor="bg-destructive/20" />
       </motion.div>
 
       <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3">
@@ -108,12 +108,12 @@ export default function Degrees() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">Không tìm thấy kết quả</TableCell></TableRow>
                 ) : (
-                  filtered.map((deg) => {
-                    const status = deg.is_valid === 0 ? "revoked" : (deg.status || "verified");
+                  filtered.map((deg: any) => {
+                    const status = deg.is_valid === false ? "revoked" : (deg.status || "verified");
                     const sc = statusConfig[status] || statusConfig.pending;
                     return (
-                      <TableRow key={deg.id || deg.nft_id}>
-                        <TableCell className="font-mono text-primary text-sm">{(deg.id || deg.nft_id || "").slice(0, 10)}...</TableCell>
+                      <TableRow key={deg.id || deg.tokenId}>
+                        <TableCell className="font-mono text-primary text-sm">{(deg.id || deg.tokenId || "").slice(0, 10)}...</TableCell>
                         <TableCell className="font-medium text-foreground">{deg.degree || deg.metadata?.degree_type}</TableCell>
                         <TableCell className="hidden md:table-cell text-muted-foreground">{deg.university || deg.metadata?.institution || "N/A"}</TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{deg.date}</TableCell>

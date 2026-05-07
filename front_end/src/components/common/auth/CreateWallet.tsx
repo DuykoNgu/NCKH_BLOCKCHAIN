@@ -11,6 +11,19 @@ import { schoolRegisterSchema, createWalletSchema } from '@/types/auth.schema';
 interface CreateWalletProps {
   isLoading: boolean;
   isSchool?: boolean;
+  isImporting?: boolean;
+  fullName?: string;
+  onFullNameChange?: (val: string) => void;
+  email?: string;
+  onEmailChange?: (val: string) => void;
+  schoolName?: string;
+  onSchoolNameChange?: (val: string) => void;
+  taxId?: string;
+  onTaxIdChange?: (val: string) => void;
+  representative?: string;
+  onRepresentativeChange?: (val: string) => void;
+  phone?: string;
+  onPhoneChange?: (val: string) => void;
   onSubmit: (values: any) => void;
   onBack: () => void;
 }
@@ -18,6 +31,11 @@ interface CreateWalletProps {
 const CreateWallet = ({
   isLoading,
   isSchool,
+  isImporting,
+  fullName,
+  onFullNameChange,
+  email,
+  onEmailChange,
   onSubmit,
   onBack,
 }: CreateWalletProps) => {
@@ -51,7 +69,7 @@ const CreateWallet = ({
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {isSchool && (
+          {isSchool ? (
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên trường học / Tổ chức</Label>

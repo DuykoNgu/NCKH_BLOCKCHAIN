@@ -1,11 +1,11 @@
 import { decryptPrivateKey, encryptPrivateKey, uint8ArrayToHex } from "@/utils/cryptoVault";
-import saveUserData from "@/utils/saveDataToStorage";
 import { generateWallet, restoreWallet, validateMnemonic } from "@/utils/walletGenerator";
 import { savePasswordToSession, clearPasswordFromSession } from "@/hooks/usePassword";
 import { AUTH_SERVER } from "@/constants/api";
-import { calculateHashHex, signData, signDataDER, bytesToHex } from "@/utils/cryptoUtils";
+import { calculateHashHex, signDataDER, bytesToHex } from "@/utils/cryptoUtils";
 import api from "@configs/axios.config";
 import * as secp from "@noble/secp256k1";
+import saveUserData from "@/utils/saveDataToStorage";
 
 export interface CreateWalletResult {
   mnemonic: string;
@@ -215,7 +215,6 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
   }
   const privateKey = secp.etc.hexToBytes(cleanKey);
   const publicKeyBytes = secp.getPublicKey(privateKey, false);
-  const publicKeyHex = uint8ArrayToHex(publicKeyBytes);
 
   // Generate address (standard keccak256 hash of public key without 0x04 prefix)
   const { keccak_256 } = await import("@noble/hashes/sha3.js");
@@ -252,6 +251,52 @@ export const adminLogout = () => {
   localStorage.removeItem('role');
   localStorage.removeItem('full_name');
   clearPasswordFromSession();
+};
+
+export const adminUnlockVault = async (password: string) => {
+  const vaultData = localStorage.getItem('admin_vault');
+  const address = localStorage.getItem('admin_address');
+  if (!vaultData || !address) throw new Error("Không tìm thấy két sắt Admin trên thiết bị này.");
+
+  const vault = JSON.parse(vaultData);
+  const privateKey = await decryptPrivateKey(vault, password);
+  
+  // Sau khi giải mã thành công, thực hiện login bằng private key
+  const privateKeyHex = uint8ArrayToHex(privateKey);
+  await adminLoginWithPrivateKey(privateKeyHex);
+  
+  savePasswordToSession(password);
+  return true;
+};
+
+export const adminImportAndSaveVault = async (privateKeyHex: string, password: string) => {
+  // 1. Thực hiện login trước để kiểm tra Private Key hợp lệ
+  await adminLoginWithPrivateKey(privateKeyHex);
+
+  // 2. Nếu login thành công, tiến hành lưu vault cục bộ
+  const cleanKey = privateKeyHex.replace(/^0x/i, '').replace(/\s+/g, '');
+  const privateKey = secp.etc.hexToBytes(cleanKey);
+  
+  const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
+  const vaultStr = JSON.stringify({ 
+    encrypted: uint8ArrayToHex(encrypted), 
+    iv: uint8ArrayToHex(iv) 
+  });
+  
+  // Tính address admin
+  const publicKeyBytes = secp.getPublicKey(privateKey, false);
+  const { keccak_256 } = await import("@noble/hashes/sha3.js");
+  const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);
+
+  localStorage.setItem('admin_vault', vaultStr);
+  localStorage.setItem('admin_address', address);
+  localStorage.setItem('role', 'admin');
+  savePasswordToSession(password);
+};
+
+export const adminClearVault = () => {
+  localStorage.removeItem('admin_vault');
+  localStorage.removeItem('admin_address');
 };
 
 export const getNonce = async (address: string): Promise<string> => {

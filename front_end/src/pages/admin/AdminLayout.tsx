@@ -1,7 +1,7 @@
-import { useState } from "react";
+
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/admin/AppSidebar";
-import { Bell, Search, CheckCircle2, Clock, AlertTriangle, User as UserIcon, LogOut, Settings } from "lucide-react";
+import { Bell, Search, CheckCircle2, Clock, User as UserIcon, LogOut, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
