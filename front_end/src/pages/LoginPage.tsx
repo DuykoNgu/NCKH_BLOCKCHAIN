@@ -107,18 +107,17 @@ const LoginPage = () => {
           onBack={() => navigate('/login')}
           isLoading={isLoading}
           isSchool={isSchool}
+          fullName={fullName}
+          onFullNameChange={setFullName}
+          email={email}
+          onEmailChange={setEmail}
           schoolName={schoolName}
           onSchoolNameChange={setSchoolName}
           taxId={taxId}
           onTaxIdChange={setTaxId}
           representative={representative}
-          onRepresentativeChange={setRepresentative}
-          email={email}
-          onEmailChange={setEmail}
           phone={phone}
           onPhoneChange={setPhone}
-          fullName={fullName}
-          onFullNameChange={setFullName}
         />
       );
     }

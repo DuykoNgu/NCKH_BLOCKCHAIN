@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createWallet, registerSchool, importWallet } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
@@ -16,13 +16,13 @@ export const useLoginPage = () => {
   const [showSeed, setShowSeed] = useState(false);
   const [seed, setSeed] = useState<string[]>([]);
   
-  // Form states
+  // Form states (kept for legacy support if needed, but updated for form compatibility)
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Individual states for direct props if not using react-hook-form
   const [schoolName, setSchoolName] = useState('');
   const [taxId, setTaxId] = useState('');
   const [representative, setRepresentative] = useState('');
@@ -46,13 +46,6 @@ export const useLoginPage = () => {
     setShowSeed(false);
     setSeed([]);
     setPassword('');
-    setConfirmPassword('');
-    setSchoolName('');
-    setTaxId('');
-    setRepresentative('');
-    setEmail('');
-    setPhone('');
-    setFullName('');
     setError('');
   }, [type]);
 
@@ -66,16 +59,21 @@ export const useLoginPage = () => {
     onError: () => toast.error('Đăng nhập thất bại. Vui lòng kiểm tra lại mật khẩu.')
   });
 
-  const handleCreateWallet = async () => {
-    if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+  const handleCreateWallet = async (values?: any) => {
+    // If values are provided from react-hook-form
+    const targetPassword = values?.password || password;
+    const targetFullName = values?.fullName || fullName;
+    const targetEmail = values?.email || email;
+
+    if (!targetPassword) {
+      setError('Vui lòng nhập mật khẩu');
       return;
     }
-    if (password.length < 8) {
+    if (targetPassword.length < 8) {
       setError('Mật khẩu phải từ 8 ký tự trở lên');
       return;
     }
-    if (!fullName.trim() || !email.trim()) {
+    if (!targetFullName?.trim() || !targetEmail?.trim()) {
       setError('Vui lòng điền đầy đủ Tên hiển thị và Email');
       return;
     }
@@ -83,21 +81,22 @@ export const useLoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      const result = await createWallet(password, email.trim());
-      // Save fullName to localStorage (authService handles basic save, but we might want to ensure fullName is set)
-      localStorage.setItem('full_name', fullName.trim());
+      const result = await createWallet(targetPassword, targetEmail.trim());
+      // Save info that might not be in result
+      localStorage.setItem('full_name', targetFullName.trim());
+      localStorage.setItem('role', 'client');
+      localStorage.setItem('isLoggedIn', 'true');
       
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
       toast.success('Tạo ví thành công');
     } catch (err: any) {
+      setError(err.message || 'Không thể tạo ví');
       toast.error(err.message || 'Không thể tạo ví');
     } finally {
       setIsLoading(false);
     }
   };
-
-
 
   const handleLogin = () => {
     if (!password) return toast.error('Vui lòng nhập mật khẩu');
@@ -110,32 +109,46 @@ export const useLoginPage = () => {
     try {
       await importWallet(mnemonic, pass);
       const role = localStorage.getItem('role');
-      if (role === 'admin' || role === 'moet') {
-        navigate('/admin');
-      } else {
-        navigate('/home');
-      }
+      navigate(role === 'admin' || role === 'moet' ? '/admin' : '/home');
+      toast.success('Khôi phục ví thành công');
     } catch (err: any) {
       setError(err.message || 'Khôi phục ví thất bại');
+      toast.error(err.message || 'Khôi phục ví thất bại');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSchoolRegister = async () => {
-    if (!schoolName || !taxId || !representative || !email || !phone) {
-      setError('Vui lòng điền đầy đủ các thông tin pháp lý');
+  const handleSchoolRegister = async (values?: any) => {
+    const data = values || { schoolName, taxId, representative, email, phone, password };
+
+    if (!data.schoolName || !data.taxId || !data.representative || !data.email || !data.phone || !data.password) {
+      setError('Vui lòng điền đầy đủ các thông tin pháp lý và mật khẩu');
       return;
     }
 
     setIsLoading(true);
     setError('');
     try {
-      const result = await registerSchool(password, schoolName, taxId, representative, email, phone);
+      const result = await registerSchool(
+        data.password, 
+        data.schoolName, 
+        data.taxId, 
+        data.representative, 
+        data.email, 
+        data.phone
+      );
+      
+      localStorage.setItem('full_name', data.schoolName);
+      localStorage.setItem('role', 'validator');
+      localStorage.setItem('is_active', '0');
+      
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
+      toast.success('Đăng ký trường học thành công. Vui lòng chờ phê duyệt.');
     } catch (err: any) {
       setError(err.message || 'Đăng ký trường thất bại');
+      toast.error(err.message || 'Đăng ký trường thất bại');
     } finally {
       setIsLoading(false);
     }

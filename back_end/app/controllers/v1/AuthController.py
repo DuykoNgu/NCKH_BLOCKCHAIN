@@ -12,9 +12,9 @@ from app.utils.CryptoUtils import CryptoUtils
 # Add back_end to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from utils.KeystoreManager import KeystoreManager, create_keystore
+from app.utils.KeystoreManager import KeystoreManager, create_keystore
 from consensus.validator_worker import get_validator_worker
-from utils.logger import get_logger
+from app.utils.logger import get_logger
 from app.repositories.PeerRepository import PeerRepository
 
 logger = get_logger(__name__)

@@ -194,14 +194,19 @@ if __name__ == "__main__":
         keystore_path = os.path.join(current_dir, 'node.keystore')
         print(f"  Loading keystore from: {keystore_path}")
         keystore_data = KeystoreManager.load_keystore(keystore_path)
-        public_key = keystore_data['public_key']
-        
-        # Get seed nodes from config
-        config = get_config()
-        seed_nodes = config.get_seed_nodes()
-        
-        initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
-        print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
+        if keystore_data:
+            public_key = keystore_data['public_key']
+            
+            # Get seed nodes from config
+            config = get_config()
+            seed_nodes = config.get_seed_nodes()
+            
+            initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
+            print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
+        else:
+            print(f"⚠️  Keystore not found or invalid at {keystore_path}. Starting in observer mode.")
+            public_key = ""
+            initialize_blockchain("", listen_port=args.port)
     except Exception as e:
         print(f"⚠️  Blockchain initialization warning: {e}")
         import traceback

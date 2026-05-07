@@ -36,6 +36,14 @@ const CreateWallet = ({
   onFullNameChange,
   email,
   onEmailChange,
+  schoolName,
+  onSchoolNameChange,
+  taxId,
+  onTaxIdChange,
+  representative,
+  onRepresentativeChange,
+  phone,
+  onPhoneChange,
   onSubmit,
   onBack,
 }: CreateWalletProps) => {
@@ -47,7 +55,17 @@ const CreateWallet = ({
     formState: { errors, isValid }
   } = useForm<any>({
     resolver: zodResolver(isSchool ? schoolRegisterSchema : createWalletSchema),
-    mode: "onChange"
+    mode: "onChange",
+    defaultValues: {
+      fullName: fullName,
+      email: email,
+      schoolName: schoolName,
+      taxId: taxId,
+      representative: representative,
+      phone: phone,
+      password: '',
+      confirmPassword: '',
+    }
   });
 
   return (
@@ -74,7 +92,7 @@ const CreateWallet = ({
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên trường học / Tổ chức</Label>
                 <Input
-                  {...register("schoolName")}
+                  {...register("schoolName", { onChange: (e) => onSchoolNameChange?.(e.target.value) })}
                   placeholder="VD: Trường Đại học Bách Khoa"
                   className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors", errors.schoolName && "border-destructive/50")}
                 />
@@ -83,7 +101,7 @@ const CreateWallet = ({
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Mã số thuế / Mã Cơ Sở GD</Label>
                 <Input
-                  {...register("taxId")}
+                  {...register("taxId", { onChange: (e) => onTaxIdChange?.(e.target.value) })}
                   placeholder="VD: 0100684128"
                   className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.taxId && "border-destructive/50")}
                 />
@@ -92,7 +110,7 @@ const CreateWallet = ({
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Người đại diện pháp luật</Label>
                 <Input
-                  {...register("representative")}
+                  {...register("representative", { onChange: (e) => onRepresentativeChange?.(e.target.value) })}
                   placeholder="Họ và tên"
                   className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.representative && "border-destructive/50")}
                 />
@@ -102,7 +120,7 @@ const CreateWallet = ({
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email liên hệ</Label>
                   <Input
-                    {...register("email")}
+                    {...register("email", { onChange: (e) => onEmailChange?.(e.target.value) })}
                     placeholder="... @edu.vn"
                     className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.email && "border-destructive/50")}
                   />
@@ -111,7 +129,7 @@ const CreateWallet = ({
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Số điện thoại</Label>
                   <Input
-                    {...register("phone")}
+                    {...register("phone", { onChange: (e) => onPhoneChange?.(e.target.value) })}
                     placeholder="0912..."
                     className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors", errors.phone && "border-destructive/50")}
                   />
@@ -120,27 +138,26 @@ const CreateWallet = ({
               </div>
             </div>
           ) : (
-            !isImporting && onFullNameChange && onEmailChange && (
+            !isImporting && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên hiển thị</Label>
                   <Input
-                    type="text"
-                    value={fullName || ''}
-                    onChange={(e) => onFullNameChange(e.target.value)}
+                    {...register("fullName", { onChange: (e) => onFullNameChange?.(e.target.value) })}
                     placeholder="Họ và tên của bạn"
-                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors"
+                    className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors", errors.fullName && "border-destructive/50")}
                   />
+                  {errors.fullName && <p className="text-[10px] text-destructive font-bold">{(errors.fullName.message as any)?.toString()}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email</Label>
                   <Input
+                    {...register("email", { onChange: (e) => onEmailChange?.(e.target.value) })}
                     type="email"
-                    value={email || ''}
-                    onChange={(e) => onEmailChange(e.target.value)}
                     placeholder="Email của bạn (Bắt buộc)"
-                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors"
+                    className={cn("h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors", errors.email && "border-destructive/50")}
                   />
+                  {errors.email && <p className="text-[10px] text-destructive font-bold">{(errors.email.message as any)?.toString()}</p>}
                 </div>
               </div>
             )

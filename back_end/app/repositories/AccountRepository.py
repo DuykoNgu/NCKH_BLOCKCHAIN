@@ -38,10 +38,10 @@ class AccountRepository:
                 role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
                 
                 cursor.execute('''
-                    INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, is_active, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, vault, is_active, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (account.public_key, account.address, role_value, account.org_name, 
-                      account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.is_active, account.created_at))
+                      account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.vault, account.is_active, account.created_at))
                 conn.commit()
                 
                 # Check if insert was successful (rowcount > 0) or skipped (duplicate)

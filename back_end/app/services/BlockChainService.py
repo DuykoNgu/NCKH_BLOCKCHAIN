@@ -251,6 +251,12 @@ class BlockChainService:
                         "created_at",
                         datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
                     ),
+                    full_name=payload.get("full_name"),
+                    tax_id=payload.get("tax_id"),
+                    representative=payload.get("representative"),
+                    email=payload.get("email"),
+                    phone=payload.get("phone"),
+                    vault=payload.get("vault"),
                 )
                 
                 # Create account in database (with INSERT OR IGNORE for idempotency)
@@ -298,6 +304,14 @@ class BlockChainService:
                     account.full_name = payload["full_name"]
                 if "avatar_url" in payload:
                     account.avatar_url = payload["avatar_url"]
+                if "tax_id" in payload:
+                    account.tax_id = payload["tax_id"]
+                if "representative" in payload:
+                    account.representative = payload["representative"]
+                if "email" in payload:
+                    account.email = payload["email"]
+                if "phone" in payload:
+                    account.phone = payload["phone"]
 
                 AccountRepository.update_account(account)
                 tx.tx_status = "COMMITTED"

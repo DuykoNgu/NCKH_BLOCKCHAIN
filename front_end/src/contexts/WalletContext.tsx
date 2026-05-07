@@ -31,10 +31,14 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
         // Sync with AuthContext based on localStorage which loginWalletFlow updated
         login({
-          address: localStorage.getItem("address") || "",
-          role: localStorage.getItem("role") || "client",
-          full_name: localStorage.getItem("full_name") || "",
-          is_active: localStorage.getItem("is_active") === "1"
+          user: {
+            address: localStorage.getItem("address") || "",
+            role: localStorage.getItem("role") || "client",
+            full_name: localStorage.getItem("full_name") || "",
+            is_active: localStorage.getItem("is_active") === "1",
+            public_key: localStorage.getItem("public_key") || ""
+          },
+          token: localStorage.getItem("access_token") || ""
         });
 
         // Refresh local state

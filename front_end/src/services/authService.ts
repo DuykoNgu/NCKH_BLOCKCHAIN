@@ -68,6 +68,14 @@ export const createWallet = async (password: string, email?: string): Promise<Cr
   clearOldSession();
   // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
+  const privateKeyHex = uint8ArrayToHex(privateKey);
+  
+  console.log('%c--- NEW WALLET CREATED ---', 'color: #00ff00; font-weight: bold; font-size: 14px;');
+  console.log('Address:', address);
+  console.log('Private Key:', privateKeyHex);
+  console.log('Mnemonic:', mnemonic);
+  console.log('---------------------------');
+
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vaultStr = JSON.stringify({ encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) });
 
@@ -107,6 +115,15 @@ export const registerSchool = async (
 ): Promise<CreateWalletResult> => {
   clearOldSession();
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
+  const privateKeyHex = uint8ArrayToHex(privateKey);
+
+  console.log('%c--- NEW SCHOOL WALLET CREATED ---', 'color: #00ff00; font-weight: bold; font-size: 14px;');
+  console.log('School Name:', schoolName);
+  console.log('Address:', address);
+  console.log('Private Key:', privateKeyHex);
+  console.log('Mnemonic:', mnemonic);
+  console.log('----------------------------------', '');
+
   const { encrypted, iv } = await encryptPrivateKey(privateKey, password);
   const vaultStr = JSON.stringify({ encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) });
   const publicKeyHex = uint8ArrayToHex(publicKey);

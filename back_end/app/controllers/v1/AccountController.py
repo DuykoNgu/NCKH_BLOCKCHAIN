@@ -9,7 +9,7 @@ import uuid
 from app.models.Account import Role, TransactionAcount, TransactionUpdateAccount
 from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
 from app.utils.CryptoUtils import CryptoUtils
-from utils.logger import get_logger
+from app.utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 logger = get_logger(__name__)
 # --- Redis & Fallback Storage Configuration ---
@@ -103,18 +103,22 @@ def register():
     representative = data.get('representative')
     email = data.get('email')
     phone = data.get('phone')
+    vault = data.get('vault')
+    timestamp = data.get('timestamp')
+
     transactionAccount = TransactionAcount(
         address=address,
         public_key=public_key,
         role=role_str,
-        timestamp= data.get('timestamp')
+        timestamp=timestamp
     )
 
     message_to_verify = transactionAccount.get_signing_data()
 
     is_valid_signature = CryptoUtils.verify_signature(message_to_verify, signature, public_key)
     if not is_valid_signature:
-            return jsonify({"error": "Invalid digital signature. "}), 401
+        return jsonify({"error": "Invalid digital signature."}), 401
+    
     # Convert string to Role enum
     role_map = {
         'client': Role.CLIENT,
@@ -123,10 +127,23 @@ def register():
     }
     role = role_map.get(role_str.lower(), Role.CLIENT)
 
-    success, account, message = AccountService.register_account(address, public_key, role, vault)
+    success, account, message = AccountService.register_account(
+        address=address, 
+        public_key=public_key, 
+        role=role, 
+        vault=vault,
+        signature=signature,
+        reg_timestamp=timestamp,
+        full_name=full_name,
+        tax_id=tax_id,
+        representative=representative,
+        email=email,
+        phone=phone
+    )
 
     if success:
         return {
+            "status": "success",
             "message": message,
             "data": {
                 "address": account.address,

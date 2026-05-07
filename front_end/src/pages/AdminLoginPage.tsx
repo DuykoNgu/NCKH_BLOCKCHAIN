@@ -4,13 +4,15 @@ import { ShieldCheck, ArrowRight, Loader2, Lock, Eye, EyeOff, RotateCcw } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { adminUnlockVault, adminClearVault, adminImportAndSaveVault } from '@/services/authService';
+import { adminUnlockVault, adminClearVault, adminImportAndSaveVault, fetchProfile } from '@/services/authService';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 
 type AdminLoginMode = 'unlock' | 'new-device';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuthContext();
   const [mode, setMode] = useState<AdminLoginMode>('unlock');
   const [adminAddressInput, setAdminAddressInput] = useState('');
   const [password, setPassword] = useState('');
@@ -33,6 +35,23 @@ const AdminLoginPage = () => {
     setError('');
     try {
       await adminUnlockVault(password);
+      
+      // Cập nhật AuthContext để hệ thống nhận diện role Admin/MOET mới
+      const address = localStorage.getItem('admin_address');
+      if (address) {
+        try {
+          const profile = await fetchProfile(address);
+          if (profile && profile.user) {
+            login({
+              user: { ...profile.user, is_active: String(profile.user.is_active) },
+              token: localStorage.getItem('access_token') || ''
+            });
+          }
+        } catch (profileErr) {
+          console.warn("Could not sync profile during admin unlock", profileErr);
+        }
+      }
+
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Mật khẩu không đúng. Vui lòng thử lại.');
@@ -51,6 +70,23 @@ const AdminLoginPage = () => {
     setError('');
     try {
       await adminImportAndSaveVault(adminAddressInput.trim(), password);
+      
+      // Cập nhật AuthContext sau khi import ví admin mới
+      const address = localStorage.getItem('admin_address');
+      if (address) {
+        try {
+          const profile = await fetchProfile(address);
+          if (profile && profile.user) {
+            login({
+              user: { ...profile.user, is_active: String(profile.user.is_active) },
+              token: localStorage.getItem('access_token') || ''
+            });
+          }
+        } catch (profileErr) {
+          console.warn("Could not sync profile during admin import", profileErr);
+        }
+      }
+
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Kiểm tra lại Private Key.');
