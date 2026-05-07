@@ -11,8 +11,9 @@ import {
   PlusCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/admin/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { adminLogout } from "@/services/authService";
 import {
   Sidebar,
   SidebarContent,
@@ -31,10 +32,10 @@ import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { role, logout } = useAuth();
+  const { role } = useAuth();
+  const navigate = useNavigate();
   const collapsed = state === "collapsed";
   const location = useLocation();
-
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -42,7 +43,7 @@ export function AppSidebar() {
   const allMenuItems = {
     main: [
       { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-      { title: "Cấp phát Bằng", url: "/admin/degrees", icon: PlusCircle, roles: ["validator"] }, // Chỉ hiện Plus icon cho validator
+      { title: "Cấp phát Bằng", url: "/admin/degrees", icon: PlusCircle, roles: ["validator"] },
       { title: "Tất cả Bằng cấp", url: "/admin/degrees", icon: GraduationCap, roles: ["moet", "admin"] },
       { title: "Bằng cấp của tôi", url: "/admin/degrees", icon: GraduationCap, roles: ["client"] },
       { title: "Bằng đã cấp", url: "/admin/my-degrees", icon: GraduationCap, roles: ["validator"] },
@@ -51,10 +52,16 @@ export function AppSidebar() {
     ],
     manage: [
       { title: "Quản lý mạng (Node)", url: "/admin/network", icon: Network },
+      { title: "Phê duyệt đối tác", url: "/admin/validators", icon: Shield, roles: ["moet", "admin"] },
       { title: "Quản lý Sinh viên", url: "/admin/students", icon: Users },
       { title: "Cấu hình Hệ thống", url: "/admin/contracts", icon: Blocks },
       { title: "Cài đặt", url: "/admin/settings", icon: Settings },
     ]
+  };
+
+  const handleLogout = () => {
+    adminLogout(); // Chỉ xoá session, giữ vault để lần sau đăng nhập bằng mật khẩu
+    navigate('/moet-login');
   };
 
   // Lọc menu items dựa trên permissions.ts
@@ -62,7 +69,7 @@ export function AppSidebar() {
     return items.filter(item => {
       // Nếu item có quy định roles cụ thể cho hiển thị
       if (item.roles && !item.roles.includes(role || "")) return false;
-      
+
       // Kiểm tra quyền truy cập route tổng quát
       return hasRoutePermission(role, item.url);
     });
@@ -153,7 +160,7 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={logout}
+          onClick={handleLogout}
           className={`h-11 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ${collapsed ? "w-11 px-0 justify-center" : "w-full px-4 mt-4 justify-start gap-3"}`}
         >
           <LogOut className="h-5 w-5" />

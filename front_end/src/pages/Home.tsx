@@ -5,11 +5,13 @@ import React from "react";
 import { useWallet } from "@/hooks/useWallet";
 import { useAuth } from "@/hooks/useAuth";
 import { TrongDongWatermark } from "@/components/common/TrongDongWatermark";
+import { useNavigate } from "react-router-dom";
 
 const Home: React.FC = () => {
   const { isPendingApproval, isAdmin } = useAuth();
   const address = localStorage.getItem("address") || "";
   const { lock } = useWallet();
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     if (isAdmin) {
@@ -19,7 +21,7 @@ const Home: React.FC = () => {
 
   const handleDisconnect = () => {
     lock();
-    window.location.replace("/login");
+    navigate("/login");
   };
 
   if (isPendingApproval) {

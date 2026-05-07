@@ -123,15 +123,7 @@ def register():
     }
     role = role_map.get(role_str.lower(), Role.CLIENT)
 
-    success, account, message = AccountService.register_account(
-        address, public_key, role, signature,
-        reg_timestamp=data.get('timestamp'),
-        full_name=full_name,
-        tax_id=tax_id,
-        representative=representative,
-        email=email,
-        phone=phone
-    )
+    success, account, message = AccountService.register_account(address, public_key, role, vault)
 
     if success:
         return {
@@ -196,12 +188,22 @@ def verify():
             }), 401
     
     except Exception as e:
-        logger.error(f"Login error: {e}")
-        return jsonify({
-            "status":"fail", 
-            "message": str(e),
-            "traceback": "Check server logs for details"
-        }), 500
+        return jsonify({"status":"fail", "message": "Invalid signature"}),401
+
+@user_bp.route('/auth/check_unique', methods=['POST'])
+def check_unique():
+    data = request.json
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({"error": "Missing email"}), 400
+        
+    exists = AccountRepository.check_email_exists(email)
+    return jsonify({
+        "status": "success",
+        "exists": exists
+    }), 200
+
 @user_bp.route('/profile/update', methods=['POST'])
 def update_profile():
     data = request.json
@@ -245,11 +247,21 @@ def update_profile():
             "message": message,
             "user": account.to_dict()
         }), 200
+
+@user_bp.route('/auth/update_vault', methods=['POST'])
+def update_vault():
+    data = request.json
+    address = data.get('address')
+    vault = data.get('vault')
+    
+    if not address or not vault:
+        return jsonify({"error": "Missing address or vault"}), 400
+        
+    success, message = AccountService.update_vault(address, vault)
+    if success:
+        return jsonify({"status": "success", "message": message}), 200
     else:
-        return jsonify({
-            "status": "fail",
-            "error": message
-        }), 400
+        return jsonify({"status": "fail", "error": message}), 400
 
 @user_bp.route('/pending_validators', methods=['GET'])
 def get_pending_validators():
@@ -302,9 +314,30 @@ def approve_validator():
             "error": "Failed to update validator"
         }), 500
 
+@user_bp.route('/reject_validator', methods=['POST'])
+def reject_validator():
+    data = request.json
+    address = data.get('address')
+    
+    if not address:
+        return jsonify({"error": "Missing address"}), 400
+        
+    success, message = AccountService.delete_account(address)
+    if success:
+        return jsonify({
+            "status": "success",
+            "success": True,
+            "message": "Validator rejected and removed successfully"
+        }), 200
+    else:
+        return jsonify({
+            "status": "fail",
+            "error": message
+        }), 500
+
 @user_bp.route('/profile/<address>', methods=['GET'])
 def get_profile(address):
-    account = AccountService.get_account_by_address(address.lower())
+    account = AccountService.get_account_by_address(address)
     if not account:
         return jsonify({"error": "Account not found"}), 404
         
@@ -320,6 +353,7 @@ def get_profile(address):
             "tax_id": account.tax_id,
             "representative": account.representative,
             "email": account.email,
-            "phone": account.phone
+            "phone": account.phone,
+            "vault": account.vault
         }
     }), 200

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { schoolRegisterSchema, createWalletSchema } from '@/types/auth.schema';
 
@@ -40,12 +40,14 @@ const CreateWallet = ({
         </button>
 
         <h2 className="font-display text-xl font-bold text-foreground mb-1">
-          {isSchool ? 'Đăng ký Trường học / Tổ chức' : 'Tạo ví mới'}
+          {isSchool ? 'Đăng ký Trường học / Tổ chức' : (isImporting ? 'Thiết lập mật khẩu thiết bị' : 'Tạo ví mới')}
         </h2>
         <p className="text-sm text-muted-foreground mb-8">
-          {isSchool 
-            ? 'Đăng ký định danh cho tổ chức cấp phát văn bằng.' 
-            : 'Thiết lập mật khẩu mạnh để bảo vệ tài khoản và dữ liệu của bạn.'}
+          {isSchool
+            ? 'Đăng ký định danh cho tổ chức cấp phát văn bằng.'
+            : (isImporting 
+              ? 'Mật khẩu dùng để bảo mật và đăng nhập nhanh trên thiết bị này.' 
+              : 'Thiết lập mật khẩu mạnh để bảo vệ tài khoản và dữ liệu của bạn.')}
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -99,6 +101,31 @@ const CreateWallet = ({
                 </div>
               </div>
             </div>
+          ) : (
+            !isImporting && onFullNameChange && onEmailChange && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên hiển thị</Label>
+                  <Input
+                    type="text"
+                    value={fullName || ''}
+                    onChange={(e) => onFullNameChange(e.target.value)}
+                    placeholder="Họ và tên của bạn"
+                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={email || ''}
+                    onChange={(e) => onEmailChange(e.target.value)}
+                    placeholder="Email của bạn (Bắt buộc)"
+                    className="h-12 bg-secondary/50 border-border/50 rounded-xl px-4 text-foreground focus:bg-background transition-colors"
+                  />
+                </div>
+              </div>
+            )
           )}
 
           <div className="space-y-4">
@@ -149,10 +176,13 @@ const CreateWallet = ({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isSchool ? 'Đang gửi yêu cầu...' : 'Đang tạo ví...'}
+                  {isSchool ? 'Đang gửi yêu cầu...' : (isImporting ? 'Đang thiết lập...' : 'Đang tạo ví...')}
                 </>
               ) : (
-                isSchool ? 'Gửi hồ sơ đăng ký' : 'Tiếp tục tạo ví'
+                <>
+                  {isSchool ? 'Gửi hồ sơ đăng ký' : (isImporting ? 'Hoàn tất thiết lập' : 'Tiếp tục tạo ví')}
+                  {!isLoading && <ShieldCheck size={16} className="ml-2" />}
+                </>
               )}
             </Button>
           </div>

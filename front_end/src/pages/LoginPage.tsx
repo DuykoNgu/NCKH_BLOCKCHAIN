@@ -1,12 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { clearOldSession } from '@/services/authService';
+import { useLoginPage } from '@/hooks/useLoginPage';
 import LoginHome from '@/components/common/auth/LoginHome';
 import ImportWallet from '@/components/common/auth/ImportWallet';
 import ImportMnemonic from '@/components/common/auth/ImportMnemonic';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
-import { clearOldSession } from '@/services/authService';
-import { useLoginPage } from '@/hooks/useLoginPage';
 
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
@@ -22,6 +22,18 @@ const LoginPage = () => {
     setShowPassword,
     isLoading,
     error,
+    schoolName,
+    setSchoolName,
+    taxId,
+    setTaxId,
+    representative,
+    setRepresentative,
+    email,
+    setEmail,
+    phone,
+    setPhone,
+    fullName,
+    setFullName,
     handleLogin,
     handleCreateWallet,
     handleImportMnemonic,
@@ -38,10 +50,10 @@ const LoginPage = () => {
     // Render seed phrase display (after creation)
     if (showSeed) {
       return (
-        <SeedDisplay 
-          seed={seed} 
-          onBack={() => setStep('home')}
-          onConfirmed={() => navigate('/home')} 
+        <SeedDisplay
+          seed={seed}
+          onBack={() => navigate('/login')}
+          onConfirmed={() => navigate('/home')}
         />
       );
     }
@@ -49,8 +61,10 @@ const LoginPage = () => {
     // Render import existing wallet
     if (step === 'import') {
       const handleClearWallet = () => {
-        clearOldSession();
-        window.location.reload(); 
+        if (window.confirm("CẢNH BÁO: Bạn chuẩn bị xóa dữ liệu đăng nhập khỏi thiết bị này. Lần sau muốn đăng nhập lại, bạn sẽ BẮT BUỘC phải dùng 12 từ khóa bí mật để khôi phục. Bạn có chắc chắn muốn xóa?")) {
+          clearOldSession();
+          window.location.href = '/login';
+        }
       };
 
       const currentAddress = localStorage.getItem('address');
@@ -93,6 +107,18 @@ const LoginPage = () => {
           onBack={() => navigate('/login')}
           isLoading={isLoading}
           isSchool={isSchool}
+          schoolName={schoolName}
+          onSchoolNameChange={setSchoolName}
+          taxId={taxId}
+          onTaxIdChange={setTaxId}
+          representative={representative}
+          onRepresentativeChange={setRepresentative}
+          email={email}
+          onEmailChange={setEmail}
+          phone={phone}
+          onPhoneChange={setPhone}
+          fullName={fullName}
+          onFullNameChange={setFullName}
         />
       );
     }

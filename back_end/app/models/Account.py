@@ -10,6 +10,7 @@ class Account:
      def __init__(self, public_key: str, address: str, role: Role, org_name: str = None, 
                   full_name: str = None, avatar_url: str = None,
                   tax_id: str = None, representative: str = None, email: str = None, phone: str = None,
+                  vault: str = None,
                   is_active: int = 1, created_at: str = None):
           self.public_key = public_key
           self.address = address
@@ -21,10 +22,11 @@ class Account:
           self.representative = representative
           self.email = email
           self.phone = phone
+          self.vault = vault
           self.is_active = is_active
           self.created_at = created_at
 
-     def to_dict(self) -> Dict[str, str]:
+     def to_dict(self) -> Dict[str, Any]:
           return {
                "public_key": self.public_key,
                "address": self.address,
@@ -36,14 +38,18 @@ class Account:
                "representative": self.representative,
                "email": self.email,
                "phone": self.phone,
+               "vault": self.vault,
                "is_active": self.is_active,
                "created_at": self.created_at
           }
      @staticmethod
      def from_dict(data: Dict[str,Any]):
+          if 'role' in data and isinstance(data['role'], str):
+               try:
+                    data['role'] = Role(data['role'].lower())
+               except ValueError:
+                    data['role'] = Role.CLIENT
           return Account(**data)
-
-
 
 class TransactionAcount:
      def __init__(self, address: str, public_key: str, role: Role, timestamp: float):
@@ -52,7 +58,7 @@ class TransactionAcount:
           self.role = role
           self.timestamp = timestamp
 
-     def to_dict(self) -> Dict[str, str]:
+     def to_dict(self) -> Dict[str, Any]:
           return {
                "address": self.address,
                "public_key": self.public_key,
@@ -66,8 +72,7 @@ class TransactionAcount:
                "role": self.role.value if hasattr(self.role, 'value') else str(self.role),
                "timestamp": self.timestamp
           }
-          return json.dumps(data, sort_keys= True,separators=(',', ':'))
-     
+          return json.dumps(data, sort_keys=True, separators=(',', ':'))
 
 class TransactionUpdateAccount:
      def __init__(self, address: str, full_name: str, avatar_url: str, tax_id: str, representative: str, email: str, phone: str, timestamp: float):
@@ -80,7 +85,7 @@ class TransactionUpdateAccount:
           self.phone = phone
           self.timestamp = timestamp
 
-     def to_dict(self) -> Dict[str, str]:
+     def to_dict(self) -> Dict[str, Any]:
           return {
                "address": self.address,
                "full_name": self.full_name,
@@ -102,4 +107,4 @@ class TransactionUpdateAccount:
                "phone": self.phone,
                "timestamp": self.timestamp
           }
-          return json.dumps(data, sort_keys= True,separators=(',', ':'))
+          return json.dumps(data, sort_keys=True, separators=(',', ':'))

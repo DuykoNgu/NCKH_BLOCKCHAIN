@@ -52,7 +52,7 @@ def initialize_p2p_network(host, port, public_key=""):
         public_key: This node's public key (for reverse registration to seed nodes)
     """
     from app.services.NetworkService import get_network_service, initialize_network
-    
+    from network.config_loader import get_config
     
     # Update node config with actual port
     config = get_config()
@@ -79,6 +79,7 @@ def sync_chain_from_peers():
     """Sync blockchain from peers if local chain is behind"""
     from app.services.NetworkService import get_network_service
     from network.chain_sync import ChainSync
+    from app.blockchain_instance import get_blockchain_instance
     
     try:
         service = get_network_service()
@@ -99,80 +100,12 @@ def sync_chain_from_peers():
         print("   Starting with local chain state")
 
 
-def start_periodic_sync_heartbeat(interval_seconds: int = 10):
-    """
-    Start background thread for periodic heartbeat check (5-10 seconds)
-    
-    This ensures that if node misses broadcast messages, it will periodically
-    check peers and sync missing blocks.
-    
-    Args:
-        interval_seconds: How often to check (default: 10 seconds)
-    """
-    import threading
-    import time
-    
-    def heartbeat_task():
-        """Background task to periodically check and sync blockchain"""
-        while True:
-            try:
-                time.sleep(interval_seconds)
-                
-                from app.services.NetworkService import get_network_service
-                from network.chain_sync import ChainSync
-                from app.blockchain_instance import get_local_db_height
-                
-                service = get_network_service()
-                blockchain = get_blockchain_instance()
-                
-                # Use DB height as source of truth (avoids RAM reset after restart)
-                local_height = get_local_db_height()
-                
-                # Query random peers for their height
-                active_peers = service.peer_manager.get_active_peers()
-                if not active_peers:
-                    continue
-                
-                # Sample a peer to check height
-                import random
-                peer = random.choice(active_peers)
-                
-                try:
-                    peer_height = service.peer_manager.query_peer_height(peer)
-                    if peer_height is None:
-                        continue
-                    
-                    # If we're behind, trigger sync
-                    if peer_height > local_height:
-                        lag = peer_height - local_height
-                        print(f"⚠️  [HEARTBEAT] Lag detected: local={local_height}, peer={peer_height} (lag={lag} blocks)")
-                        
-                        # Only trigger full sync if lag is significant (> 1 block)
-                        if lag > 1:
-                            print(f"→ [HEARTBEAT] Triggering sync (lag > 1 block)...")
-                            
-                            chain_sync = ChainSync(
-                                peer_manager=service.peer_manager,
-                                blockchain=blockchain
-                            )
-                            to_sync = chain_sync.find_best_peer()
-                            if to_sync:
-                                synced = chain_sync.sync()
-                                if synced > 0:
-                                    print(f"✅ [HEARTBEAT] Synced {synced} blocks")
-                except Exception as e:
-                    pass  # Silently continue on heartbeat errors
-            
-            except Exception as e:
-                # Log but don't crash heartbeat thread
-                pass
-
-
 def start_network_background_tasks():
     """Start background daemon for health checks and peer sync"""
     from app.services.NetworkService import get_network_service
     from network.network_daemon import start_network_daemon
-    
+    from network.config_loader import get_config
+    from app.blockchain_instance import get_blockchain_instance
     
     service = get_network_service()
     daemon = start_network_daemon(
@@ -249,9 +182,9 @@ if __name__ == "__main__":
     print(f"\n[{step}/{total_steps}] Initializing database...")
     try:
         init_db()
-        print("✅ Database initialized successfully")
+        print("[OK] Database initialized successfully")
     except Exception as e:
-        print(f"⚠️  Database initialization warning: {e}")
+        print(f"[WARN] Database initialization warning: {e}")
     
     # Step 2: Initialize blockchain
     step += 1
@@ -266,11 +199,6 @@ if __name__ == "__main__":
         # Get seed nodes from config
         config = get_config()
         seed_nodes = config.get_seed_nodes()
-        
-        print(f"\n[DEBUG run.py] Before initialize_blockchain:")
-        print(f"  args.port: {args.port}")
-        print(f"  seed_nodes: {seed_nodes}")
-        print(f"  seed_nodes type: {type(seed_nodes)}")
         
         initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
         print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")

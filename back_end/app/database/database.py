@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS account (
     representative TEXT,
     email TEXT,
     phone TEXT,
+    vault TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
@@ -120,6 +121,58 @@ CREATE TABLE IF NOT EXISTS peers (
 """
 
 def init_db():
+<<<<<<< HEAD
+     conn = sqlite3.connect(DB_PATH)
+     cursor = conn.cursor()
+     
+     cursor.executescript(schema_sql)
+     
+     # Migration: Add columns if they don't exist
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN full_name TEXT")
+     except sqlite3.OperationalError:
+          pass # column already exists
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN avatar_url TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN tax_id TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN representative TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN email TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN phone TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE account ADD COLUMN vault TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN owner_address TEXT")
+     except sqlite3.OperationalError:
+          pass
+          
+     try:
+          cursor.execute("ALTER TABLE nft ADD COLUMN issuer_pubkey TEXT")
+     except sqlite3.OperationalError:
+          pass
+=======
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -146,6 +199,7 @@ def init_db():
     cursor.close()
     conn.close()
     print("Database initialized successfully.")
+>>>>>>> origin/main
 
 if __name__ == "__main__":
      init_db()

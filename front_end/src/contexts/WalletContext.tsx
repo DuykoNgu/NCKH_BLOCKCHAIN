@@ -9,6 +9,7 @@ interface WalletContextType {
   isUnlocked: boolean;
   unlock: (password: string) => Promise<void>;
   lock: () => void;
+  clearWallet: () => void;
 }
 
 export const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -23,14 +24,19 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const unlock = useCallback(async (password: string) => {
     try {
-      const { privateKey: decryptedKey, authData } = await loginWalletFlow(password);
-      
+      const decryptedKey = await loginWalletFlow(password);
+
       if (decryptedKey) {
         setPrivateKey(decryptedKey);
-        
-        // Cập nhật AuthContext với dữ liệu từ Backend
-        login(authData);
-        
+
+        // Sync with AuthContext based on localStorage which loginWalletFlow updated
+        login({
+          address: localStorage.getItem("address") || "",
+          role: localStorage.getItem("role") || "client",
+          full_name: localStorage.getItem("full_name") || "",
+          is_active: localStorage.getItem("is_active") === "1"
+        });
+
         // Refresh local state
         setAddress(localStorage.getItem("address"));
         setPublicKey(localStorage.getItem("public_key"));
@@ -46,8 +52,21 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     logout();
   }, [logout]);
 
+  const clearWallet = useCallback(() => {
+    setPrivateKey(null);
+    setAddress(null);
+    setPublicKey(null);
+
+    // Clear all wallet and session data
+    const items = ["isLoggedIn", "role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "accounts"];
+    items.forEach(item => localStorage.removeItem(item));
+    
+    logout();
+    console.log('[WalletContext] Wallet completely cleared from device');
+  }, [logout]);
+
   return (
-    <WalletContext.Provider value={{ privateKey, address, publicKey, isUnlocked, unlock, lock }}>
+    <WalletContext.Provider value={{ privateKey, address, publicKey, isUnlocked, unlock, lock, clearWallet }}>
       {children}
     </WalletContext.Provider>
   );

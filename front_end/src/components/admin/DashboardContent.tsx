@@ -8,6 +8,7 @@ import { NFT_STATUS_CONFIG } from "@/constants/ui";
 import { DashboardSkeleton } from "./AdminSkeletons";
 import ChainHistoryModal from "./ChainHistoryModal";
 import { useState } from "react";
+import { toast } from "sonner";
 
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
@@ -33,6 +34,45 @@ export default function DashboardContent() {
   // Still show a basic skeleton if everything is loading at once (initial mount)
   if (isLoading && !nftListQuery.data && !txListQuery.data) return <DashboardSkeleton />;
 
+  const statCards = [
+    {
+      label: "Tổng NFT phát hành",
+      value: stats?.total_nfts ?? 0,
+      icon: GraduationCap,
+      bgColor: "bg-primary/15",
+      iconColor: "text-primary",
+      badgeColor: "text-primary bg-primary/10",
+      change: "+0%",
+    },
+    {
+      label: "Đã xác thực",
+      value: stats?.verified_nfts ?? 0,
+      icon: Shield,
+      bgColor: "bg-green-400/15",
+      iconColor: "text-green-400",
+      badgeColor: "text-green-400 bg-green-400/10",
+      change: "+0%",
+    },
+    {
+      label: "Yêu cầu chờ duyệt",
+      value: stats?.pending_validators ?? 0,
+      icon: Clock,
+      bgColor: "bg-yellow-400/15",
+      iconColor: "text-yellow-400",
+      badgeColor: "text-yellow-400 bg-yellow-400/10",
+      change: "Mới",
+    },
+    {
+      label: "Giao dịch hôm nay",
+      value: stats?.transactions_today ?? 0,
+      icon: Activity,
+      bgColor: "bg-accent/15",
+      iconColor: "text-accent",
+      badgeColor: "text-accent bg-accent/10",
+      change: "+0%",
+    },
+  ];
+
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
       {/* Chain History Modal */}
@@ -40,6 +80,7 @@ export default function DashboardContent() {
         isOpen={isHistoryOpen} 
         onClose={() => setIsHistoryOpen(false)} 
       />
+      
       {/* Header with Greeting and Network Info */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -47,10 +88,10 @@ export default function DashboardContent() {
             Hệ thống đang hoạt động
           </Badge>
           <h2 className="font-display text-4xl font-extrabold tracking-tight text-foreground">
-            Xin chào, <span className="gradient-text">Admin</span> 👋
+            Xin chào, <span className="gradient-text">Quản trị viên MOET</span> 👋
           </h2>
-          <p className="text-muted-foreground mt-2 max-w-md">
-            Chào mừng quay lại hệ thống quản trị EduChain. Dưới đây là tóm tắt tình trạng mạng lưới và các giao dịch gần đây.
+          <p className="text-muted-foreground mt-2 max-w-md text-sm">
+            Quản lý bằng đại học NFT trên blockchain. Dưới đây là tóm tắt tình trạng mạng lưới và các giao dịch gần đây.
           </p>
         </div>
         
@@ -62,13 +103,13 @@ export default function DashboardContent() {
            <div className="flex flex-wrap items-center gap-6 sm:gap-10">
              <div className="flex flex-col">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1 group-hover:text-blue-500 transition-colors">Mạng lưới</p>
-               <p className="text-sm font-bold text-slate-900">EduChain Mainnet</p>
+               <p className="text-sm font-bold text-slate-900">EduChain</p>
              </div>
              <div className="hidden sm:block h-10 w-px bg-slate-100" />
              <div className="flex flex-col">
                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300 mb-1">Tổng Blocks</p>
                <div className="flex items-center gap-2">
-                 <p className="text-sm font-black text-slate-900 font-mono">{blockCount.toLocaleString()}</p>
+                 <p className="text-sm font-black text-slate-900 font-mono">{(blockCount || 0).toLocaleString()}</p>
                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                </div>
              </div>
@@ -105,7 +146,10 @@ export default function DashboardContent() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      onClick={copyAddress}
+                      onClick={() => {
+                        copyAddress();
+                        toast.success("Đã sao chép địa chỉ ví!");
+                      }}
                       className="rounded-full bg-white/10 hover:bg-white/20 text-white"
                     >
                       <Copy className="h-4 w-4" />
@@ -129,17 +173,20 @@ export default function DashboardContent() {
         )}
       </motion.div>
 
-      {/* Stat Cards */}
+      {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat: any, idx: number) => (
+        {statCards.map((stat, idx) => (
           <Card key={stat.label} className="group relative overflow-hidden glass-card border-none shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
             <div className={`absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity`} />
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500 ${stat.color} bg-opacity-10`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color.replace('bg-', 'text-')}`} />
+                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500 ${stat.bgColor} bg-opacity-10`}>
+                  <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
                 </div>
-                <div className="text-xs font-bold text-muted-foreground/40 group-hover:text-primary/40 transition-colors">0{idx + 1}</div>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 ${stat.badgeColor}`}>
+                  <TrendingUp className="h-3 w-3" />
+                  {stat.change}
+                </span>
               </div>
               <div className="space-y-1">
                 <p className="text-3xl font-black tracking-tight text-foreground group-hover:gradient-text transition-all">
@@ -188,7 +235,8 @@ export default function DashboardContent() {
               ) : (
                 <div className="space-y-1">
                   {recentDegrees.map((deg) => {
-                    const sc = NFT_STATUS_CONFIG[deg.status as keyof typeof NFT_STATUS_CONFIG] || NFT_STATUS_CONFIG.pending;
+                    const status = deg.is_valid === 0 ? "revoked" : (deg.status || "verified");
+                    const sc = statusConfig[status] || statusConfig.pending;
                     return (
                       <div key={deg.id} className="group flex items-center justify-between p-4 rounded-2xl hover:bg-primary/[0.03] transition-all duration-300">
                         <div className="flex items-center gap-4 min-w-0">
@@ -196,7 +244,7 @@ export default function DashboardContent() {
                             <GraduationCap className="h-6 w-6 text-primary" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{deg.name}</p>
+                            <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{deg.name || deg.recipient_name}</p>
                             <p className="text-[11px] text-muted-foreground font-medium truncate mt-0.5">{deg.degree} • {deg.university}</p>
                           </div>
                         </div>
@@ -234,15 +282,15 @@ export default function DashboardContent() {
                 </div>
               ) : recentTxs.length === 0 ? (
                 <div className="py-20 text-center flex flex-col items-center justify-center">
-                  <Activity className="h-8 w-8 text-muted-foreground/30 mb-3" />
-                  <p className="text-sm text-muted-foreground">Chưa có giao dịch nào</p>
+                   <Activity className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                   <p className="text-sm text-muted-foreground">Chưa có giao dịch nào</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {recentTxs.map((tx) => (
                     <div key={tx.hash} className="group relative flex items-center justify-between p-4 rounded-2xl bg-secondary/30 hover:bg-primary/5 transition-all duration-300 border border-transparent hover:border-primary/10">
                       <div className="space-y-1">
-                        <p className="text-[11px] font-black text-foreground uppercase tracking-widest leading-none">{tx.type.replace('_', ' ')}</p>
+                        <p className="text-[11px] font-black text-foreground uppercase tracking-widest leading-none">{(tx.type || "TX").replace('_', ' ')}</p>
                         <p className="text-[10px] text-muted-foreground font-medium">{tx.time}</p>
                       </div>
                       <div className="text-right">

@@ -5,8 +5,10 @@ export const AUTH_SERVER = {
   PROFILE_UPDATE: '/users/profile/update',
   GET_ALL: '/users/all',
   GET_PROFILE: '/users/profile/:address',
-  GET_PENDING_VALIDATORS: '/users/validators/pending',
-  APPROVE_VALIDATOR: '/users/validators/approve',
+  GET_PENDING_VALIDATORS: '/users/pending_validators',
+  APPROVE_VALIDATOR: '/users/approve_validator',
+  UPDATE_VAULT: '/users/auth/update_vault',
+  CHECK_UNIQUE: '/users/auth/check_unique',
 } as const;
 
 export const TRANSACTION_SERVER = {

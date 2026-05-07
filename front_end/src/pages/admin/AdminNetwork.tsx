@@ -72,7 +72,7 @@ export default function NetworkPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Peers List */}
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="glass-card">
+          <Card className="glass-card h-full">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="font-display text-lg flex items-center gap-2">
@@ -90,18 +90,17 @@ export default function NetworkPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {peers.map((peer) => {
-                    const sc = PEER_STATUS_CONFIG[peer.status as keyof typeof PEER_STATUS_CONFIG] || PEER_STATUS_CONFIG.PENDING;
+                    const status = peer.is_active ? "ACTIVE" : (peer.status || "PENDING");
+                    const sc = statusConfig[status] || statusConfig.PENDING;
                     return (
-                      <div key={peer.peer_id} className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors">
+                      <div key={peer.peer_id || peer.address} className="flex items-center justify-between px-6 py-4 hover:bg-secondary/30 transition-colors">
                         <div className="flex items-center gap-4 min-w-0">
-                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
-                            peer.status === 'ACTIVE' ? 'bg-green-400/20' : 'bg-yellow-400/20'
-                          }`}>
-                            <Server className={`h-5 w-5 ${peer.status === 'ACTIVE' ? 'text-green-400' : 'text-yellow-400'}`} />
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${status === 'ACTIVE' ? 'bg-green-400/20' : 'bg-yellow-400/20'}`}>
+                            <Server className={`h-5 w-5 ${status === 'ACTIVE' ? 'text-green-400' : 'text-yellow-400'}`} />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground">{peer.ip_address}:{peer.port}</p>
-                            <p className="text-xs text-muted-foreground">{peer.node_type} • ID: {peer.peer_id.slice(0, 8)}...</p>
+                            <p className="text-sm font-medium text-foreground truncate">{peer.ip_address || peer.org_name || "Unknown Peer"}:{peer.port || "N/A"}</p>
+                            <p className="text-xs text-muted-foreground truncate">{peer.node_type || "Validator"} • ID: {(peer.peer_id || peer.address || "").slice(0, 12)}...</p>
                           </div>
                         </div>
                         <Badge variant="outline" className={sc.className}>
@@ -168,13 +167,13 @@ export default function NetworkPage() {
                 <div className="py-4 text-center text-muted-foreground text-sm">Chưa có block nào</div>
               ) : (
                 recentBlocks.map((block) => (
-                  <div key={block.block_id} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-secondary/30 transition-colors">
+                  <div key={block.block_id || block.index} className="flex items-center justify-between text-xs p-2 rounded-lg hover:bg-secondary/30 transition-colors">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-3 w-3 text-green-400" />
                       <span className="font-mono text-primary">#{block.index}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-muted-foreground">{block.transactions_count} tx</span>
+                      <span className="text-muted-foreground">{block.transactions_count || block.tx_count || 0} tx</span>
                     </div>
                   </div>
                 ))

@@ -74,6 +74,16 @@ export const adminService = {
     return response.json();
   },
 
+  rejectValidator: async (address: string) => {
+    const response = await fetch(`${API_URL}/users/reject_validator`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ address }),
+    });
+    if (!response.ok) throw new Error("Failed to reject validator");
+    return response.json();
+  },
+
   getValidators: async (all: boolean = false) => {
     const response = await fetch(`${API_URL}/users/pending_validators${all ? '?all=true' : ''}`);
     if (!response.ok) throw new Error("Failed to fetch validators");

@@ -1,13 +1,39 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Shield, Bell, Database, Globe, Save } from "lucide-react";
+import { Shield, Bell, Database, Globe, Save, Key } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { AdminPageContainer, AdminPageHeader, itemVariants } from "@/components/admin/AdminShared";
+import { toast } from "sonner";
 
 export default function AdminSettings() {
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem("adminSettings");
+    return saved ? JSON.parse(saved) : {
+      mintNFT: true,
+      verifyDegree: true,
+      txFail: true,
+      dailyReport: false,
+      twoFactor: false,
+      autoLock: true,
+      kycRequired: true,
+      autoLockNode: true
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem("adminSettings", JSON.stringify(settings));
+  }, [settings]);
+
+  const handleSave = () => toast.success("Đã lưu các thay đổi cấu hình hệ thống!");
+  const handleToggle = (key: string) => (checked: boolean) => {
+    setSettings((prev: any) => ({ ...prev, [key]: checked }));
+  };
+
   const sections = [
     {
       title: "Cấu hình Mạng lưới",
@@ -24,9 +50,9 @@ export default function AdminSettings() {
       description: "Thiết lập quyền hạn và chính sách bảo mật",
       icon: Shield,
       switches: [
-        { label: "Yêu cầu KYC cho Validator", enabled: true },
-        { label: "Tự động khóa Node nghi vấn", enabled: true },
-        { label: "Xác thực 2 lớp (2FA) cho Admin", enabled: false },
+        { label: "Yêu cầu KYC cho đối tác", key: "kycRequired" },
+        { label: "Tự động khóa Node nghi vấn", key: "autoLockNode" },
+        { label: "Xác thực 2 lớp (2FA) cho Admin", key: "twoFactor" },
       ]
     },
     {
@@ -34,20 +60,20 @@ export default function AdminSettings() {
       description: "Cấu hình kênh nhận thông báo hệ thống",
       icon: Bell,
       switches: [
-        { label: "Thông báo Mint NFT mới", enabled: true },
-        { label: "Cảnh báo Node Offline", enabled: true },
-        { label: "Báo cáo tuần qua Email", enabled: false },
+        { label: "Thông báo Mint NFT mới", key: "mintNFT" },
+        { label: "Xác thực bằng cấp", key: "verifyDegree" },
+        { label: "Cảnh báo giao dịch lỗi", key: "txFail" },
       ]
     }
   ];
 
   return (
     <AdminPageContainer>
-      <AdminPageHeader 
-        title="Cài đặt Hệ thống" 
+      <AdminPageHeader
+        title="Cài đặt Hệ thống"
         description="Cấu hình tham số mạng lưới và tùy chỉnh trải nghiệm quản trị"
       >
-        <Button className="gap-2"><Save className="h-4 w-4" />Lưu thay đổi</Button>
+        <Button onClick={handleSave} className="gap-2"><Save className="h-4 w-4" />Lưu thay đổi</Button>
       </AdminPageHeader>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -73,9 +99,12 @@ export default function AdminSettings() {
                   </div>
                 ))}
                 {section.switches?.map((s) => (
-                  <div key={s.label} className="flex items-center justify-between py-2 border-t border-border/50 first:border-none">
+                  <div key={s.key} className="flex items-center justify-between py-2 border-t border-border/50 first:border-none">
                     <Label className="text-sm font-medium">{s.label}</Label>
-                    <Switch defaultChecked={s.enabled} />
+                    <Switch 
+                      checked={(settings as any)[s.key]} 
+                      onCheckedChange={handleToggle(s.key)} 
+                    />
                   </div>
                 ))}
               </CardContent>

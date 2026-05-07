@@ -1,7 +1,7 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Eye, EyeOff, ShieldCheck, KeyRound } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff, ShieldCheck, User, KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ImportWalletProps {
@@ -38,15 +38,22 @@ const ImportWallet = ({
           <ShieldCheck className="w-10 h-10 text-primary-foreground" />
         </div>
 
-        <h2 className="font-display text-xl font-bold text-foreground mb-1">Chào mừng trở lại</h2>
+        <h2 className="font-display text-xl font-bold text-foreground mb-1 text-center">Chào mừng trở lại</h2>
         <p className="text-sm text-muted-foreground mb-4 text-center">
-          Mở khóa ví để truy cập hệ thống
+          Nhập mật khẩu để mở khóa tài khoản
         </p>
 
         {currentAddress && (
-          <div className="mb-6 p-3 bg-secondary/30 rounded-xl w-full border border-border/30">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Địa chỉ ví hiện tại:</p>
-            <code className="text-[11px] text-primary font-mono break-all">{currentAddress}</code>
+          <div className="mb-6 p-4 bg-primary/5 rounded-2xl w-full border border-primary/10 flex flex-col items-center">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-bold text-foreground mb-1">
+              {localStorage.getItem('full_name') || 'Tài khoản của tôi'}
+            </p>
+            <code className="text-[10px] text-muted-foreground font-mono bg-secondary/30 px-2 py-0.5 rounded break-all text-center">
+              ID: {currentAddress.slice(0, 12)}...{currentAddress.slice(-12)}
+            </code>
           </div>
         )}
 
@@ -78,7 +85,7 @@ const ImportWallet = ({
           <Button
             onClick={onLogin}
             disabled={isLoading || !password || password.length < 8 || !currentAddress}
-            className="w-full h-12 rounded-xl font-display font-semibold text-sm"
+            className="w-full h-12 rounded-xl font-display font-semibold text-sm shadow-lg shadow-primary/20"
           >
             {isLoading ? 'Đang mở khóa...' : 'Mở khóa ví'}
             <ArrowRight size={16} className="ml-2" />
