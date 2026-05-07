@@ -27,7 +27,6 @@ const LoginPage = () => {
     taxId,
     setTaxId,
     representative,
-    setRepresentative,
     email,
     setEmail,
     phone,

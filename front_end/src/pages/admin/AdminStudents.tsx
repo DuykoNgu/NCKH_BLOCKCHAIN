@@ -66,7 +66,7 @@ export default function Students() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Không tìm thấy kết quả</TableCell></TableRow>
                 ) : (
-                  filtered.map((s) => (
+                  filtered.map((s: any) => (
                     <TableRow key={s.address}>
                       <TableCell className="font-mono text-primary text-sm">{truncateAddress(s.address)}</TableCell>
                       <TableCell><p className="font-medium text-foreground">{s.name}</p></TableCell>

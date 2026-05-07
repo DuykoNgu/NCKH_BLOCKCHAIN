@@ -1,15 +1,18 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NFTService } from "@/services/nftService";
 import { TransactionService } from "@/services/transactionService";
 import { BlockService } from "@/services/blockService";
 import { NetworkService } from "@/services/networkService";
 import { AccountService } from "@/services/accountService";
+import { useAllNFTs } from "./useNFTs";
+import { useAllTransactions } from "./useTransactions";
 import type { AccountInfo } from "@/services/accountService";
 import { toast } from "sonner";
 import { Activity, Server, HardDrive } from "lucide-react";
 import { truncateHash, truncateAddress, formatTimeAgo, getNftStatus } from "@/utils/formatUtils";
 import { STORAGE_KEYS } from "@/constants/storage";
+import { adminService } from "@/services/adminService";
 
 // --- Base Stats Hook ---
 
@@ -47,15 +50,8 @@ export const useAdminStats = () => {
 export const useAdminDashboard = () => {
   const stats = useAdminStats();
   
-  const nftListQuery = useQuery({
-    queryKey: ["admin", "nfts-all"],
-    queryFn: () => NFTService.getAllNFTs(),
-  });
-
-  const txListQuery = useQuery({
-    queryKey: ["admin", "transactions-all"],
-    queryFn: () => TransactionService.getAllTransactions(),
-  });
+  const nftListQuery = useAllNFTs();
+  const txListQuery = useAllTransactions();
 
   const latestBlockQuery = useQuery({
     queryKey: ["admin", "latest-block"],
@@ -268,56 +264,43 @@ export const useAdminStudents = () => {
     queryFn: () => AccountService.getAllAccounts(),
   });
 
+  const nftListQuery = useAllNFTs();
+  
   const accounts = accountsQuery.data?.accounts || [];
+  const allNfts = nftListQuery.data?.nfts || [];
 
-  // Parallel fetch NFT counts for visible accounts only (or all if list is small)
-  // Ideally, this should be a single backend call.
-  const studentsQuery = useQuery({
-    queryKey: ["admin", "students-display", accounts.map(a => a.address).join(',')],
-    enabled: accounts.length > 0,
-    queryFn: async () => {
-      return Promise.all(
-        accounts.map(async (acc: AccountInfo) => {
-          try {
-            const nftRes = await NFTService.getUserNFTs(acc.address);
-            return {
-              address: acc.address,
-              name: acc.full_name || truncateAddress(acc.address),
-              org_name: acc.org_name || "-",
-              role: acc.role,
-              is_active: acc.is_active,
-              nftCount: nftRes.total || 0,
-            };
-          } catch {
-            return {
-              address: acc.address,
-              name: acc.full_name || truncateAddress(acc.address),
-              org_name: acc.org_name || "-",
-              role: acc.role,
-              is_active: acc.is_active,
-              nftCount: 0,
-            };
-          }
-        })
+  const students = useMemo(() => {
+    return accounts.map((acc: AccountInfo) => {
+      // Count NFTs where this user is the recipient
+      const userNfts = allNfts.filter((n: any) => 
+        n.recipient_address === acc.address || 
+        n.metadata?.student_id === acc.address
       );
-    },
-  });
+      
+      return {
+        address: acc.address,
+        name: acc.full_name || truncateAddress(acc.address),
+        org_name: acc.tax_id ? `Tổ chức (${acc.tax_id})` : "Cá nhân",
+        role: acc.role,
+        is_active: Boolean(acc.is_active),
+        nftCount: userNfts.length,
+      };
+    });
+  }, [accounts, allNfts]);
 
-  const students = studentsQuery.data || [];
-
-  const filtered = useMemo(() => students.filter((s) =>
+  const filtered = useMemo(() => students.filter((s: any) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
     s.address.toLowerCase().includes(search.toLowerCase()) ||
-    s.org_name.toLowerCase().includes(search.toLowerCase())
+    (s.org_name || "").toLowerCase().includes(search.toLowerCase())
   ), [students, search]);
 
-  const totalNfts = useMemo(() => students.reduce((sum, s) => sum + s.nftCount, 0), [students]);
-  const activeCount = useMemo(() => students.filter((s) => s.is_active).length, [students]);
+  const totalNfts = useMemo(() => students.reduce((sum: number, s: any) => sum + s.nftCount, 0), [students]);
+  const activeCount = useMemo(() => students.filter((s: any) => s.is_active).length, [students]);
 
   return {
     search,
     setSearch,
-    loading: accountsQuery.isLoading || studentsQuery.isLoading,
+    loading: accountsQuery.isLoading || nftListQuery.isLoading,
     students,
     filtered,
     totalNfts,
@@ -363,5 +346,55 @@ export const useAdminTransactions = () => {
     transactions,
     filtered,
     stats
+  };
+};
+
+// --- Validators Hook (NEW & REFACTORED) ---
+
+export const useAdminValidators = () => {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
+
+  const validatorsQuery = useQuery({
+    queryKey: ["admin", "pending-validators"],
+    queryFn: () => adminService.getValidators(false),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (address: string) => adminService.approveValidator(address),
+    onSuccess: () => {
+      toast.success("Đã phê duyệt trường thành công!");
+      queryClient.invalidateQueries({ queryKey: ["admin", "pending-validators"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "network-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "accounts-all"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Phê duyệt thất bại"),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (address: string) => adminService.rejectValidator(address),
+    onSuccess: () => {
+      toast.success("Đã từ chối và xoá yêu cầu!");
+      queryClient.invalidateQueries({ queryKey: ["admin", "pending-validators"] });
+    },
+    onError: (err: any) => toast.error(err.message || "Từ chối thất bại"),
+  });
+
+  const validators = validatorsQuery.data?.data || [];
+  
+  const filtered = useMemo(() => validators.filter((v: any) => 
+    v.org_name?.toLowerCase().includes(search.toLowerCase()) || 
+    v.address?.toLowerCase().includes(search.toLowerCase())
+  ), [validators, search]);
+
+  return {
+    search,
+    setSearch,
+    validators,
+    filtered,
+    loading: validatorsQuery.isLoading || approveMutation.isPending || rejectMutation.isPending,
+    handleApprove: approveMutation.mutate,
+    handleReject: rejectMutation.mutate,
+    refresh: () => validatorsQuery.refetch()
   };
 };

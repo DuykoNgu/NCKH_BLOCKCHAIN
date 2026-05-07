@@ -57,12 +57,12 @@ const CreateWallet = ({
     resolver: zodResolver(isSchool ? schoolRegisterSchema : createWalletSchema),
     mode: "onChange",
     defaultValues: {
-      fullName: fullName,
-      email: email,
-      schoolName: schoolName,
-      taxId: taxId,
-      representative: representative,
-      phone: phone,
+      fullName: fullName || '',
+      email: email || '',
+      schoolName: schoolName || '',
+      taxId: taxId || '',
+      representative: representative || '',
+      phone: phone || '',
       password: '',
       confirmPassword: '',
     }

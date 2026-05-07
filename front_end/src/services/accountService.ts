@@ -10,6 +10,7 @@ export interface AccountInfo {
   avatar_url: string | null;
   is_active: boolean;
   created_at: string | null;
+  tax_id?: string;
 }
 
 class AccountServiceClass {

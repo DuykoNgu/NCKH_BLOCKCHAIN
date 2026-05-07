@@ -13,6 +13,7 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   "/admin/network": ["admin", "moet"],
   "/admin/contracts": ["admin", "moet"],
   "/admin/settings": ["admin", "moet", "validator", "client"],
+  "/admin/validators": ["admin", "moet"],
 };
 
 /**

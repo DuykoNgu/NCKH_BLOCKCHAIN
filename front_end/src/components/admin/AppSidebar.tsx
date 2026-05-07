@@ -68,7 +68,7 @@ export function AppSidebar() {
   const filterMenu = (items: any[]) => {
     return items.filter(item => {
       // Nếu item có quy định roles cụ thể cho hiển thị
-      if (item.roles && !item.roles.includes(role || "")) return false;
+      if (item.roles && !item.roles.map((r: string) => r.toLowerCase()).includes(role?.toLowerCase() || "")) return false;
 
       // Kiểm tra quyền truy cập route tổng quát
       return hasRoutePermission(role, item.url);

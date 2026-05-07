@@ -11,8 +11,15 @@ from app.controllers.v1.StorageController import storage_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
-    r = redis.StrictRedis(host='localhost', port=6379, db=0, decode_responses=True)
+    CORS(app, resources={r"/*": {"origins": "*"}})
+    
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        return response
+
     app.register_blueprint(block_bp)
     app.register_blueprint(network_bp)
     app.register_blueprint(nft_bp)

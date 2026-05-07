@@ -17,10 +17,17 @@ export const createWalletSchema = baseWalletSchema.refine((data) => data.passwor
   path: ["confirmPassword"],
 });
 
-// Schema cho việc đăng ký trường học (kế thừa từ baseWalletSchema)
-export const schoolRegisterSchema = baseWalletSchema.safeExtend({
+// Schema cho việc đăng ký trường học
+export const schoolRegisterSchema = z.object({
+  fullName: z.string().optional().default("School Admin"),
+  email: z.string().email("Email không đúng định dạng"),
+  password: z.string()
+    .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+    .regex(/[A-Z]/, "Mật khẩu phải có ít nhất 1 chữ hoa")
+    .regex(/[0-9]/, "Mật khẩu phải có ít nhất 1 chữ số"),
+  confirmPassword: z.string(),
   schoolName: z.string().min(5, "Tên trường phải từ 5 ký tự trở lên"),
-  taxId: z.string().min(10, "Mã số thuế không hợp lệ"),
+  taxId: z.string().min(8, "Mã số thuế/Mã định danh không hợp lệ"),
   representative: z.string().min(2, "Vui lòng nhập tên người đại diện"),
   phone: z.string().min(10, "Số điện thoại phải từ 10 số"),
 }).refine((data) => data.password === data.confirmPassword, {

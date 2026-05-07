@@ -24,6 +24,7 @@ const AdminStudents = lazy(() => import('@/pages/admin/AdminStudents'));
 const AdminContracts = lazy(() => import('@/pages/admin/AdminContracts'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminNetwork = lazy(() => import('@/pages/admin/AdminNetwork'));
+const AdminValidators = lazy(() => import('@/pages/admin/AdminValidators'));
 const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
 
 
@@ -127,6 +128,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/network']}>
             <AdminNetwork />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'validators', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/validators']}>
+            <AdminValidators />
           </ProtectedRoute>
         ) 
       },

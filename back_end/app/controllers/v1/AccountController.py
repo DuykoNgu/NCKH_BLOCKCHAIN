@@ -352,6 +352,17 @@ def reject_validator():
             "error": message
         }), 500
 
+@user_bp.route('/all', methods=['GET'])
+def get_all_users():
+    try:
+        accounts = AccountService.get_all_account()
+        return jsonify({
+            "status": "success",
+            "data": [acc.to_dict() for acc in accounts]
+        }), 200
+    except Exception as e:
+        return jsonify({"status": "fail", "message": str(e)}), 500
+
 @user_bp.route('/profile/<address>', methods=['GET'])
 def get_profile(address):
     account = AccountService.get_account_by_address(address)

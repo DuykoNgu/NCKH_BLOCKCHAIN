@@ -66,7 +66,7 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
     blockchain = get_blockchain_instance()
     
     # Only process if chain is empty
-    if len(blockchain.chain) == 0 and super_validator_pubkey:
+    if len(blockchain.chain) == 0:
         # Step 0: Check if genesis block already exists in database (shared genesis)
         print("→ Checking if genesis block already exists in database...")
         existing_genesis = BlockRepository.get_block_by_id("GENESIS")

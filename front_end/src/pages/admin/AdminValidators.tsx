@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, CheckCircle2, Info, Mail, Phone, User, Building2, Eye, FileText, CalendarClock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,64 +5,34 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { adminService } from "@/services/adminService";
+import { useAdminValidators } from "@/hooks/useAdmin";
 import { Pagination, usePagination } from "@/components/ui/pagination";
+
+interface Validator {
+  address: string;
+  org_name?: string;
+  tax_id?: string;
+  representative?: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
+}
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
 
 export default function AdminValidators() {
-  const [validators, setValidators] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const { 
+    search, 
+    setSearch, 
+    validators, 
+    filtered, 
+    loading, 
+    handleApprove, 
+    handleReject 
+  } = useAdminValidators();
+  
   const { currentPage, setCurrentPage, itemsPerPage, paginate, handlePageSizeChange } = usePagination(10);
-
-  const fetchValidators = async () => {
-    try {
-      setLoading(true);
-      const data = await adminService.getValidators(false);
-      setValidators(data.data || []);
-    } catch (error) {
-      console.error("Failed to fetch validators:", error);
-      toast.error("Không thể tải danh sách trường chờ duyệt");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchValidators();
-  }, []);
-
-  const handleApprove = async (address: string) => {
-    try {
-      const res = await adminService.approveValidator(address);
-      if (res.success || res.status === "success") {
-        toast.success("Đã phê duyệt trường thành công!");
-        fetchValidators();
-      }
-    } catch (error) {
-      toast.error("Phê duyệt thất bại");
-    }
-  };
-
-  const handleReject = async (address: string) => {
-    try {
-      const res = await adminService.rejectValidator(address);
-      if (res.success || res.status === "success") {
-        toast.success("Đã từ chối và xoá yêu cầu!");
-        fetchValidators();
-      }
-    } catch (error) {
-      toast.error("Từ chối thất bại");
-    }
-  };
-
-  const filtered = validators.filter((v) => 
-    v.org_name?.toLowerCase().includes(search.toLowerCase()) || 
-    v.address?.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -110,7 +79,7 @@ export default function AdminValidators() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginate(filtered).length > 0 ? paginate(filtered).map((v) => (
+                {paginate(filtered as Validator[]).length > 0 ? (paginate(filtered as Validator[]) as Validator[]).map((v: Validator) => (
                   <TableRow key={v.address}>
                     <TableCell>
                       <div className="flex items-center gap-3">
