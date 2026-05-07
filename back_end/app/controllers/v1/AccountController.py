@@ -88,6 +88,7 @@ def verify():
     msg_hash = data.get('msg_hash')
 
     stored_nonce = r.get(f"nonce:{address}")
+    print(f"DEBUG: Verifying signature for address {stored_nonce}")
     if not stored_nonce:
         return jsonify({"status":"fail", "message":"Nonce expired"}), 401
     

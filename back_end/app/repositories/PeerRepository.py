@@ -17,56 +17,46 @@ class PeerRepository:
                           status: str = "PENDING") -> bool:
         """Add or update a peer in database
         
-        Uses global write lock to serialize database writes and prevent lock contention
+        ⚠️  NOTE: Peer updates are NON-CRITICAL and non-blocking
+        If database is locked, skip (will retry later)
+        This prevents peer updates from blocking block saves
         """
-        max_retries = 3
-        retry_delay = 0.1
-        
-        for attempt in range(max_retries):
-            try:
-                # Acquire global write lock
-                acquire_write_lock()
-                
-                try:
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    
-                    # Try to update first
-                    cursor.execute('''
-                        UPDATE peers 
-                        SET ip_address = ?, port = ?, public_key = ?, 
-                            node_type = ?, status = ?, last_seen = ?
-                        WHERE peer_id = ?
-                    ''', (ip_address, port, public_key, node_type, status, time.time(), peer_id))
-                    
-                    if cursor.rowcount == 0:
-                        # If no rows updated, insert new peer
-                        cursor.execute('''
-                            INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (peer_id, ip_address, port, public_key, node_type, status, time.time(), time.time()))
-                    
-                    conn.commit()
-                    conn.close()
-                    logger.info(f"Peer {peer_id} added/updated with status {status}")
-                    return True
-                finally:
-                    release_write_lock()
-                    
-            except Exception as e:
-                release_write_lock()
-                if "locked" in str(e).lower() and attempt < max_retries - 1:
-                    logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for peer {peer_id[:16]}...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                    continue
-                logger.error(f"Error adding/updating peer: {e}")
-                try:
-                    conn.close()
-                except:
-                    pass
+        try:
+            # Try to acquire lock with SHORT timeout (non-blocking)
+            # If we can't get it, skip - peer update is not critical
+            if not acquire_write_lock(timeout=0.5):
+                logger.warning(f"⚠️  Could not acquire lock for peer {peer_id[:8]}... (skipping, not critical)")
                 return False
-        return False
+            
+            try:
+                conn = get_connection()
+                cursor = conn.cursor()
+                
+                # Try to update first
+                cursor.execute('''
+                    UPDATE peers 
+                    SET ip_address = ?, port = ?, public_key = ?, 
+                        node_type = ?, status = ?, last_seen = ?
+                    WHERE peer_id = ?
+                ''', (ip_address, port, public_key, node_type, status, time.time(), peer_id))
+                
+                if cursor.rowcount == 0:
+                    # If no rows updated, insert new peer
+                    cursor.execute('''
+                        INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (peer_id, ip_address, port, public_key, node_type, status, time.time(), time.time()))
+                
+                conn.commit()
+                conn.close()
+                return True
+            finally:
+                release_write_lock()
+                
+        except Exception as e:
+            release_write_lock()
+            logger.debug(f"Peer update skipped: {e} (not critical)")
+            return False
 
     @staticmethod
     def get_peer_by_id(peer_id: str) -> Optional[Dict]:

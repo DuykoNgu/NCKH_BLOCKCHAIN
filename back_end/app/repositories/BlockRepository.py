@@ -15,80 +15,90 @@ class BlockRepository:
     """Repository for Block database operations"""
 
     @staticmethod
-    def create_block(block: Block, max_retries: int = 3) -> bool:
+    def create_block(block: Block, max_retries: int = 5) -> bool:
         """Create a new block in database (idempotent - safe to call multiple times)
         
         Uses global write lock to serialize database writes and prevent lock contention
+        CRITICAL: Blocks MUST be saved - retries aggressively with backoff
         """
-        retry_delay = 0.1
+        retry_delay = 0.5
         
         for attempt in range(max_retries):
+            lock_acquired = False
             try:
-                # Acquire global write lock to serialize database writes
-                acquire_write_lock()
+                # Acquire global write lock with long timeout
+                # Blocks are critical - wait longer than peers
+                if not acquire_write_lock(timeout=60):
+                    print(f"✗ CRITICAL: Could not acquire lock for block {block.block_id} (waited 60s)")
+                    # Continue retry anyway
+                    time.sleep(retry_delay)
+                    retry_delay *= 1.5
+                    continue
                 
-                try:
-                    conn = get_connection()
-                    cursor = conn.cursor()
-                    
-                    # Check if block already exists (idempotency)
-                    cursor.execute('SELECT block_id FROM block WHERE block_id = ?', (block.block_id,))
-                    if cursor.fetchone():
-                        logger.info(f"⚠ Block already exists: {block.block_id} (skipping)")
-                        conn.close()
-                        return True  # Return True since block already saved
-                    
-                    # Insert block header
-                    cursor.execute('''
-                        INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (block.index, block.block_header.pre_hash, 
-                          block.block_header.merkle_root, block.block_header.validator_pubkey,
-                          block.block_header.timestamp))
-                    
-                    header_id = cursor.lastrowid
-                    
-                    # Insert block
-                    cursor.execute('''
-                        INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (block.block_id, block.index, header_id, block.block_hash, block.validator_signature))
-                    
-                    # Update transactions to associate them with this block
-                    updated_tx_count = 0
-                    if(block.block_id == "GENESIS"):
-                        conn.commit()
-                        conn.close()
-                        logger.info(f"✓ Genesis block created: {block.block_id}")
-                        return True
-                    
-                    for tx in block.transactions:
-                        cursor.execute('''
-                            UPDATE transactions 
-                            SET block_id = ?
-                            WHERE tx_hash = ?
-                        ''', (block.block_id, tx.tx_hash))
-                        if cursor.rowcount > 0:
-                            updated_tx_count += 1
-                    
+                lock_acquired = True
+                
+                conn = get_connection()
+                cursor = conn.cursor()
+                
+                # Check if block already exists (idempotency)
+                cursor.execute('SELECT block_id FROM block WHERE block_id = ?', (block.block_id,))
+                if cursor.fetchone():
+                    logger.info(f"⚠ Block already exists: {block.block_id} (skipping)")
+                    conn.close()
+                    return True  # Return True since block already saved
+                
+                # Insert block header
+                cursor.execute('''
+                    INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (block.index, block.block_header.pre_hash, 
+                      block.block_header.merkle_root, block.block_header.validator_pubkey,
+                      block.block_header.timestamp))
+                
+                header_id = cursor.lastrowid
+                
+                # Insert block
+                cursor.execute('''
+                    INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (block.block_id, block.index, header_id, block.block_hash, block.validator_signature))
+                
+                # Update transactions to associate them with this block
+                updated_tx_count = 0
+                if(block.block_id == "GENESIS"):
                     conn.commit()
                     conn.close()
-                    logger.info(f"✓ Block created: {block.block_id} with {updated_tx_count} transactions")
+                    logger.info(f"✓ Genesis block created: {block.block_id}")
                     return True
-                finally:
-                    release_write_lock()
+                
+                for tx in block.transactions:
+                    cursor.execute('''
+                        UPDATE transactions 
+                        SET block_id = ?
+                        WHERE tx_hash = ?
+                    ''', (block.block_id, tx.tx_hash))
+                    if cursor.rowcount > 0:
+                        updated_tx_count += 1
+                
+                conn.commit()
+                conn.close()
+                logger.info(f"✓ Block created: {block.block_id} with {updated_tx_count} transactions")
+                return True
                     
             except Exception as e:
-                release_write_lock()
+                logger.error(f"✗ Error creating block {block.block_id}: {e}")
                 if "locked" in str(e).lower() and attempt < max_retries - 1:
                     logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for block {block.block_id}")
                     time.sleep(retry_delay)
-                    retry_delay *= 2
+                    retry_delay *= 1.5
                     continue
                 else:
-                    logger.error(f"✗ Error creating block {block.block_id}: {e}")
                     return False
+            finally:
+                if lock_acquired:
+                    release_write_lock()
         
+        logger.error(f"✗ Failed to create block {block.block_id} after {max_retries} retries")
         return False
 
     @staticmethod

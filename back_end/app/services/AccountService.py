@@ -62,17 +62,26 @@ def _submit_tx(tx: Transaction) -> None:
 
         blockchain = get_blockchain_instance()
         
+        # Debug logging
+        tx_op = tx.payload.get('op') if isinstance(tx.payload, dict) else 'unknown'
+        logger.info(f"[AccountService] Submitting TX: hash={tx.tx_hash[:16]}... op={tx_op}")
+        logger.info(f"  - payload type: {type(tx.payload)}")
+        logger.info(f"  - signature (tx-level): {tx.signature[:16] if tx.signature else '(empty)'}")
+        if isinstance(tx.payload, dict):
+            logger.info(f"  - payload['signature']: {tx.payload.get('signature', '(missing)')[:16] if tx.payload.get('signature') else '(empty)'}")
+            logger.info(f"  - payload['timestamp']: {tx.payload.get('timestamp')}")
+        
         tx_hashes_in_mempool = {t.tx_hash for t in blockchain.mempool}
         if tx.tx_hash in tx_hashes_in_mempool:
-            logger.info(f"[AccountService] TX already in mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+            logger.info(f"[AccountService] TX already in mempool: {tx.tx_hash[:16]}... op={tx_op}")
         else:
             # add_transaction_to_mempool accepts txs with empty signature as system txs
             BlockChainService.add_transaction_to_mempool(blockchain, tx)
-            logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+            logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx_op}")
 
 
         if TransactionRepository.create_transaction(tx):
-            logger.info(f"[AccountService] TX saved to database: {tx.tx_hash[:16]}... op={tx.payload.get('op')}")
+            logger.info(f"[AccountService] TX saved to database: {tx.tx_hash[:16]}... op={tx_op}")
         else:
             logger.warning(f"[AccountService] Failed to save TX to database: {tx.tx_hash[:16]}...")
 

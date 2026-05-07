@@ -27,8 +27,30 @@ class ChainSync:
         self.config = get_config()
     
     def get_local_height(self) -> int:
-        """Get local blockchain height"""
-        return len(self.blockchain.chain) - 1  # -1 because genesis is index 0
+        """Get local blockchain height from database (source of truth)
+        
+        CRITICAL: Read from DB, not RAM, to ensure all nodes see persistent state
+        """
+        try:
+            from app.database.connection import get_connection
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute('SELECT MAX(index_num) FROM block')
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result and result[0] is not None:
+                db_height = result[0]
+                ram_height = len(self.blockchain.chain) - 1
+                if db_height != ram_height:
+                    print(f"⚠️  Height mismatch: DB={db_height}, RAM={ram_height}. Using DB height.")
+                return db_height
+            else:
+                # Fallback to genesis block (height 0)
+                return 0
+        except Exception as e:
+            print(f"⚠ Failed to get height from DB, using RAM: {e}")
+            return len(self.blockchain.chain) - 1
     
     def query_peer_height(self, peer: Peer, timeout: int = 5) -> Optional[int]:
         """
