@@ -5,17 +5,19 @@ import { createWallet, registerSchool, importWallet } from '@/services/authServi
 import { useWallet } from '@/hooks/useWallet';
 import { toast } from 'sonner';
 import { STORAGE_KEYS } from '@/constants/storage';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export const useLoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const type = searchParams.get('type');
   const { unlock } = useWallet();
+  const { login: contextLogin } = useAuthContext();
 
   const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'import-mnemonic'>('home');
   const [showSeed, setShowSeed] = useState(false);
   const [seed, setSeed] = useState<string[]>([]);
-  
+
   // Form states (kept for legacy support if needed, but updated for form compatibility)
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -86,7 +88,7 @@ export const useLoginPage = () => {
       localStorage.setItem('full_name', targetFullName.trim());
       localStorage.setItem('role', 'client');
       localStorage.setItem('isLoggedIn', 'true');
-      
+
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
       toast.success('Tạo ví thành công');
@@ -131,18 +133,30 @@ export const useLoginPage = () => {
     setError('');
     try {
       const result = await registerSchool(
-        data.password, 
-        data.schoolName, 
-        data.taxId, 
-        data.representative, 
-        data.email, 
+        data.password,
+        data.schoolName,
+        data.taxId,
+        data.representative,
+        data.email,
         data.phone
       );
-      
+
       localStorage.setItem('full_name', data.schoolName);
-      localStorage.setItem('role', 'validator');
-      localStorage.setItem('is_active', '0');
-      
+
+      // Gọi context.login() để AuthContext cập nhật isPendingApproval = true
+      // registerSchool() đã gọi saveUserData() nên public_key đã có trong localStorage
+      contextLogin({
+        user: {
+          address: result.address || localStorage.getItem('address') || '',
+          role: 'validator',
+          is_active: 0,
+          full_name: data.schoolName,
+          avatar_url: '',
+          public_key: localStorage.getItem('public_key') || '',
+        },
+        token: localStorage.getItem('access_token') || '',
+      });
+
       setSeed(result.mnemonic.split(' '));
       setShowSeed(true);
       toast.success('Đăng ký trường học thành công. Vui lòng chờ phê duyệt.');

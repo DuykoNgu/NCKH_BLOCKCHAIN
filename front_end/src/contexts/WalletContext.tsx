@@ -35,7 +35,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
             address: localStorage.getItem("address") || "",
             role: localStorage.getItem("role") || "client",
             full_name: localStorage.getItem("full_name") || "",
-            is_active: localStorage.getItem("is_active") === "1",
+            is_active: localStorage.getItem("is_active") === "1" ? 1 : 0,
             public_key: localStorage.getItem("public_key") || ""
           },
           token: localStorage.getItem("access_token") || ""
