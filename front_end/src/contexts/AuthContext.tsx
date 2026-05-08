@@ -80,12 +80,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAvatarUrl(userData.avatar_url || "");
     setUser(userData);
     
-    if (userData.role === "validator" && userData.is_active === "0") {
+    if (userData.role === "validator" && String(userData.is_active) === "0") {
       setIsPendingApproval(true);
       localStorage.setItem("is_active", "0");
     } else {
       setIsPendingApproval(false);
-      localStorage.setItem("is_active", "1");
+      localStorage.setItem("is_active", String(userData.is_active ?? "1"));
     }
   };
 
