@@ -90,7 +90,7 @@ export default function DashboardContent() {
             Hệ thống đang hoạt động
           </Badge>
           <h2 className="font-display text-4xl font-extrabold tracking-tight text-foreground">
-            Xin chào, <span className="gradient-text">Quản trị viên MOET</span> 👋
+            Xin chào, <span className="text-foreground">Quản trị viên MOET</span> 👋
           </h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
             Quản lý bằng đại học NFT trên blockchain. Dưới đây là tóm tắt tình trạng mạng lưới và các giao dịch gần đây.

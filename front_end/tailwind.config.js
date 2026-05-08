@@ -48,18 +48,30 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        body: ['Source Sans 3', 'sans-serif'],
-        display: ['Source Sans 3', 'sans-serif'],
+        body: ['Outfit', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
+        heading: ['Space Mono', 'monospace'],
       },
       animation: {
         'spin-slow': 'spin 120s linear infinite',
         'float': 'float 6s ease-in-out infinite',
+        'nebula': 'nebula-pulse 8s ease-in-out infinite',
+        'twinkle': 'twinkle 2.5s ease-in-out infinite',
+        'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
       },
       keyframes: {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-12px)' },
-        }
+        },
+        'nebula-pulse': {
+          '0%, 100%': { backgroundPosition: '0% 50%', opacity: '0.6' },
+          '50%': { backgroundPosition: '100% 50%', opacity: '1' },
+        },
+        twinkle: {
+          '0%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
+          '50%': { opacity: '1', transform: 'scale(1.2)' },
+        },
       }
     },
   },
