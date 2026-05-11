@@ -11,6 +11,7 @@ class Account:
                   full_name: str = None, avatar_url: str = None,
                   tax_id: str = None, representative: str = None, email: str = None, phone: str = None,
                   vault: str = None,
+                  agreement_file_url: str = None,
                   is_active: int = 1, created_at: str = None):
           self.public_key = public_key
           self.address = address
@@ -23,6 +24,7 @@ class Account:
           self.email = email
           self.phone = phone
           self.vault = vault
+          self.agreement_file_url = agreement_file_url
           self.is_active = is_active
           self.created_at = created_at
 
@@ -39,6 +41,7 @@ class Account:
                "email": self.email,
                "phone": self.phone,
                "vault": self.vault,
+               "agreement_file_url": self.agreement_file_url,
                "is_active": self.is_active,
                "created_at": self.created_at
           }

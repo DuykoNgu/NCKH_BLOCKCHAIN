@@ -38,10 +38,10 @@ class AccountRepository:
                 role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
                 
                 cursor.execute('''
-                    INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, vault, is_active, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO account (public_key, address, role, org_name, full_name, avatar_url, tax_id, representative, email, phone, vault, agreement_file_url, is_active, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (account.public_key, account.address, role_value, account.org_name, 
-                      account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.vault, account.is_active, account.created_at))
+                      account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.vault, account.agreement_file_url, account.is_active, account.created_at))
                 conn.commit()
                 
                 # Check if insert was successful (rowcount > 0) or skipped (duplicate)
@@ -76,7 +76,7 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault FROM account WHERE address = ?', (address,))
+            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault, agreement_file_url FROM account WHERE address = ?', (address,))
             row = cursor.fetchone()
             conn.close()
             
@@ -93,6 +93,7 @@ class AccountRepository:
                     email=row[10] if len(row) > 10 else None,
                     phone=row[11] if len(row) > 11 else None,
                     vault=row[12] if len(row) > 12 else None,
+                    agreement_file_url=row[13] if len(row) > 13 else None,
                     is_active=row[4],
                     created_at=row[5]
                 )
@@ -159,7 +160,7 @@ class AccountRepository:
         try:
             conn = get_connection()
             cursor = conn.cursor()
-            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault FROM account')
+            cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault, agreement_file_url FROM account')
             rows = cursor.fetchall()
             conn.close()
             
@@ -177,6 +178,7 @@ class AccountRepository:
                     email=row[10] if len(row) > 10 else None,
                     phone=row[11] if len(row) > 11 else None,
                     vault=row[12] if len(row) > 12 else None,
+                    agreement_file_url=row[13] if len(row) > 13 else None,
                     is_active=row[4],
                     created_at=row[5]
                 ))

@@ -14,6 +14,7 @@ const PublicVerify = lazy(() => import('@/pages/PublicVerify'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage'));
 const Index = lazy(() => import('@/pages/Index'));
+const NodeValidatorRegistration = lazy(() => import('@/pages/NodeValidatorRegistration'));
 
 const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'));
 const AdminIndex = lazy(() => import('@/pages/admin/AdminIndex'));
@@ -25,6 +26,7 @@ const AdminContracts = lazy(() => import('@/pages/admin/AdminContracts'));
 const AdminSettings = lazy(() => import('@/pages/admin/AdminSettings'));
 const AdminNetwork = lazy(() => import('@/pages/admin/AdminNetwork'));
 const AdminValidators = lazy(() => import('@/pages/admin/AdminValidators'));
+const AdminValidatorRegistrations = lazy(() => import('@/pages/admin/AdminValidatorRegistrations'));
 const AdminLoginPage = lazy(() => import('@/pages/AdminLoginPage'));
 
 
@@ -55,6 +57,11 @@ export const router = createBrowserRouter([
   {
     path: `${ROUTES.LOGIN}/:type?`,
     element: <LoginPage />,
+    errorElement: <NotFoundPage />,
+  },
+  {
+    path: '/register-validator',
+    element: <NodeValidatorRegistration />,
     errorElement: <NotFoundPage />,
   },
   {
@@ -136,6 +143,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/validators']}>
             <AdminValidators />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'validator-registrations', 
+        element: (
+          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/validators']}>
+            <AdminValidatorRegistrations />
           </ProtectedRoute>
         ) 
       },

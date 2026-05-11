@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, AlertCircle, ShieldCheck, FileUp, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { schoolRegisterSchema, createWalletSchema } from '@/types/auth.schema';
 
@@ -24,6 +24,8 @@ interface CreateWalletProps {
   onRepresentativeChange?: (val: string) => void;
   phone?: string;
   onPhoneChange?: (val: string) => void;
+  selectedFile?: File | null;
+  onSelectedFileChange?: (file: File | null) => void;
   onSubmit: (values: any) => void;
   onBack: () => void;
 }
@@ -44,10 +46,13 @@ const CreateWallet = ({
   onRepresentativeChange,
   phone,
   onPhoneChange,
+  selectedFile: propSelectedFile,
+  onSelectedFileChange,
   onSubmit,
   onBack,
 }: CreateWalletProps) => {
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(propSelectedFile || null);
 
   const {
     register,
@@ -67,6 +72,18 @@ const CreateWallet = ({
       confirmPassword: '',
     }
   });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+      onSelectedFileChange?.(file);
+    } else {
+      alert('Vui lòng chọn file PDF');
+      setSelectedFile(null);
+      onSelectedFileChange?.(null);
+    }
+  };
 
   return (
     <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
@@ -88,7 +105,7 @@ const CreateWallet = ({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {isSchool ? (
-            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tên trường học / Tổ chức</Label>
                 <Input
@@ -136,6 +153,40 @@ const CreateWallet = ({
                   {errors.phone && <p className="text-[10px] text-destructive font-bold">{(errors.phone.message as any)?.toString()}</p>}
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  📎 Tải lên Ban Cam kết Blockchain (PDF)
+                </Label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="agreement-file"
+                  />
+                  <label
+                    htmlFor="agreement-file"
+                    className={cn(
+                      "h-12 bg-secondary/50 border-2 border-dashed border-border/50 rounded-xl px-4 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors",
+                      selectedFile && "border-primary/50 bg-primary/5"
+                    )}
+                  >
+                    {selectedFile ? (
+                      <div className="flex items-center gap-2 text-sm text-primary font-medium">
+                        <CheckCircle2 className="w-4 h-4" />
+                        {selectedFile.name}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileUp className="w-4 h-4" />
+                        Chọn file PDF
+                      </div>
+                    )}
+                  </label>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Tối đa 10MB, định dạng PDF</p>
+              </div>
             </div>
           ) : (
             !isImporting && (
@@ -171,6 +222,7 @@ const CreateWallet = ({
                   {...register("password")}
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Mật khẩu ít nhất 8 ký tự"
+                  autoComplete="new-password"
                   className={cn(
                     "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 pr-12 focus:bg-background transition-colors",
                     errors.password && "border-destructive/50 ring-destructive/20"
@@ -193,6 +245,7 @@ const CreateWallet = ({
                 {...register("confirmPassword")}
                 type="password"
                 placeholder="Nhập lại mật khẩu"
+                autoComplete="new-password"
                 className={cn(
                   "h-12 bg-secondary/50 border-border/50 rounded-xl px-4 focus:bg-background transition-colors",
                   errors.confirmPassword && "border-destructive/50 ring-destructive/20"

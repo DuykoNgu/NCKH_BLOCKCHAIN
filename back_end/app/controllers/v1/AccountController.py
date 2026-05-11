@@ -105,6 +105,8 @@ def register():
     phone = data.get('phone')
     vault = data.get('vault')
     timestamp = data.get('timestamp')
+    agreement_file_url = data.get('agreement_file_url')
+    
 
     transactionAccount = TransactionAcount(
         address=address,
@@ -138,7 +140,8 @@ def register():
         tax_id=tax_id,
         representative=representative,
         email=email,
-        phone=phone
+        phone=phone,
+        agreement_file_url=agreement_file_url
     )
 
     if success:

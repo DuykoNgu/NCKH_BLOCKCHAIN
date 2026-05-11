@@ -7,6 +7,8 @@ import ImportWallet from '@/components/common/auth/ImportWallet';
 import ImportMnemonic from '@/components/common/auth/ImportMnemonic';
 import CreateWallet from '@/components/common/auth/CreateWallet';
 import SeedDisplay from '@/components/common/auth/SeedDisplay';
+import BlockchainCommitmentModal from '@/components/common/auth/BlockchainCommitmentModal';
+import { cn } from '@/lib/utils';
 
 const Scene3D = lazy(() => import('@/components/common/Scene3D'));
 
@@ -33,10 +35,15 @@ const LoginPage = () => {
     setPhone,
     fullName,
     setFullName,
+    selectedFile,
+    setSelectedFile,
+    showCommitmentModal,
+    commitmentConfirmed,
     handleLogin,
     handleCreateWallet,
     handleImportMnemonic,
     handleSchoolRegister,
+    handleCommitmentConfirm,
     navigate
   } = useLoginPage();
 
@@ -100,6 +107,12 @@ const LoginPage = () => {
     // Render create new wallet (set password)
     if (step === 'set-password' || step === 'school-register') {
       const isSchool = step === 'school-register';
+      
+      // If it's school registration and commitment not confirmed, don't render form yet
+      if (isSchool && !commitmentConfirmed) {
+        return null;
+      }
+
       return (
         <CreateWallet
           onSubmit={isSchool ? handleSchoolRegister : handleCreateWallet}
@@ -117,6 +130,8 @@ const LoginPage = () => {
           representative={representative}
           phone={phone}
           onPhoneChange={setPhone}
+          selectedFile={selectedFile}
+          onSelectedFileChange={setSelectedFile}
         />
       );
     }
@@ -130,7 +145,16 @@ const LoginPage = () => {
         <Scene3D />
       </Suspense>
 
-      <div className="relative z-10 w-full max-w-md mx-4">
+      <AnimatePresence>
+        {showCommitmentModal && (
+          <BlockchainCommitmentModal
+            onConfirm={handleCommitmentConfirm}
+            isLoading={isLoading}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className={cn("relative z-10 w-full mx-4 transition-all duration-500", step === 'school-register' ? "max-w-2xl" : "max-w-md")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={step + (showSeed ? '-seed' : '')}

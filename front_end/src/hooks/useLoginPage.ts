@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createWallet, registerSchool, importWallet } from '@/services/authService';
 import { useWallet } from '@/hooks/useWallet';
+import { useStorage } from '@/hooks/useStorage';
 import { toast } from 'sonner';
 import { STORAGE_KEYS } from '@/constants/storage';
 import { useAuthContext } from '@/contexts/AuthContext';
@@ -12,6 +13,7 @@ export const useLoginPage = () => {
   const [searchParams] = useSearchParams();
   const type = searchParams.get('type');
   const { unlock } = useWallet();
+  const { uploadFile } = useStorage();
   const { login: contextLogin } = useAuthContext();
 
   const [step, setStep] = useState<'home' | 'import' | 'set-password' | 'school-register' | 'import-mnemonic'>('home');
@@ -31,6 +33,9 @@ export const useLoginPage = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showCommitmentModal, setShowCommitmentModal] = useState(false);
+  const [commitmentConfirmed, setCommitmentConfirmed] = useState(false);
 
   useEffect(() => {
     if (type === 'import') {
@@ -39,6 +44,7 @@ export const useLoginPage = () => {
     } else if (type === 'create') {
       setStep('set-password');
     } else if (type === 'school') {
+      setShowCommitmentModal(true);
       setStep('school-register');
     } else {
       setStep('home');
@@ -132,13 +138,28 @@ export const useLoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
+      // Upload agreement file if selected
+      let agreement_file_url = '';
+      if (selectedFile) {
+        try {
+          agreement_file_url = await uploadFile(selectedFile, { folder: 'agreements', tags: ['agreement', 'blockchain'] });
+          toast.success('Upload tài liệu thành công');
+        } catch (uploadError: any) {
+          setError('Không thể upload tài liệu. Vui lòng thử lại.');
+          toast.error('Upload tài liệu thất bại');
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const result = await registerSchool(
         data.password,
         data.schoolName,
         data.taxId,
         data.representative,
         data.email,
-        data.phone
+        data.phone,
+        agreement_file_url
       );
 
       localStorage.setItem('full_name', data.schoolName);
@@ -168,6 +189,11 @@ export const useLoginPage = () => {
     }
   };
 
+  const handleCommitmentConfirm = () => {
+    setCommitmentConfirmed(true);
+    setShowCommitmentModal(false);
+  };
+
   return {
     step,
     setStep,
@@ -192,10 +218,17 @@ export const useLoginPage = () => {
     setPhone,
     fullName,
     setFullName,
+    selectedFile,
+    setSelectedFile,
+    showCommitmentModal,
+    setShowCommitmentModal,
+    commitmentConfirmed,
+    setCommitmentConfirmed,
     handleLogin,
     handleCreateWallet,
     handleImportMnemonic,
     handleSchoolRegister,
+    handleCommitmentConfirm,
     navigate
   };
 };
