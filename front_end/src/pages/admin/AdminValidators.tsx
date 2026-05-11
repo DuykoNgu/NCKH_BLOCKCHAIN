@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, CheckCircle2, Info, Mail, Phone, User, Building2, Eye, FileText, CalendarClock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ interface Validator {
   email?: string;
   phone?: string;
   created_at?: string;
+  agreement_file_url: string;
 }
 
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
@@ -33,6 +35,7 @@ export default function AdminValidators() {
   } = useAdminValidators();
   
   const { currentPage, setCurrentPage, itemsPerPage, paginate, handlePageSizeChange } = usePagination(10);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -162,6 +165,20 @@ export default function AdminValidators() {
                                     {v.created_at || "Vừa xong"}
                                   </span>
                                 </div>
+                                {v.agreement_file_url && (
+                                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                                    <span className="text-sm text-muted-foreground">Bản Cam kết:</span>
+                                    <Button 
+                                      onClick={() => setPdfUrl(v.agreement_file_url)}
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="text-primary hover:bg-primary/10 gap-1"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                      <span>Xem PDF</span>
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                               <div className="flex flex-col gap-2 pt-2">
                                 <Button 
@@ -227,6 +244,27 @@ export default function AdminValidators() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* PDF Viewer Dialog */}
+      <Dialog open={pdfUrl !== null} onOpenChange={(open) => !open && setPdfUrl(null)}>
+        <DialogContent className="sm:max-w-4xl glass-card max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Xem Bản Cam Kết
+            </DialogTitle>
+          </DialogHeader>
+          <div className="w-full h-[70vh] bg-secondary/30 rounded-lg overflow-hidden border border-border">
+            {pdfUrl && (
+              <iframe 
+                src={pdfUrl}
+                className="w-full h-full"
+                title="Bản Cam Kết PDF"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

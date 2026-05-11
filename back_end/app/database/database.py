@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS account (
     email TEXT,
     phone TEXT,
     vault TEXT,
+    agreement_file_url TEXT,
     is_active INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 

@@ -33,7 +33,8 @@ export const registerWithBE = async (
   representative?: string,
   email?: string,
   phone?: string,
-  vault?: string
+  vault?: string,
+  agreement_file_url?: string
 ) => {
   const timestamp = Date.now() / 1000;
   
@@ -58,7 +59,8 @@ export const registerWithBE = async (
     representative: representative,
     email: email,
     phone: phone,
-    vault: vault // Gửi vault (đã mã hóa) lên server để backup
+    vault: vault, // Gửi vault (đã mã hóa) lên server để backup
+    agreement_file_url: agreement_file_url
   });
 
   return response.data;
@@ -111,7 +113,8 @@ export const registerSchool = async (
   taxId: string,
   representative: string,
   email: string,
-  phone: string
+  phone: string,
+  agreement_file_url?: string
 ): Promise<CreateWalletResult> => {
   clearOldSession();
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
@@ -140,7 +143,8 @@ export const registerSchool = async (
       representative, 
       email, 
       phone, 
-      vaultStr
+      vaultStr,
+      agreement_file_url
     );
   } catch (error) {
     console.error('Backend school registration failed:', error);

@@ -113,6 +113,7 @@ class AccountService:
         representative: str = None,
         email: str = None,
         phone: str = None,
+        agreement_file_url: str = None,
     ) -> Tuple[bool, Optional[Account], str]:
         address = address.lower()
         try:
@@ -139,6 +140,7 @@ class AccountService:
                 representative=representative,
                 email=email,
                 phone=phone,
+                agreement_file_url=agreement_file_url,
             )
 
             # 1. Write to local DB immediately (fast UX)
@@ -173,6 +175,8 @@ class AccountService:
                 payload["email"] = email
             if phone:
                 payload["phone"] = phone
+            if agreement_file_url:
+                payload["agreement_file_url"] = agreement_file_url
             if signature:
                 payload["signature"] = signature
 
