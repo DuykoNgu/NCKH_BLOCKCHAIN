@@ -23,9 +23,10 @@ export interface CreateNFTRequest {
   degree_type: string;
   pdf_url: string;
   pdf_hash: string;
+  institution: string;
   institution_address: string;
   recipient_address: string;
-  signature: string;
+  signature?: string;
   issuer_id?: string;
   student_id?: string;
 }
