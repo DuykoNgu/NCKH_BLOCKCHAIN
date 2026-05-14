@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Award, Search, RefreshCw, ExternalLink, CheckCircle, XCircle } from 'lucide-react';
+import { Award, Search, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -82,13 +82,12 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
                 <TableHead>Tổ chức</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Ngày tạo</TableHead>
-                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredNfts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     {isLoading ? 'Đang tải...' : 'Không có NFT nào'}
                   </TableCell>
                 </TableRow>
@@ -125,11 +124,7 @@ export const NFTList = ({ onSelectNFT }: NFTListProps) => {
                     <TableCell className="text-sm text-muted-foreground">
                       {nft.minted_at ? formatDate(nft.minted_at) : '-'}
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
+
                   </TableRow>
                 ))
               )}

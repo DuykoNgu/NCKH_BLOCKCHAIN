@@ -8,14 +8,12 @@ import {
   FileText,
   Mail,
   Phone,
-  User,
-  Building2,
   Eye,
   Download,
   AlertCircle,
   Loader,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,7 +24,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -377,7 +374,7 @@ export default function AdminValidatorRegistrations() {
                       id="admin-notes"
                       placeholder="Nhập ghi chú hoặc lý do từ chối..."
                       value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAdminNotes(e.target.value)}
                       className="mt-2 bg-slate-700/30 border-slate-600"
                       rows={4}
                     />

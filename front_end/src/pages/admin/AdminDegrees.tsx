@@ -1,12 +1,13 @@
-import { GraduationCap, Search, Plus, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
+import { GraduationCap, Search, Filter, CheckCircle2, Clock, XCircle, Eye, Download } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { DegreeDetailModal } from "@/components/admin/DegreeDetailModal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
 import { useAdminDegrees } from "@/hooks";
 import { AdminPageContainer, AdminPageHeader, AdminStatCard, itemVariants } from "@/components/admin/AdminShared";
 import { motion } from "framer-motion";
@@ -21,9 +22,26 @@ const statusConfig: Record<string, { label: string; icon: any; className: string
 
 export default function Degrees() {
   const {
-    search, setSearch, filterStatus, setFilterStatus, mintOpen, setMintOpen,
-    loading, nfts, degrees, filtered, handleMint
+    search, setSearch, filterStatus, setFilterStatus,
+    loading, nfts, degrees, filtered
   } = useAdminDegrees();
+
+  const [selectedDegree, setSelectedDegree] = useState<any>(null);
+
+  const handleDownload = (pdfUrl: string, filename: string) => {
+    if (!pdfUrl) {
+      toast.error("Không tìm thấy file PDF để tải về");
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = pdfUrl;
+    link.download = filename || "certificate.pdf";
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Đang bắt đầu tải về...");
+  };
 
   const isInitialLoading = loading && nfts.length === 0;
 
@@ -33,31 +51,6 @@ export default function Degrees() {
         title="Bằng cấp NFT"
         description="Quản lý tất cả bằng cấp đã phát hành dưới dạng NFT trong mạng lưới"
       >
-        <Dialog open={mintOpen} onOpenChange={setMintOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" />Cấp bằng mới</Button>
-          </DialogTrigger>
-          <DialogContent className="glass-card border-border">
-            <DialogHeader><DialogTitle className="font-display">Cấp bằng NFT mới</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Loại bằng cấp</Label>
-                <Select>
-                  <SelectTrigger><SelectValue placeholder="Chọn loại bằng" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bachelor">Cử nhân</SelectItem>
-                    <SelectItem value="engineer">Kỹ sư</SelectItem>
-                    <SelectItem value="master">Thạc sĩ</SelectItem>
-                    <SelectItem value="doctor">Tiến sĩ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2"><Label>PDF URL</Label><Input placeholder="https://example.com/cert.pdf" /></div>
-              <div className="space-y-2"><Label>Địa chỉ ví sinh viên (recipient)</Label><Input placeholder="0x..." /></div>
-              <Button onClick={handleMint} className="w-full">Mint NFT</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </AdminPageHeader>
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -90,7 +83,8 @@ export default function Degrees() {
                 <TableRow>
                   <TableHead>Token ID</TableHead><TableHead>Loại bằng</TableHead>
                   <TableHead className="hidden md:table-cell">Tổ chức</TableHead><TableHead className="hidden sm:table-cell">Ngày</TableHead>
-                  <TableHead>Trạng thái</TableHead><TableHead className="text-right">Thao tác</TableHead>
+                  <TableHead>Trạng thái</TableHead>
+                  <TableHead className="text-right">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -120,8 +114,22 @@ export default function Degrees() {
                         <TableCell><Badge variant="outline" className={sc.className}><sc.icon className="h-3 w-3 mr-1" />{sc.label}</Badge></TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Eye className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="h-4 w-4" /></Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => setSelectedDegree(deg)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={() => handleDownload(deg.pdf_url || deg.metadata?.pdf_url, `certificate_${deg.id || deg.tokenId}.pdf`)}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -131,11 +139,17 @@ export default function Degrees() {
               </TableBody >
             </Table >
             <div className="px-4 pb-4">
-              {/* Pagination component can be added here if needed */}
             </div>
           </CardContent >
         </Card >
       </motion.div >
-    </AdminPageContainer >
+
+       <DegreeDetailModal 
+         degree={selectedDegree} 
+         isOpen={!!selectedDegree} 
+         onClose={() => setSelectedDegree(null)} 
+         onDownload={handleDownload}
+       />
+     </AdminPageContainer >
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { FileText, Upload, Check, AlertCircle, Loader, Eye, Download, X } from "lucide-react";
+import { FileText, Upload, Check, AlertCircle, Loader, Eye, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,21 +159,19 @@ export default function NodeValidatorRegistration() {
           {["agreement", "form", "review"].map((s, i) => (
             <div key={s} className="flex items-center gap-2">
               <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold transition-all ${
-                  step === s
+                className={`h-10 w-10 rounded-full flex items-center justify-center font-bold transition-all ${step === s
                     ? "bg-primary text-white"
                     : ["agreement", "form", "review"].indexOf(step) > i
                       ? "bg-primary/30 text-primary"
                       : "bg-slate-700 text-muted-foreground"
-                }`}
+                  }`}
               >
                 {i + 1}
               </div>
               {i < 2 && (
                 <div
-                  className={`h-1 w-12 ${
-                    ["agreement", "form", "review"].indexOf(step) > i ? "bg-primary" : "bg-slate-700"
-                  }`}
+                  className={`h-1 w-12 ${["agreement", "form", "review"].indexOf(step) > i ? "bg-primary" : "bg-slate-700"
+                    }`}
                 />
               )}
             </div>

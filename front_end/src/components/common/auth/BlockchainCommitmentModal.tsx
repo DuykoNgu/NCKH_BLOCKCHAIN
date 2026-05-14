@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Download, CheckCircle2, AlertCircle, FileText, ExternalLink } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface BlockchainCommitmentModalProps {
