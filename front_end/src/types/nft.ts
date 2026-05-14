@@ -29,6 +29,7 @@ export interface CreateNFTRequest {
   signature?: string;
   issuer_id?: string;
   student_id?: string;
+  issued_at?: number;
 }
 
 export interface VerifyResult {

@@ -197,7 +197,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           degree_type: '',
           pdf_url: '',
           pdf_hash: '',
-          institution: '',
+          institution: fullname,
           institution_address: account,
           recipient_address: '',
         });
