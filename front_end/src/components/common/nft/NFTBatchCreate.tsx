@@ -320,6 +320,8 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     institution_address: account,
                     recipient_address: row.DiaChiVi,
                     signature,
+                    issued_at: issuedAt,
+                    institution: fullname,
                 });
 
                 if (response.success) {
