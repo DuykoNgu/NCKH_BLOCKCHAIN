@@ -55,7 +55,7 @@ export const WalletInfo = ({
           <div className="flex items-center gap-3">
             <UserAvatar address={address} avatarUrl={avatarUrl} size={48} />
             <div className="overflow-hidden">
-              <p className="font-semibold text-foreground truncate max-w-[120px]">
+              <p className="font-semibold text-foreground truncate max-w-[250px]">
                 {fullName || 'Người dùng mới'}
               </p>
               <p className="text-xs text-muted-foreground font-mono">
@@ -67,9 +67,6 @@ export const WalletInfo = ({
           <div className="flex gap-1">
             <Button variant="ghost" size="icon" onClick={copyAddress} className="h-8 w-8">
               <Copy className="w-3.5 h-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ExternalLink className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
