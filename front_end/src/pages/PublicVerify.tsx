@@ -51,7 +51,7 @@ const PublicVerify = () => {
                   value={tokenId}
                   onChange={(e) => setTokenId(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-                  className="pl-10 bg-white/5 border-white/10 font-mono text-white h-12"
+                  className="pl-10 bg-white/5 border-white/10 font-mono text-black h-12"
                 />
               </div>
               <Button 
