@@ -382,7 +382,7 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         <Card className="glass-card border-border/50">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-black from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
                         <FileText className="w-5 h-5 text-white" />
                     </div>
                     <div>

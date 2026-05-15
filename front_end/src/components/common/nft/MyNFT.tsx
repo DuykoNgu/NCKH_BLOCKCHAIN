@@ -18,7 +18,7 @@ export const MyNFTs = ({ account, onSelectNFT }: MyNFTsProps) => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl from-primary to-accent flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
               <Award className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -54,7 +54,7 @@ export const MyNFTs = ({ account, onSelectNFT }: MyNFTsProps) => {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {nft.is_valid ? (
-                      <Badge className="bg-success/20 text-success border-success/30">
+                      <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
                         <CheckCircle className="w-3 h-3 mr-1" />
                         Hợp lệ
                       </Badge>

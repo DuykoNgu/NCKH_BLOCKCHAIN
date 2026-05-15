@@ -85,7 +85,7 @@ export const NFTVerify = () => {
     <Card className="glass-card border-border/50">
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-success to-accent flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -122,13 +122,13 @@ export const NFTVerify = () => {
               <div
                 className={`p-4 rounded-lg ${
                   singleResult.is_valid && !singleResult.is_revoked
-                    ? 'bg-success/10 border border-success/30'
+                    ? 'bg-green-500/10 border border-green-500/30'
                     : 'bg-destructive/10 border border-destructive/30'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   {singleResult.is_valid && !singleResult.is_revoked ? (
-                    <CheckCircle className="w-8 h-8 text-success" />
+                    <CheckCircle className="w-8 h-8 text-green-600" />
                   ) : (
                     <XCircle className="w-8 h-8 text-destructive" />
                   )}
@@ -136,7 +136,7 @@ export const NFTVerify = () => {
                     <p
                       className={`font-medium ${
                         singleResult.is_valid && !singleResult.is_revoked
-                          ? 'text-success'
+                          ? 'text-green-600'
                           : 'text-destructive'
                       }`}
                     >
@@ -212,7 +212,7 @@ export const NFTVerify = () => {
                         {result.token_id?.slice(0, 20)}...
                       </span>
                       {result.is_valid ? (
-                        <Badge className="bg-success/20 text-success">Hợp lệ</Badge>
+                        <Badge className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-none">Hợp lệ</Badge>
                       ) : (
                         <Badge variant="destructive">Không hợp lệ</Badge>
                       )}
