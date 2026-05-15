@@ -242,7 +242,7 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
         <Card className="glass-card border-border/50">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl from-primary to-accent flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -352,11 +352,11 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
                       )}
                     </button>
                   ) : formData.pdf_url ? (
-                    <div className="p-4 rounded-lg bg-success/10 border border-success/30 flex items-center justify-between gap-3">
+                    <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/30 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-success" />
+                        <CheckCircle className="w-5 h-5 text-green-600" />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-success">Upload thành công</p>
+                          <p className="text-sm font-medium text-green-600">Upload thành công</p>
                           <p className="text-xs text-muted-foreground mt-1 truncate">{selectedFile?.name}</p>
                         </div>
                       </div>
@@ -397,17 +397,17 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
               {result && (
                 <div
                   className={`p-4 rounded-lg flex items-start gap-3 ${result.success
-                    ? 'bg-success/10 border border-success/30'
+                    ? 'bg-green-500/10 border border-green-500/30'
                     : 'bg-destructive/10 border border-destructive/30'
                     }`}
                 >
                   {result.success ? (
-                    <CheckCircle className="w-5 h-5 text-success mt-0.5" />
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
                   ) : (
                     <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                   )}
                   <div>
-                    <p className={result.success ? 'text-success' : 'text-destructive'}>
+                    <p className={result.success ? 'text-green-600' : 'text-destructive'}>
                       {result.message}
                     </p>
                     {result.tokenId && (
