@@ -55,7 +55,7 @@ export function AppSidebar() {
     manage: [
       { title: "Quản lý mạng (Node)", url: `${basePath}/network`, icon: Network },
       { title: "Phê duyệt đối tác", url: `${basePath}/validators`, icon: Shield, roles: ["moet", "admin"] },
-      { title: "Quản lý Sinh viên", url: `${basePath}/students`, icon: Users },
+      { title: isAdmin ? "Quản lý Tài khoản" : "Quản lý Sinh viên", url: `${basePath}/students`, icon: Users },
       { title: "Cấu hình Hệ thống", url: `${basePath}/contracts`, icon: Blocks, roles: ["moet", "admin"] },
       { title: "Cài đặt", url: `${basePath}/settings`, icon: Settings },
     ]

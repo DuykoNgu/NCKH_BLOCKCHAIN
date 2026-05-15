@@ -5,7 +5,6 @@ import { NetworkStatus } from "../wallet/NetworkStatus";
 import { TransactionList } from "../transaction/TransactionList";
 import { DashboardStats } from "./DashboardStats";
 import { PageTransition } from "./PageTransition";
-import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardProps {
   address: string;
@@ -16,7 +15,6 @@ export const Dashboard = ({
   address,
   onDisconnect,
 }: DashboardProps) => {
-  const { isUser, isValidator } = useAuth();
 
   return (
     <PageTransition>

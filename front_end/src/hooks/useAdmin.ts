@@ -293,6 +293,7 @@ export interface StudentDisplay {
 }
 
 export const useAdminStudents = () => {
+  const { isValidator, isAdmin } = useAuth();
   const [search, setSearch] = useState("");
   
   const accountsQuery = useQuery({
@@ -302,11 +303,18 @@ export const useAdminStudents = () => {
 
   const nftListQuery = useAllNFTs();
   
-  const accounts = accountsQuery.data?.accounts || [];
+  const allAccounts = accountsQuery.data?.accounts || [];
   const allNfts = nftListQuery.data?.nfts || [];
 
   const students = useMemo(() => {
-    return accounts.map((acc: AccountInfo) => {
+    // Filter accounts based on user role
+    // Validator (School) only sees 'client' (students)
+    // Admin (MOET) sees everyone
+    const accessibleAccounts = isValidator 
+      ? allAccounts.filter(acc => acc.role === "client")
+      : allAccounts;
+
+    return accessibleAccounts.map((acc: AccountInfo) => {
       // Count NFTs where this user is the recipient
       const userNfts = allNfts.filter((n: any) => 
         n.recipient_address === acc.address || 
@@ -316,13 +324,13 @@ export const useAdminStudents = () => {
       return {
         address: acc.address,
         name: acc.full_name || truncateAddress(acc.address),
-        org_name: acc.tax_id ? `Tổ chức (${acc.tax_id})` : "Cá nhân",
+        org_name: acc.org_name || (acc.tax_id ? `Tổ chức (${acc.tax_id})` : "Cá nhân"),
         role: acc.role,
         is_active: Boolean(acc.is_active),
         nftCount: userNfts.length,
       };
     });
-  }, [accounts, allNfts]);
+  }, [allAccounts, allNfts, isValidator]);
 
   const filtered = useMemo(() => students.filter((s: any) =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -340,7 +348,9 @@ export const useAdminStudents = () => {
     students,
     filtered,
     totalNfts,
-    activeCount
+    activeCount,
+    isValidator,
+    isAdmin
   };
 };
 
