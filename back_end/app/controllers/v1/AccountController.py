@@ -360,11 +360,14 @@ def get_all_users():
     try:
         accounts = AccountService.get_all_account()
         return jsonify({
+            "success": True,
             "status": "success",
-            "data": [acc.to_dict() for acc in accounts]
+            "total": len(accounts),
+            "accounts": [acc.to_dict() for acc in accounts],
+            "data": [acc.to_dict() for acc in accounts] # Keep data for backward compatibility if any
         }), 200
     except Exception as e:
-        return jsonify({"status": "fail", "message": str(e)}), 500
+        return jsonify({"success": False, "status": "fail", "message": str(e)}), 500
 
 @user_bp.route('/profile/<address>', methods=['GET'])
 def get_profile(address):
@@ -380,7 +383,7 @@ def get_profile(address):
             "role": account.role.value if hasattr(account.role, 'value') else str(account.role),
             "full_name": account.full_name,
             "avatar_url": account.avatar_url,
-            "is_active": int(account.is_active), # Cast to int for consistency
+            "is_active": bool(account.is_active), # Cast to bool for consistency
             "tax_id": account.tax_id,
             "representative": account.representative,
             "email": account.email,

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Copy, GraduationCap, Activity, Shield, Clock, TrendingUp } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } 
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0 } };
 
 export default function DashboardContent() {
+  const { fullName, isAdmin, role } = useAuth();
   const {
     isLoading,
     nftListQuery,
@@ -90,7 +92,7 @@ export default function DashboardContent() {
             Hệ thống đang hoạt động
           </Badge>
           <h2 className="font-display text-4xl font-extrabold tracking-tight text-foreground">
-            Xin chào, <span className="text-foreground">Quản trị viên MOET</span> 👋
+            Xin chào, <span className="text-foreground">{fullName || (isAdmin ? "Quản trị viên MOET" : "Validator")}</span> 👋
           </h2>
           <p className="text-muted-foreground mt-2 max-w-md text-sm">
             Quản lý bằng đại học NFT trên blockchain. Dưới đây là tóm tắt tình trạng mạng lưới và các giao dịch gần đây.
@@ -137,10 +139,12 @@ export default function DashboardContent() {
               <div className="space-y-4 text-center md:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-medium">
                   <GraduationCap className="h-3 w-3" />
-                  Hệ thống Quản trị MOET
+                  {isAdmin ? "Hệ thống Quản trị MOET" : `Hệ thống Quản trị ${role || "Tổ chức"}`}
                 </div>
                 <div>
-                  <p className="text-primary-foreground/70 text-sm mb-1">Địa chỉ ví quản trị</p>
+                  <p className="text-primary-foreground/70 text-sm mb-1">
+                    {isAdmin ? "Địa chỉ ví quản trị" : "Địa chỉ ví Validator"}
+                  </p>
                   <div className="flex items-center gap-3">
                     <h3 className="text-2xl md:text-3xl font-mono font-bold tracking-tight">
                       {walletAddress.slice(0, 12)}...{walletAddress.slice(-8)}

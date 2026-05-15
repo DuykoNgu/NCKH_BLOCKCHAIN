@@ -5,15 +5,24 @@ import type { UserRole } from "@/types/auth";
  */
 export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   "/home": ["admin", "moet", "validator", "client"],
-  "/admin": ["admin", "moet", "validator", "client"],
-  "/admin/degrees": ["admin", "moet", "validator", "client"],
-  "/admin/verify": ["admin", "moet", "validator", "client"],
-  "/admin/transactions": ["admin", "moet", "validator", "client"],
-  "/admin/students": ["admin", "moet", "validator"],
+  "/admin": ["admin", "moet"],
+  "/admin/degrees": ["admin", "moet"],
+  "/admin/verify": ["admin", "moet"],
+  "/admin/transactions": ["admin", "moet"],
+  "/admin/students": ["admin", "moet"],
   "/admin/network": ["admin", "moet"],
   "/admin/contracts": ["admin", "moet"],
-  "/admin/settings": ["admin", "moet", "validator", "client"],
+  "/admin/settings": ["admin", "moet"],
   "/admin/validators": ["admin", "moet"],
+  
+  // Validator Routes
+  "/admin-validator": ["validator"],
+  "/admin-validator/degrees": ["validator"],
+  "/admin-validator/verify": ["validator"],
+  "/admin-validator/transactions": ["validator"],
+  "/admin-validator/students": ["validator"],
+  "/admin-validator/settings": ["validator"],
+  "/admin-validator/network": ["validator"],
 };
 
 /**
@@ -37,7 +46,7 @@ export const hasRoutePermission = (role: UserRole | null, path: string): boolean
   const allowedRoles = ROUTE_PERMISSIONS[path];
   if (!allowedRoles) return true; // Mặc định cho phép nếu không khai báo
 
-  return allowedRoles.includes(role);
+  return allowedRoles.map(r => r.toLowerCase()).includes(role.toLowerCase());
 };
 
 /**

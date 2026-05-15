@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={redirectTo} replace />;
   }
 
-  if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+  if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(role.toLowerCase() as any)) {
     return <Navigate to="/unauthorized" replace />;
   }
 

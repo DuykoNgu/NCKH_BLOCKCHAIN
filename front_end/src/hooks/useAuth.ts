@@ -5,9 +5,9 @@ export const useAuth = () => {
 
   return {
     ...context,
-    isAdmin: context.role === "admin" || context.role === "moet",
-    isValidator: context.role === "validator",
-    isUser: context.role === "client",
+    isAdmin: context.role?.toLowerCase() === "admin" || context.role?.toLowerCase() === "moet",
+    isValidator: context.role?.toLowerCase() === "validator",
+    isUser: context.role?.toLowerCase() === "client",
     isPendingApproval: context.isPendingApproval,
   };
 };

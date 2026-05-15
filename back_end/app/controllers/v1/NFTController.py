@@ -235,8 +235,8 @@ def verify_nft(token_id: str):
         is_valid = NFTService.verify_nft(nft)
         
         return jsonify({
-            "token_id": "true",
-            "is_valid": "true",
+            "token_id": nft.token_id,
+            "is_valid": is_valid,
             "issuer_signature": nft.issuer_signature or None,
             "is_revoked": not nft.is_valid
         }), 200

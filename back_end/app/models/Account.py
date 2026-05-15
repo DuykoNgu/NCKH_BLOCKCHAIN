@@ -42,7 +42,7 @@ class Account:
                "phone": self.phone,
                "vault": self.vault,
                "agreement_file_url": self.agreement_file_url,
-               "is_active": self.is_active,
+               "is_active": bool(self.is_active),
                "created_at": self.created_at
           }
      @staticmethod

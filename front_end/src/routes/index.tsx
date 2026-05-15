@@ -73,9 +73,9 @@ export const router = createBrowserRouter([
     element: <UnauthorizedPage />,
   },
   {
-    path: '/admin',
+    path: '/admin-validator',
     element: (
-      <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin']}>
+      <ProtectedRoute allowedRoles={['validator']}>
         <AdminLayout />
       </ProtectedRoute>
     ),
@@ -85,7 +85,7 @@ export const router = createBrowserRouter([
       { 
         path: 'degrees', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/degrees']}>
+          <ProtectedRoute allowedRoles={['validator']}>
             <AdminDegrees />
           </ProtectedRoute>
         ) 
@@ -93,7 +93,7 @@ export const router = createBrowserRouter([
       { 
         path: 'verify', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/verify']}>
+          <ProtectedRoute allowedRoles={['validator']}>
             <AdminVerify />
           </ProtectedRoute>
         ) 
@@ -101,7 +101,7 @@ export const router = createBrowserRouter([
       { 
         path: 'transactions', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/transactions']}>
+          <ProtectedRoute allowedRoles={['validator']}>
             <AdminTransactions />
           </ProtectedRoute>
         ) 
@@ -109,23 +109,15 @@ export const router = createBrowserRouter([
       { 
         path: 'students', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/students']}>
+          <ProtectedRoute allowedRoles={['validator']}>
             <AdminStudents />
-          </ProtectedRoute>
-        ) 
-      },
-      { 
-        path: 'contracts', 
-        element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/contracts']}>
-            <AdminContracts />
           </ProtectedRoute>
         ) 
       },
       { 
         path: 'settings', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/settings']}>
+          <ProtectedRoute allowedRoles={['validator']}>
             <AdminSettings />
           </ProtectedRoute>
         ) 
@@ -133,7 +125,76 @@ export const router = createBrowserRouter([
       { 
         path: 'network', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/network']}>
+          <ProtectedRoute allowedRoles={['validator']}>
+            <AdminNetwork />
+          </ProtectedRoute>
+        ) 
+      },
+      { path: '*', element: <Navigate to="/admin-validator" replace /> }
+    ],
+  },
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'moet']}>
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
+    errorElement: <NotFoundPage />,
+    children: [
+      { index: true, element: <AdminIndex /> },
+      { 
+        path: 'degrees', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminDegrees />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'verify', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminVerify />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'transactions', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminTransactions />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'students', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminStudents />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'contracts', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminContracts />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'settings', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
+            <AdminSettings />
+          </ProtectedRoute>
+        ) 
+      },
+      { 
+        path: 'network', 
+        element: (
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
             <AdminNetwork />
           </ProtectedRoute>
         ) 
@@ -141,7 +202,7 @@ export const router = createBrowserRouter([
       { 
         path: 'validators', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/validators']}>
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
             <AdminValidators />
           </ProtectedRoute>
         ) 
@@ -149,7 +210,7 @@ export const router = createBrowserRouter([
       { 
         path: 'validator-registrations', 
         element: (
-          <ProtectedRoute allowedRoles={ROUTE_PERMISSIONS['/admin/validators']}>
+          <ProtectedRoute allowedRoles={['admin', 'moet']}>
             <AdminValidatorRegistrations />
           </ProtectedRoute>
         ) 

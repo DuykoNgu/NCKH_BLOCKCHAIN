@@ -1,6 +1,6 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, ExternalLink, LogOut, Settings } from 'lucide-react';
+import { Copy, LogOut, Settings } from 'lucide-react';
 import { toast } from "sonner";
 import { UserAvatar } from "../UserAvatar";
 import { useAuth } from "@/hooks/useAuth";

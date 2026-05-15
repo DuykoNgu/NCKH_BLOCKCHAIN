@@ -12,7 +12,7 @@ import { getRoleInfo } from "@/utils/uiUtils";
 
 export default function Students() {
   const {
-    search, setSearch, loading, students, filtered, totalNfts, activeCount
+    search, setSearch, loading, students, filtered, totalNfts, activeCount, isValidator
   } = useAdminStudents();
 
   // Basic layout should show immediately, only the table or stats might be skeletonized
@@ -21,12 +21,19 @@ export default function Students() {
   return (
     <AdminPageContainer>
       <AdminPageHeader 
-        title="Quản lý Tài khoản" 
-        description="Danh sách tài khoản đã đăng ký và trạng thái bằng cấp NFT"
+        title={isValidator ? "Quản lý Sinh viên" : "Quản lý Tài khoản"} 
+        description={isValidator 
+          ? "Danh sách sinh viên và trạng thái bằng cấp đã cấp phát" 
+          : "Danh sách tất cả tài khoản đã đăng ký trên hệ thống"
+        }
       />
 
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <AdminStatCard label="Tổng tài khoản" value={isInitialLoading ? "..." : students.length} icon={Users} />
+        <AdminStatCard 
+          label={isValidator ? "Tổng sinh viên" : "Tổng tài khoản"} 
+          value={isInitialLoading ? "..." : students.length} 
+          icon={Users} 
+        />
         <AdminStatCard label="Đang hoạt động" value={isInitialLoading ? "..." : activeCount} icon={UserCheck} iconColor="text-green-400" bgColor="bg-green-400/20" />
         <AdminStatCard label="NFT đã phát hành" value={isInitialLoading ? "..." : totalNfts} icon={GraduationCap} iconColor="text-accent" bgColor="bg-accent/20" />
       </motion.div>
