@@ -8,7 +8,6 @@ import {
   Users,
   Network,
   LogOut,
-  PlusCircle,
 } from "lucide-react";
 import { NavLink } from "@/components/admin/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -32,30 +31,33 @@ import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
   const { state } = useSidebar();
-  const { role } = useAuth();
+  const { role, isAdmin } = useAuth();
   const navigate = useNavigate();
   const collapsed = state === "collapsed";
   const location = useLocation();
 
-  const isActive = (path: string) => location.pathname === path;
+  const basePath = isAdmin ? "/admin" : "/admin-validator";
+
+  const isActive = (path: string) => {
+    return location.pathname === path || (path !== basePath && location.pathname.startsWith(path));
+  };
 
   // Danh sách tất cả menu items tiềm năng
   const allMenuItems = {
     main: [
-      { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
-      { title: "Cấp phát Bằng", url: "/admin/degrees", icon: PlusCircle, roles: ["validator"] },
-      { title: "Tất cả Bằng cấp", url: "/admin/degrees", icon: GraduationCap, roles: ["moet", "admin"] },
-      { title: "Bằng cấp của tôi", url: "/admin/degrees", icon: GraduationCap, roles: ["client"] },
-      { title: "Bằng đã cấp", url: "/admin/my-degrees", icon: GraduationCap, roles: ["validator"] },
-      { title: "Xác thực", url: "/admin/verify", icon: Shield },
-      { title: "Giao dịch", url: "/admin/transactions", icon: Activity },
+      { title: "Dashboard", url: `${basePath}`, icon: LayoutDashboard },
+      { title: "Quản lý Bằng cấp", url: `${basePath}/degrees`, icon: GraduationCap, roles: ["validator"] },
+      { title: "Tất cả Bằng cấp", url: `${basePath}/degrees`, icon: GraduationCap, roles: ["moet", "admin"] },
+      { title: "Bằng cấp của tôi", url: `${basePath}/degrees`, icon: GraduationCap, roles: ["client"] },
+      { title: "Xác thực", url: `${basePath}/verify`, icon: Shield },
+      { title: "Giao dịch", url: `${basePath}/transactions`, icon: Activity },
     ],
     manage: [
-      { title: "Quản lý mạng (Node)", url: "/admin/network", icon: Network },
-      { title: "Phê duyệt đối tác", url: "/admin/validators", icon: Shield, roles: ["moet", "admin"] },
-      { title: "Quản lý Sinh viên", url: "/admin/students", icon: Users },
-      { title: "Cấu hình Hệ thống", url: "/admin/contracts", icon: Blocks },
-      { title: "Cài đặt", url: "/admin/settings", icon: Settings },
+      { title: "Quản lý mạng (Node)", url: `${basePath}/network`, icon: Network },
+      { title: "Phê duyệt đối tác", url: `${basePath}/validators`, icon: Shield, roles: ["moet", "admin"] },
+      { title: "Quản lý Sinh viên", url: `${basePath}/students`, icon: Users },
+      { title: "Cấu hình Hệ thống", url: `${basePath}/contracts`, icon: Blocks, roles: ["moet", "admin"] },
+      { title: "Cài đặt", url: `${basePath}/settings`, icon: Settings },
     ]
   };
 

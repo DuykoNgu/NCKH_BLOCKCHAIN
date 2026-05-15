@@ -144,8 +144,8 @@ export const NFTVerify = () => {
                         ? 'Chứng chỉ hợp lệ'
                         : 'Chứng chỉ không hợp lệ'}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Mã số: {singleResult.token_id.slice(0, 20)}...
+                    <p className="text-xs font-mono text-muted-foreground break-all mt-1">
+                      Mã số: {singleResult.token_id}
                     </p>
                     {singleResult.is_revoked && (
                       <Badge variant="destructive" className="mt-2">
@@ -201,15 +201,17 @@ export const NFTVerify = () => {
               <div className="space-y-2 mt-4">
                 <p className="text-sm font-medium">Kết quả xác minh:</p>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {batchResults.results?.map((result: any, index: number) => (
+                  {batchResults.details?.map((result: any, index: number) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg flex items-center justify-between ${
-                        result.is_valid ? 'bg-success/10' : 'bg-destructive/10'
+                      className={`p-3 rounded-xl flex items-center justify-between border transition-all duration-300 hover:shadow-sm ${
+                        result.is_valid 
+                          ? 'bg-green-50/50 border-green-100' 
+                          : 'bg-red-50/50 border-red-100'
                       }`}
                     >
-                      <span className="font-mono text-xs">
-                        {result.token_id?.slice(0, 20)}...
+                      <span className="font-mono text-xs text-muted-foreground truncate max-w-[70%]">
+                        {result.token_id}
                       </span>
                       {result.is_valid ? (
                         <Badge className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-none">Hợp lệ</Badge>

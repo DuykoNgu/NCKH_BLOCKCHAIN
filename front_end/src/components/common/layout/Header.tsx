@@ -37,7 +37,7 @@ export const Header = () => {
 
             {(isAdmin || isValidator) && (
               <Button asChild variant="ghost" size="sm" className="flex items-center gap-2 text-primary hover:bg-primary/10 transition-colors">
-                <Link to="/admin">
+                <Link to={isAdmin ? "/admin" : "/admin-validator"}>
                   <LayoutDashboard className="w-4 h-4" />
                   Quản trị hệ thống
                 </Link>

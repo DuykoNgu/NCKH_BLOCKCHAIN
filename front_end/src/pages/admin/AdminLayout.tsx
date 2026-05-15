@@ -11,9 +11,13 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { Suspense } from "react";
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 import { adminLogout } from "@/services/authService";
+import { useAuth } from "@/hooks";
 
 export default function Layout() {
+  const { fullName, role, isAdmin } = useAuth();
   const navigate = useNavigate();
+
+  const basePath = isAdmin ? "/admin" : "/admin-validator";
 
   const handleLogout = () => {
     adminLogout();
@@ -96,27 +100,39 @@ export default function Layout() {
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-3 pl-2 group cursor-pointer outline-none">
                     <div className="text-right hidden sm:block">
-                      <p className="text-xs font-black text-foreground leading-none group-hover:text-primary transition-colors">Admin MOET</p>
-                      <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-wider">Bộ Giáo dục & Đào tạo</p>
+                      <p className="text-xs font-black text-foreground leading-none group-hover:text-primary transition-colors">
+                        {fullName || (isAdmin ? "Admin MOET" : "Validator")}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-bold mt-1 uppercase tracking-wider">
+                        {isAdmin ? "Bộ Giáo dục & Đào tạo" : (role || "Tổ chức")}
+                      </p>
                     </div>
                     <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300 shadow-sm shadow-primary/10">
-                      <span className="text-xs font-black">AD</span>
+                      <span className="text-xs font-black">
+                        {(fullName || "AD").slice(0, 2).toUpperCase()}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 glass-card border-none shadow-2xl mt-2 p-2">
                   <DropdownMenuLabel className="font-display font-bold px-3 py-2">Tài khoản Quản trị</DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-primary/5" />
-                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-xl p-3 focus:bg-primary/10 focus:text-primary transition-all">
+                  <DropdownMenuItem
+                    onClick={() => navigate('/home')}
+                    className="cursor-pointer gap-3 rounded-xl p-3 focus:bg-primary/10 focus:text-primary transition-all"
+                  >
                     <UserIcon className="h-4 w-4" />
                     <span className="font-medium">Thông tin cá nhân</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="cursor-pointer gap-3 rounded-xl p-3 focus:bg-primary/10 focus:text-primary transition-all">
+                  <DropdownMenuItem
+                    onClick={() => navigate(`${basePath}/settings`)}
+                    className="cursor-pointer gap-3 rounded-xl p-3 focus:bg-primary/10 focus:text-primary transition-all"
+                  >
                     <Settings className="h-4 w-4" />
-                    <span className="font-medium">Cài đặt hệ thống</span>
+                    <span className="font-medium">Cài đặt tổ chức</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-primary/5" />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={handleLogout}
                     className="cursor-pointer gap-3 rounded-xl p-3 text-destructive focus:bg-destructive/10 focus:text-destructive transition-all"
                   >

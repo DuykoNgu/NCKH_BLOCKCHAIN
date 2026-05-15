@@ -11,8 +11,8 @@ import type { AccountInfo } from "@/services/accountService";
 import { toast } from "sonner";
 import { Activity, Server, HardDrive } from "lucide-react";
 import { truncateHash, truncateAddress, formatTimeAgo, getNftStatus } from "@/utils/formatUtils";
-import { STORAGE_KEYS } from "@/constants/storage";
 import { adminService } from "@/services/adminService";
+import { useAuth } from "@/hooks/useAuth";
 
 // --- Base Stats Hook ---
 
@@ -48,6 +48,7 @@ export const useAdminStats = () => {
 // --- Dashboard Hook ---
 
 export const useAdminDashboard = () => {
+  const { address, isValidator } = useAuth();
   const stats = useAdminStats();
   
   const nftListQuery = useAllNFTs();
@@ -58,9 +59,32 @@ export const useAdminDashboard = () => {
     queryFn: () => BlockService.getLatestBlock(),
   });
 
-  const walletAddress = localStorage.getItem(STORAGE_KEYS.ADDRESS) || "";
-  const nfts = nftListQuery.data?.nfts || [];
-  const transactions = txListQuery.data?.transactions || [];
+  const walletAddress = address || "";
+  const allNfts = nftListQuery.data?.nfts || [];
+  const allTransactions = txListQuery.data?.transactions || [];
+
+  const nfts = useMemo(() => {
+    if (isValidator && address) {
+      const lowerAddress = address.toLowerCase();
+      return allNfts.filter(nft => {
+        const metadata = (nft.metadata || {}) as any;
+        const instAddr = (metadata.institution_address || nft.issuer_address || "").toLowerCase();
+        return instAddr === lowerAddress;
+      });
+    }
+    return allNfts;
+  }, [allNfts, isValidator, address]);
+
+  const transactions = useMemo(() => {
+    if (isValidator && address) {
+      const lowerAddress = address.toLowerCase();
+      return allTransactions.filter(tx => 
+        (tx.sender_address || "").toLowerCase() === lowerAddress ||
+        (tx.recipient_address || "").toLowerCase() === lowerAddress
+      );
+    }
+    return allTransactions;
+  }, [allTransactions, isValidator, address]);
 
 
 
@@ -147,6 +171,7 @@ export const useAdminContracts = () => {
 // --- Degrees Hook ---
 
 export const useAdminDegrees = () => {
+  const { address, isValidator } = useAuth();
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [mintOpen, setMintOpen] = useState(false);
@@ -156,7 +181,18 @@ export const useAdminDegrees = () => {
     queryFn: () => NFTService.getAllNFTs(),
   });
 
-  const nfts = nftListQuery.data?.nfts || [];
+  const nfts = useMemo(() => {
+    const allNfts = nftListQuery.data?.nfts || [];
+    if (isValidator && address) {
+      const lowerAddress = address.toLowerCase();
+      return allNfts.filter(nft => {
+        const metadata = (nft.metadata || {}) as any;
+        const instAddr = (metadata.institution_address || nft.issuer_address || "").toLowerCase();
+        return instAddr === lowerAddress;
+      });
+    }
+    return allNfts;
+  }, [nftListQuery.data, isValidator, address]);
 
   const degrees = useMemo(() => nfts.map((nft) => ({
     id: nft.token_id,

@@ -15,7 +15,7 @@ class NFTmetadata:
           self.pdf_url = pdf_url  
           self.pdf_hash = pdf_hash
           self.institution_address = institution_address
-          self.issued_at = issued_at if issued_at is not None else time.time()
+          self.issued_at = int(issued_at) if issued_at is not None else int(time.time())
           
      def to_dict(self) -> Dict[str, Any]:
           return {

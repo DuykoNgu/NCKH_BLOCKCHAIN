@@ -1,6 +1,5 @@
 import { Header } from "./Header";
 import { NFTManagement } from "../nft/NFTManagement";
-import { PDFPreview as PDF_Preview } from "../pdf/PDFPreview";
 import { WalletInfo as WalletIn4 } from "../wallet/WalletInfo";
 import { NetworkStatus } from "../wallet/NetworkStatus";
 import { TransactionList } from "../transaction/TransactionList";
@@ -39,7 +38,6 @@ export const Dashboard = ({
             <div className="lg:col-span-2 space-y-6">
               <NFTManagement account={address} />
               <TransactionList />
-              {(isUser || isValidator) && <PDF_Preview />}
             </div>
           </div>
         </main>
