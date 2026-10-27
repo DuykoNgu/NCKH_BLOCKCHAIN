@@ -51,7 +51,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.includes('pdf')) {
       clearPdfError();
       setSelectedFile(null);
@@ -62,7 +61,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     const hash = '';
     setSelectedFile(file);
 
-    // Calculate PDF hash
     try {
       const buffer = await file.arrayBuffer();
       const hash = await calculatePdfHash(buffer);
@@ -76,7 +74,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       return;
     }
 
-    // Auto upload when file selected
     try {
       clearPdfError();
       const url = await uploadPDF(file, {
@@ -121,7 +118,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       return;
     }
 
-    // Kiểm tra password đã được lưu từ lúc đăng nhập
     if (!hasPassword()) {
       setResult({
         success: false,
@@ -134,14 +130,12 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
     setResult(null);
 
     try {
-      // Lấy password từ session storage
       const password = getPassword();
       console.log('Password : ', password);
       if (!password) {
         throw new Error('Mật khẩu ví không tìm thấy');
       }
 
-      // Get private key from vault using password
       const vault = localStorage.getItem('vault');
       if (!vault) {
         throw new Error('Không tìm thấy ví trong hệ thống');
@@ -150,11 +144,9 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       const vaultData = JSON.parse(vault);
       const privateKeyBytes = await decryptPrivateKey(vaultData, password);
 
-      // Create signing data with current timestamp
-      const issuedAt = Math.floor(Date.now() / 1000); // seconds
+      const issuedAt = Math.floor(Date.now() / 1000);
 
 
-      // Trong handleSubmit, hãy sửa lại đoạn tạo signingData:
       const signingMetadata = {
         degree_type: formData.degree_type,
         pdf_url: formData.pdf_url,
@@ -169,11 +161,9 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
       const signingData = JSON.stringify(sortedMetadata);
       console.log('Signing data:', signingData);
 
-      // Sign the data
       const signature = signDataWithBytes(signingData, privateKeyBytes);
       console.log('Signature generated:', signature);
 
-      // Prepare request with signature
       const requestData = {
         ...formData,
         issued_at: issuedAt,
@@ -191,7 +181,6 @@ export const NFTCreate = ({ account }: NFTCreateProps) => {
           message: 'Chứng chỉ số đã được cấp phát thành công!',
           tokenId: response.token_id,
         });
-        // Reset form
         setFormData({
           student_id: '',
           degree_type: '',

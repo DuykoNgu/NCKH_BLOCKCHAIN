@@ -10,7 +10,6 @@ export const CollapsibleSection = ({ title, children }: CollapsibleSectionProps)
 
   return (
     <div className="w-full max-w-[1000px] border rounded-lg overflow-hidden">
-      {/* HEADER */}
       <button
         onClick={() => setOpen((p) => !p)}
         className="glass-card w-full h-15 px-4 py-3 bg-muted hover:bg-muted/80 transition flex items-center justify-between"
@@ -23,7 +22,6 @@ export const CollapsibleSection = ({ title, children }: CollapsibleSectionProps)
         />
       </button>
 
-      {/* COLLAPSE CONTENT */}
       <div
         className={`transition-all duration-500 ease-in-out overflow-hidden ${
           open ? "max-h-[1200px]" : "max-h-0"

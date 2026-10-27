@@ -33,7 +33,6 @@ export default function DashboardContent() {
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  // Still show a basic skeleton if everything is loading at once (initial mount)
   if (isLoading && !nftListQuery.data && !txListQuery.data) return <DashboardSkeleton />;
 
   const statCards = [
@@ -77,13 +76,11 @@ export default function DashboardContent() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-8">
-      {/* Chain History Modal */}
       <ChainHistoryModal 
         isOpen={isHistoryOpen} 
         onClose={() => setIsHistoryOpen(false)} 
       />
       
-      {/* Header with Greeting and Network Info */}
       <motion.div variants={item} className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <Badge variant="outline" className="mb-2 px-3 py-1 bg-primary/5 text-primary border-primary/20 animate-pulse-glow">
@@ -97,7 +94,6 @@ export default function DashboardContent() {
           </p>
         </div>
         
-        {/* Network Info Floating Card */}
         <div className="flex flex-wrap items-center gap-4 sm:gap-6 p-2 pr-6 bg-white border border-slate-100 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(59,130,246,0.1)] transition-all duration-500 group">
            <div className="h-16 w-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500 shadow-inner">
              <Activity className="h-7 w-7" />
@@ -126,7 +122,6 @@ export default function DashboardContent() {
         </div>
       </motion.div>
 
-      {/* Wallet Header - Redesigned as a Premium Banner */}
       <motion.div variants={item}>
         {walletAddress && (
           <div className="relative overflow-hidden rounded-3xl bg-primary p-8 text-primary-foreground shadow-2xl shadow-primary/20">
@@ -175,7 +170,6 @@ export default function DashboardContent() {
         )}
       </motion.div>
 
-      {/* Stats Grid */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat) => (
           <Card key={stat.label} className="group relative overflow-hidden glass-card border-none shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
@@ -203,7 +197,6 @@ export default function DashboardContent() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Degrees */}
         <motion.div variants={item} className="lg:col-span-2">
           <Card className="glass-card border-none shadow-sm h-full">
             <CardHeader className="p-6 pb-2">
@@ -266,7 +259,6 @@ export default function DashboardContent() {
           </Card>
         </motion.div>
 
-        {/* Recent Transactions */}
         <motion.div variants={item}>
           <Card className="glass-card border-none shadow-sm h-full">
             <CardHeader className="p-6 pb-4">

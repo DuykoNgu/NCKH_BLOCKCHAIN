@@ -19,7 +19,7 @@ export interface UserCreateRequest {
 }
 
 export interface UserRegisterData {
-  user_id: string;        // ← Backend tự tạo
+  user_id: string;
   public_key: string;
   address: string;
   role: UserRole;

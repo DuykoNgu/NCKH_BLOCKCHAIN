@@ -2,9 +2,6 @@ import { useMutation } from '@tanstack/react-query';
 import StorageService, { StorageService as StorageServiceClass } from '../services/StorageService';
 import type { UploadOptions } from '../services/StorageService';
 
-/**
- * React Hook để sử dụng Storage Service bằng TanStack Query
- */
 export const useStorage = (storageService: StorageServiceClass = StorageService) => {
   const uploadFileMutation = useMutation({
     mutationFn: ({ file, options }: { file: File; options?: UploadOptions }) => 

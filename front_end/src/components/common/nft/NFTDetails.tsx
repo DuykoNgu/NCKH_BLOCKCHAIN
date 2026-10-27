@@ -102,7 +102,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Metadata Info - Friendly for all users */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Loại bằng cấp</p>
@@ -126,7 +125,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
           </div>
         </div>
 
-        {/* Mã văn bằng - Shown to all */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
           <div>
             <p className="text-xs text-muted-foreground">Mã văn bằng</p>
@@ -137,7 +135,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
           </Button>
         </div>
 
-        {/* Blockchain Proof - Only shown to admin/validator */}
         {!isUser && (
           <>
             <Separator />
@@ -183,7 +180,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
           </>
         )}
 
-        {/* PDF Link */}
         {nft.metadata?.pdf_url && (
           <>
             <Separator />
@@ -201,7 +197,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
           </>
         )}
 
-        {/* Verification Result */}
         {verifyResult && (
           <>
             <Separator />
@@ -225,7 +220,6 @@ export const NFTDetail = ({ tokenId, onBack }: NFTDetailProps) => {
 
         <Separator />
 
-        {/* Actions */}
         <div className="flex flex-wrap gap-3">
           {onBack && (
             <Button variant="outline" onClick={onBack}>

@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-// Animation variants
 export const containerVariants = {
   hidden: { opacity: 0 },
   show: {
@@ -17,7 +16,6 @@ export const itemVariants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 };
 
-// Shared Page Header
 interface AdminPageHeaderProps {
   title: string;
   description?: string;
@@ -34,7 +32,6 @@ export const AdminPageHeader: React.FC<AdminPageHeaderProps> = ({ title, descrip
   </motion.div>
 );
 
-// Shared Stat Card
 interface AdminStatCardProps {
   label: string;
   value: string | number;
@@ -57,7 +54,6 @@ export const AdminStatCard: React.FC<AdminStatCardProps> = ({ label, value, icon
   </Card>
 );
 
-// Motion Wrapper
 export const AdminPageContainer: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
   <motion.div
     variants={containerVariants}

@@ -39,7 +39,6 @@ export function AppSidebar() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Danh sách tất cả menu items tiềm năng
   const allMenuItems = {
     main: [
       { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -60,17 +59,14 @@ export function AppSidebar() {
   };
 
   const handleLogout = () => {
-    adminLogout(); // Chỉ xoá session, giữ vault để lần sau đăng nhập bằng mật khẩu
+    adminLogout();
     navigate('/moet-login');
   };
 
-  // Lọc menu items dựa trên permissions.ts
   const filterMenu = (items: any[]) => {
     return items.filter(item => {
-      // Nếu item có quy định roles cụ thể cho hiển thị
       if (item.roles && !item.roles.map((r: string) => r.toLowerCase()).includes(role?.toLowerCase() || "")) return false;
 
-      // Kiểm tra quyền truy cập route tổng quát
       return hasRoutePermission(role, item.url);
     });
   };

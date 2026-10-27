@@ -15,14 +15,10 @@ export interface CreateWalletResult {
 export const clearOldSession = () => {
   const items = ["role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "isLoggedIn", "accounts"];
   items.forEach(item => localStorage.removeItem(item));
-  // Xóa password khỏi session storage
   clearPasswordFromSession();
   console.log('[authService] Local session cleared');
 };
 
-/**
- * Đăng ký tài khoản (Register) với Backend kèm chữ ký số
- */
 export const registerWithBE = async (
   address: string,
   publicKey: string,
@@ -38,7 +34,6 @@ export const registerWithBE = async (
 ) => {
   const timestamp = Date.now() / 1000;
   
-  // Tạo data để ký (phải khớp với Backend TransactionAcount.get_signing_data)
   const signDataObj = {
     address: address.toLowerCase(),
     public_key: publicKey,
@@ -59,7 +54,7 @@ export const registerWithBE = async (
     representative: representative,
     email: email,
     phone: phone,
-    vault: vault, // Gửi vault (đã mã hóa) lên server để backup
+    vault: vault,
     agreement_file_url: agreement_file_url
   });
 
@@ -68,7 +63,6 @@ export const registerWithBE = async (
 
 export const createWallet = async (password: string, email?: string): Promise<CreateWalletResult> => {
   clearOldSession();
-  // Tạo ví mới với seed phrase (BIP39)
   const { mnemonic, privateKey, publicKey, address } = await generateWallet();
   const privateKeyHex = uint8ArrayToHex(privateKey);
   
@@ -83,12 +77,10 @@ export const createWallet = async (password: string, email?: string): Promise<Cr
 
   const publicKeyHex = uint8ArrayToHex(publicKey);
 
-  // Đăng ký với Backend kèm signature
   try {
     await registerWithBE(address, publicKeyHex, "client", privateKey, undefined, undefined, undefined, email, undefined, vaultStr);
   } catch (error) {
     console.error('Backend registration failed:', error);
-    // Vẫn cho phép tiếp tục lưu local nếu BE lỗi (chế độ offline-first)
   }
 
   const userData = {
@@ -131,7 +123,6 @@ export const registerSchool = async (
   const vaultStr = JSON.stringify({ encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) });
   const publicKeyHex = uint8ArrayToHex(publicKey);
 
-  // Đăng ký trường học với Backend
   try {
     await registerWithBE(
       address, 
@@ -157,7 +148,7 @@ export const registerSchool = async (
     vault: JSON.parse(vaultStr),
     role: "validator",
     full_name: schoolName,
-    is_active: "0", // Chờ MOET duyệt
+    is_active: "0",
   };
 
   saveUserData(userData);
@@ -176,7 +167,6 @@ export const importWallet = async (mnemonic: string, password: string): Promise<
   const vaultStr = JSON.stringify({ encrypted: uint8ArrayToHex(encrypted), iv: uint8ArrayToHex(iv) });
   const publicKeyHex = uint8ArrayToHex(publicKey);
 
-  // Thử đăng ký lại (hoặc cập nhật vault) với BE
   try {
     await registerWithBE(address, publicKeyHex, "client", privateKey, undefined, undefined, undefined, undefined, undefined, vaultStr);
   } catch (error) {
@@ -210,7 +200,6 @@ export const loginWalletFlow = async (password: string): Promise<Uint8Array> => 
   const vault = JSON.parse(vaultData);
   const privateKey = await decryptPrivateKey(vault, password);
 
-  // Sync profile from backend
   try {
     const profile = await fetchProfile(address);
     if (profile && profile.user) {
@@ -237,21 +226,17 @@ export const adminLoginWithPrivateKey = async (privateKeyHex: string) => {
   const privateKey = secp.etc.hexToBytes(cleanKey);
   const publicKeyBytes = secp.getPublicKey(privateKey, false);
 
-  // Generate address (standard keccak256 hash of public key without 0x04 prefix)
   const { keccak_256 } = await import("@noble/hashes/sha3.js");
   const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);
 
-  // Get Nonce
   const nonce = await getNonce(address);
 
-  // Ký nonce
   const signature = await signDataDER(nonce, privateKey);
 
-  // Verify
   const verifyRes = await api.post(AUTH_SERVER.WALLET_LOGIN, {
     address: address.toLowerCase(),
     signature,
-    msg_hash: calculateHashHex(nonce) // BE có thể mong đợi hash hoặc nonce gốc tùy thiết kế
+    msg_hash: calculateHashHex(nonce)
   });
 
   const verifyData = verifyRes.data;
@@ -282,7 +267,6 @@ export const adminUnlockVault = async (password: string) => {
   const vault = JSON.parse(vaultData);
   const privateKey = await decryptPrivateKey(vault, password);
   
-  // Sau khi giải mã thành công, thực hiện login bằng private key
   const privateKeyHex = uint8ArrayToHex(privateKey);
   await adminLoginWithPrivateKey(privateKeyHex);
   
@@ -291,10 +275,8 @@ export const adminUnlockVault = async (password: string) => {
 };
 
 export const adminImportAndSaveVault = async (privateKeyHex: string, password: string) => {
-  // 1. Thực hiện login trước để kiểm tra Private Key hợp lệ
   await adminLoginWithPrivateKey(privateKeyHex);
 
-  // 2. Nếu login thành công, tiến hành lưu vault cục bộ
   const cleanKey = privateKeyHex.replace(/^0x/i, '').replace(/\s+/g, '');
   const privateKey = secp.etc.hexToBytes(cleanKey);
   
@@ -304,7 +286,6 @@ export const adminImportAndSaveVault = async (privateKeyHex: string, password: s
     iv: uint8ArrayToHex(iv) 
   });
   
-  // Tính address admin
   const publicKeyBytes = secp.getPublicKey(privateKey, false);
   const { keccak_256 } = await import("@noble/hashes/sha3.js");
   const address = "0x" + bytesToHex(keccak_256(publicKeyBytes.slice(1))).slice(-40);

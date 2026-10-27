@@ -23,7 +23,6 @@ export default function Layout() {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background relative overflow-hidden">
-        {/* Background Mesh Gradients */}
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
         <div className="absolute top-[20%] -right-[10%] w-[30%] h-[30%] rounded-full bg-accent/5 blur-[100px] pointer-events-none" />
         <div className="absolute -bottom-[10%] left-[20%] w-[40%] h-[40%] rounded-full bg-primary/3 blur-[120px] pointer-events-none" />
@@ -38,7 +37,6 @@ export default function Layout() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Search Dialog */}
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl">
@@ -56,7 +54,6 @@ export default function Layout() {
                 </DialogContent>
               </Dialog>
 
-              {/* Notification Sheet */}
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl relative">

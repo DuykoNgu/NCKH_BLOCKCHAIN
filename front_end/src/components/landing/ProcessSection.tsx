@@ -29,7 +29,6 @@ const ProcessSection = () => {
         </motion.h2>
 
         <div className="relative">
-          {/* Chain line */}
           <motion.div
             className="absolute left-6 top-0 bottom-0 chain-line"
             initial={{ scaleY: 0 }}
@@ -47,7 +46,6 @@ const ProcessSection = () => {
                 animate={isInView ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.8, delay: 0.4 + index * 0.2 }}
               >
-                {/* Node on the chain */}
                 <div className="absolute left-[14px] top-1 w-5 h-5 border-2 border-primary bg-background flex items-center justify-center">
                   <div className="w-2 h-2 bg-primary animate-pulse-glow" />
                 </div>

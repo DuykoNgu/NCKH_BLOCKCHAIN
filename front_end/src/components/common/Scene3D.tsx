@@ -3,13 +3,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Shared Geometries to save memory
 const sphereGeom = new THREE.SphereGeometry(1, 8, 8);
-const spokeGeom = new THREE.CylinderGeometry(0.006, 0.006, 1, 4); // Unit height for scaling
+const spokeGeom = new THREE.CylinderGeometry(0.006, 0.006, 1, 4);
 const birdGeom = new THREE.ConeGeometry(0.05, 0.16, 3);
 const wingGeom = new THREE.PlaneGeometry(0.1, 0.04);
 
-// Shared Materials
 const particleMat = new THREE.MeshStandardMaterial({
   color: "#888888",
   emissive: "#444444",
@@ -28,7 +26,6 @@ const spokeMat = new THREE.MeshStandardMaterial({
   opacity: 0.35 
 });
 
-// Floating particles around the scene
 function Particles({ count = 60 }) {
   const mesh = useRef<THREE.InstancedMesh>(null!);
   const dummy = useMemo(() => new THREE.Object3D(), []);
@@ -66,11 +63,9 @@ function Particles({ count = 60 }) {
   );
 }
 
-// Glowing orbit rings
 function OrbitRing({ radius, speed, color, thickness = 0.008 }: { radius: number; speed: number; color: string; thickness?: number }) {
   const ref = useRef<THREE.Mesh>(null!);
   
-  // Use a lower segment count for rings (64 instead of 100)
   const geometry = useMemo(() => new THREE.TorusGeometry(radius, thickness, 8, 64), [radius, thickness]);
 
   useFrame((state) => {
@@ -127,7 +122,6 @@ function TrongDongDisc() {
       { r: 0.7, w: 0.02, o: 0.8 },
       { r: 0.4, w: 0.015, o: 0.5 },
     ];
-    // Reduced radial segments from 80 to 48 for performance
     return data.map((d, i) => (
       <mesh key={i} rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[d.r, d.w, 8, 48]} />
@@ -248,9 +242,9 @@ export default memo(function Scene3D() {
     <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
       <Canvas
         camera={{ position: [0, 0, 6], fov: 42 }}
-        gl={{ alpha: true, antialias: false, powerPreference: 'high-performance' }} // Antialias off for performance
+        gl={{ alpha: true, antialias: false, powerPreference: 'high-performance' }}
         style={{ background: 'transparent' }}
-        dpr={[1, 1.2]} // Capped DPR at 1.2
+        dpr={[1, 1.2]}
       >
         <fog attach="fog" args={['#ffffff', 6, 14]} />
         

@@ -74,7 +74,6 @@ export function TrongDongWatermark({ className = '', opacity = 0.05 }: { classNa
         <circle cx="200" cy="200" r="8" fill="currentColor" opacity="0.5" />
       </svg>
 
-      {/* Second smaller watermark bottom-left for depth */}
       <svg
         viewBox="0 0 400 400"
         className="absolute w-[400px] h-[400px] -left-32 -bottom-32 text-foreground animate-spin-slow"

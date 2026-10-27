@@ -27,7 +27,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
 
   useEffect(() => {
-    // Khởi tạo trạng thái từ localStorage
     const savedIsLoggedIn = localStorage.getItem("isLoggedIn") === "true";
     const savedAddress = localStorage.getItem("address");
     const savedRole = localStorage.getItem("role") as UserRole | null;
@@ -44,13 +43,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (savedPublicKey) {
         setUser({
-          user_id: "", // ID có thể lấy từ BE nếu cần, tạm thời để trống
+          user_id: "",
           address: savedAddress,
           role: savedRole || 'client',
           public_key: savedPublicKey
         });
         
-        // Kiểm tra nếu là validator và chưa được active
         const savedIsActive = localStorage.getItem("is_active");
         if (savedRole === "validator" && savedIsActive === "0") {
           setIsPendingApproval(true);
@@ -90,13 +88,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
-    // Keep wallet data for easy re-login with password
     const itemsToKeep = ['address', 'public_key', 'vault', 'full_name', 'avatar_url'];
     
-    // Get all keys currently in localStorage
     const allKeys = Object.keys(localStorage);
     
-    // Remove only non-wallet items
     allKeys.forEach(key => {
       if (!itemsToKeep.includes(key)) {
         localStorage.removeItem(key);

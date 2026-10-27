@@ -158,7 +158,6 @@ export default function AdminValidatorRegistrations() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      {/* Header */}
       <motion.div variants={item}>
         <h2 className="font-display text-2xl font-bold text-foreground">Đơn Đăng Ký Node Validator</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -166,7 +165,6 @@ export default function AdminValidatorRegistrations() {
         </p>
       </motion.div>
 
-      {/* Stats Cards */}
       <motion.div variants={item} className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">
           <CardContent className="p-4 flex items-center gap-3">
@@ -205,7 +203,6 @@ export default function AdminValidatorRegistrations() {
         </Card>
       </motion.div>
 
-      {/* Search */}
       <motion.div variants={item}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -216,7 +213,6 @@ export default function AdminValidatorRegistrations() {
         />
       </motion.div>
 
-      {/* Alerts */}
       {error && (
         <motion.div variants={item}>
           <Alert className="bg-red-900/20 border-red-500/30">
@@ -235,7 +231,6 @@ export default function AdminValidatorRegistrations() {
         </motion.div>
       )}
 
-      {/* Tabs */}
       <motion.div variants={item}>
         <Tabs defaultValue="pending" className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
@@ -244,7 +239,6 @@ export default function AdminValidatorRegistrations() {
             <TabsTrigger value="rejected">Bị từ chối ({filteredRegistrations.rejected.length})</TabsTrigger>
           </TabsList>
 
-          {/* Pending Tab */}
           <TabsContent value="pending" className="space-y-4">
             {filteredRegistrations.pending.length === 0 ? (
               <Card className="glass-card">
@@ -263,7 +257,6 @@ export default function AdminValidatorRegistrations() {
             )}
           </TabsContent>
 
-          {/* Approved Tab */}
           <TabsContent value="approved" className="space-y-4">
             {filteredRegistrations.approved.length === 0 ? (
               <Card className="glass-card">
@@ -283,7 +276,6 @@ export default function AdminValidatorRegistrations() {
             )}
           </TabsContent>
 
-          {/* Rejected Tab */}
           <TabsContent value="rejected" className="space-y-4">
             {filteredRegistrations.rejected.length === 0 ? (
               <Card className="glass-card">
@@ -305,7 +297,6 @@ export default function AdminValidatorRegistrations() {
         </Tabs>
       </motion.div>
 
-      {/* Detail Dialog */}
       <Dialog open={!!selectedReg} onOpenChange={() => setSelectedReg(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -314,7 +305,6 @@ export default function AdminValidatorRegistrations() {
 
           {selectedReg && (
             <div className="space-y-6">
-              {/* Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs text-muted-foreground">Tên tổ chức</Label>
@@ -338,7 +328,6 @@ export default function AdminValidatorRegistrations() {
                 </div>
               </div>
 
-              {/* PDF Viewer */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Bản cam kết đã ký</Label>
                 <div className="bg-white rounded-lg overflow-hidden">
@@ -363,7 +352,6 @@ export default function AdminValidatorRegistrations() {
                 </Button>
               </div>
 
-              {/* Admin Actions */}
               {selectedReg.status === "pending" && (
                 <div className="space-y-4 border-t pt-4">
                   <div>
@@ -432,7 +420,6 @@ export default function AdminValidatorRegistrations() {
   );
 }
 
-// Registration Card Component
 function RegistrationCard({
   registration,
   onSelect,

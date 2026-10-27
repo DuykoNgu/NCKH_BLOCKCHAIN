@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Base fields for wallet creation
 const baseWalletSchema = z.object({
   fullName: z.string().min(2, "Họ và tên phải từ 2 ký tự trở lên"),
   email: z.string().email("Email không đúng định dạng"),
@@ -11,13 +10,11 @@ const baseWalletSchema = z.object({
   confirmPassword: z.string()
 });
 
-// Schema cho việc tạo ví cá nhân (có thêm xác nhận mật khẩu)
 export const createWalletSchema = baseWalletSchema.refine((data) => data.password === data.confirmPassword, {
   message: "Mật khẩu xác nhận không khớp",
   path: ["confirmPassword"],
 });
 
-// Schema cho việc đăng ký trường học
 export const schoolRegisterSchema = z.object({
   fullName: z.string().optional().default("School Admin"),
   email: z.string().email("Email không đúng định dạng"),

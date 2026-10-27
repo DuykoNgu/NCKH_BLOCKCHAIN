@@ -17,7 +17,6 @@ export const PDFPreview = () => {
       setIsLoading(true);
       try {
         if (isValidator) {
-          // Trường học: lấy các NFT do trường cấp
           const res = await NFTService.getAllNFTs();
           const nfts = res.nfts?.filter(n => n.metadata?.institution_address === address) || [];
           setPdfs(nfts.map(n => ({
@@ -26,7 +25,6 @@ export const PDFPreview = () => {
             tokenId: n.token_id
           })).filter(p => p.url));
         } else if (isUser) {
-          // Học sinh: lấy các NFT của mình
           const res = await NFTService.getUserNFTs(address);
           setPdfs((res.nfts || []).map(n => ({
             name: `${n.metadata?.degree_type || "Chứng chỉ"} - ${n.metadata?.institution || n.metadata?.institution_address?.slice(0, 8)}`,

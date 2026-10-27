@@ -15,7 +15,6 @@ export default function Students() {
     search, setSearch, loading, students, filtered, totalNfts, activeCount
   } = useAdminStudents();
 
-  // Basic layout should show immediately, only the table or stats might be skeletonized
   const isInitialLoading = loading && students.length === 0;
 
   return (

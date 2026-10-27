@@ -1,8 +1,5 @@
 import type { UserRole } from "@/types/auth";
 
-/**
- * Định nghĩa quyền truy cập các Route chính
- */
 export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   "/home": ["admin", "moet", "validator", "client"],
   "/admin": ["admin", "moet", "validator", "client"],
@@ -16,9 +13,6 @@ export const ROUTE_PERMISSIONS: Record<string, UserRole[]> = {
   "/admin/validators": ["admin", "moet"],
 };
 
-/**
- * Định nghĩa quyền thực hiện các hành động (Action-based)
- */
 export const ACTION_PERMISSIONS = {
   MINT_NFT: ["admin", "moet", "validator"],
   REVOKE_NFT: ["admin", "moet"],
@@ -27,22 +21,16 @@ export const ACTION_PERMISSIONS = {
   REGISTER_VALIDATOR: ["admin", "moet"],
 };
 
-/**
- * Kiểm tra xem một Role có quyền truy cập Route hay không
- */
 export const hasRoutePermission = (role: UserRole | null, path: string): boolean => {
   if (!role) return false;
-  if (role === "admin" || role === "moet") return true; // Super admin
+  if (role === "admin" || role === "moet") return true;
 
   const allowedRoles = ROUTE_PERMISSIONS[path];
-  if (!allowedRoles) return true; // Mặc định cho phép nếu không khai báo
+  if (!allowedRoles) return true;
 
   return allowedRoles.includes(role);
 };
 
-/**
- * Kiểm tra xem một Role có quyền thực hiện hành động hay không
- */
 export const hasActionPermission = (role: UserRole | null, action: keyof typeof ACTION_PERMISSIONS): boolean => {
   if (!role) return false;
   if (role === "admin" || role === "moet") return true;

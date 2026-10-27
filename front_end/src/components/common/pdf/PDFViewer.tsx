@@ -8,7 +8,6 @@ interface PDFViewerProps {
   pdfFile: any;
 }
 
-// Giới hạn kích thước PDF: 10MB
 const MAX_PDF_SIZE = 10 * 1024 * 1024;
 
 export const PDFViewer = ({ pdfFile }: PDFViewerProps) => {
@@ -18,7 +17,6 @@ export const PDFViewer = ({ pdfFile }: PDFViewerProps) => {
 
   const pageWidth = Math.min(800, window.innerWidth - 32);
 
-  // Kiểm tra kích thước file trước khi load
   useEffect(() => {
     if (pdfFile && typeof pdfFile === 'object' && pdfFile.size) {
       if (pdfFile.size > MAX_PDF_SIZE) {

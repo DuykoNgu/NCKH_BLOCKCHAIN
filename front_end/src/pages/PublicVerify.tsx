@@ -23,7 +23,6 @@ const PublicVerify = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background overflow-hidden p-4">
-      {/* Background decoration - Bronze Drum */}
       <Suspense fallback={null}>
         <Scene3D />
       </Suspense>
@@ -113,7 +112,6 @@ const PublicVerify = () => {
                   </div>
                 </div>
 
-                {/* Mã văn bằng - có thể sao chép để chia sẻ */}
                 <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border group">
                   <div className="overflow-hidden">
                     <p className="text-[10px] text-muted-foreground mb-0.5">Mã chứng chỉ (dùng để tra cứu)</p>

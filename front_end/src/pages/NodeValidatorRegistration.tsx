@@ -61,14 +61,12 @@ export default function NodeValidatorRegistration() {
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        // 10MB limit
         setError("File không được vượt quá 10MB");
         return;
       }
       setAgreementFile(file);
       setError(null);
 
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPdfPreview(e.target?.result as string);
@@ -141,7 +139,6 @@ export default function NodeValidatorRegistration() {
         animate="show"
         className="max-w-4xl mx-auto space-y-6"
       >
-        {/* Header */}
         <motion.div variants={item} className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -154,7 +151,6 @@ export default function NodeValidatorRegistration() {
           </p>
         </motion.div>
 
-        {/* Steps Indicator */}
         <motion.div variants={item} className="flex justify-center gap-8 mb-8">
           {["agreement", "form", "review"].map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -178,7 +174,6 @@ export default function NodeValidatorRegistration() {
           ))}
         </motion.div>
 
-        {/* Error Alert */}
         {error && (
           <motion.div variants={item}>
             <Alert className="bg-red-900/20 border-red-500/30">
@@ -188,7 +183,6 @@ export default function NodeValidatorRegistration() {
           </motion.div>
         )}
 
-        {/* Success Alert */}
         {success && (
           <motion.div variants={item}>
             <Alert className="bg-green-900/20 border-green-500/30">
@@ -200,7 +194,6 @@ export default function NodeValidatorRegistration() {
           </motion.div>
         )}
 
-        {/* Step 1: Agreement */}
         {step === "agreement" && (
           <motion.div variants={item} className="space-y-6">
             <Card className="glass-card border-primary/20">
@@ -311,10 +304,8 @@ export default function NodeValidatorRegistration() {
           </motion.div>
         )}
 
-        {/* Step 2: Form & Upload */}
         {step === "form" && (
           <motion.div variants={item} className="space-y-6">
-            {/* Form Section */}
             <Card className="glass-card border-primary/20">
               <CardHeader>
                 <CardTitle>Thông Tin Tổ Chức</CardTitle>
@@ -409,7 +400,6 @@ export default function NodeValidatorRegistration() {
               </CardContent>
             </Card>
 
-            {/* File Upload Section */}
             <Card className="glass-card border-primary/20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -467,7 +457,6 @@ export default function NodeValidatorRegistration() {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
             <div className="flex gap-4">
               <Button
                 variant="outline"
@@ -497,7 +486,6 @@ export default function NodeValidatorRegistration() {
           </motion.div>
         )}
 
-        {/* Step 3: Review */}
         {step === "review" && success && (
           <motion.div variants={item} className="space-y-6">
             <Card className="glass-card border-green-500/30 bg-gradient-to-br from-green-900/10 to-transparent">

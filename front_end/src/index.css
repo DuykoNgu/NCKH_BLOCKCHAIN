@@ -4,11 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design System: Jet Black — Pure black with crisp white text */
 
 @layer base {
   :root {
-    /* Light mode — clean white */
     --background: 0 0% 100%;
     --foreground: 0 0% 8%;
 
@@ -53,7 +51,6 @@
   }
 
   .dark {
-    /* Dark mode — jet black */
     --background: 0 0% 0%;
     --foreground: 0 0% 95%;
 
@@ -166,7 +163,6 @@
     background: linear-gradient(180deg, hsl(0 0% 30%), hsl(0 0% 12%));
   }
 
-  /* === Animations === */
 
   @keyframes spin-slow {
     from { transform: rotate(0deg); }
@@ -204,7 +200,6 @@
     animation: twinkle 2.5s ease-in-out infinite;
   }
 
-  /* === Typography === */
   .font-display {
     font-family: 'Outfit', sans-serif;
   }
@@ -217,7 +212,6 @@
     font-family: 'Outfit', sans-serif;
   }
 
-  /* === Scrollbar === */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -226,7 +220,6 @@
     scrollbar-width: none;
   }
 
-  /* Custom scrollbar — jet black */
   ::-webkit-scrollbar {
     width: 5px;
   }

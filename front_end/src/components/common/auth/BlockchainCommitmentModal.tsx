@@ -42,7 +42,6 @@ const BlockchainCommitmentModal = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* PDF Preview Modal */}
       {showPdfPreview && (
         <motion.div
           className="fixed inset-0 z-[60] flex flex-col bg-black"
@@ -94,7 +93,6 @@ const BlockchainCommitmentModal = ({
         transition={{ duration: 0.3 }}
       >
         <div className="flex flex-col gap-6">
-          {/* Header */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
               <AlertCircle className="w-6 h-6 text-primary" />
@@ -107,7 +105,6 @@ const BlockchainCommitmentModal = ({
             </p>
           </div>
 
-          {/* PDF Document Preview */}
           <div
             className="p-4 rounded-xl bg-secondary/50 border border-border/50 cursor-pointer hover:border-primary/50 hover:bg-secondary/70 transition-all flex items-center gap-3"
             onClick={handleOpenPdfPreview}
@@ -120,7 +117,6 @@ const BlockchainCommitmentModal = ({
             <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
           </div>
 
-          {/* Info Box */}
           <div className="space-y-3 p-4 rounded-xl bg-amber-500/5 border border-amber-500/20">
             <div className="flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
@@ -142,7 +138,6 @@ const BlockchainCommitmentModal = ({
             </div>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col gap-3 pt-2">
             <Button
               onClick={handleDownloadPDF}

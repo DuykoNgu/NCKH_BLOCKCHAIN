@@ -14,7 +14,6 @@ import { truncateHash, truncateAddress, formatTimeAgo, getNftStatus } from "@/ut
 import { STORAGE_KEYS } from "@/constants/storage";
 import { adminService } from "@/services/adminService";
 
-// --- Base Stats Hook ---
 
 export const useAdminStats = () => {
   const blockCountQuery = useQuery({
@@ -45,7 +44,6 @@ export const useAdminStats = () => {
   };
 };
 
-// --- Dashboard Hook ---
 
 export const useAdminDashboard = () => {
   const stats = useAdminStats();
@@ -104,7 +102,6 @@ export const useAdminDashboard = () => {
   };
 };
 
-// --- Contracts Hook ---
 
 export const useAdminContracts = () => {
   const { loading, networkStats, blockCount, nftCount } = useAdminStats();
@@ -144,7 +141,6 @@ export const useAdminContracts = () => {
   };
 };
 
-// --- Degrees Hook ---
 
 export const useAdminDegrees = () => {
   const [search, setSearch] = useState("");
@@ -200,7 +196,6 @@ export const useAdminDegrees = () => {
   };
 };
 
-// --- Network Hook ---
 
 export const useAdminNetwork = () => {
   const { blockCount, networkStats, loading: statsLoading } = useAdminStats();
@@ -245,7 +240,6 @@ export const useAdminNetwork = () => {
   };
 };
 
-// --- Students Hook ---
 
 export interface StudentDisplay {
   address: string;
@@ -271,7 +265,6 @@ export const useAdminStudents = () => {
 
   const students = useMemo(() => {
     return accounts.map((acc: AccountInfo) => {
-      // Count NFTs where this user is the recipient
       const userNfts = allNfts.filter((n: any) => 
         n.recipient_address === acc.address || 
         n.metadata?.student_id === acc.address
@@ -308,7 +301,6 @@ export const useAdminStudents = () => {
   };
 };
 
-// --- Transactions Hook ---
 
 export const useAdminTransactions = () => {
   const [search, setSearch] = useState("");
@@ -349,7 +341,6 @@ export const useAdminTransactions = () => {
   };
 };
 
-// --- Validators Hook (NEW & REFACTORED) ---
 
 export const useAdminValidators = () => {
   const queryClient = useQueryClient();

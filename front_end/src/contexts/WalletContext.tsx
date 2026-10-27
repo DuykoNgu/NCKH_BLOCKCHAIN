@@ -29,7 +29,6 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (decryptedKey) {
         setPrivateKey(decryptedKey);
 
-        // Sync with AuthContext based on localStorage which loginWalletFlow updated
         login({
           user: {
             address: localStorage.getItem("address") || "",
@@ -41,7 +40,6 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           token: localStorage.getItem("access_token") || ""
         });
 
-        // Refresh local state
         setAddress(localStorage.getItem("address"));
         setPublicKey(localStorage.getItem("public_key"));
       }
@@ -61,7 +59,6 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     setAddress(null);
     setPublicKey(null);
 
-    // Clear all wallet and session data
     const items = ["isLoggedIn", "role", "address", "public_key", "full_name", "is_active", "avatar_url", "vault", "accounts"];
     items.forEach(item => localStorage.removeItem(item));
     

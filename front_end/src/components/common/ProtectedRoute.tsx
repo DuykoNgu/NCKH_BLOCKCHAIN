@@ -15,9 +15,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isLoggedIn, role, isLoading } = useAuth();
 
-  // Đợi cho đến khi AuthContext nạp xong dữ liệu từ localStorage
   if (isLoading) {
-    return null; // Hoặc một cái Spinner/Skeleton nếu muốn
+    return null;
   }
 
   if (!isLoggedIn || !role) {

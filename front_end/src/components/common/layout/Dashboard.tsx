@@ -24,7 +24,6 @@ export const Dashboard = ({
       <div className="min-h-screen">
         <Header />
         <main className="container mx-auto px-4 py-8 animate-fade-in">
-          {/* Dashboard Stats displayed on top of everything */}
           <DashboardStats />
 
           <div className="grid lg:grid-cols-3 gap-6">

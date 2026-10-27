@@ -14,7 +14,6 @@ import { signDataWithBytes } from '@/utils/signatureUtils';
 import { decryptPrivateKey } from '@/utils/cryptoVault';
 import * as XLSX from 'xlsx';
 
-// ────────────────────────────── Types ──────────────────────────────
 
 interface NFTBatchCreateProps {
     account: string;
@@ -45,7 +44,6 @@ interface MintResult {
 
 type BatchPhase = 'idle' | 'validated' | 'uploading' | 'minting' | 'done';
 
-// ─────────────────────── Helper: sort object keys ───────────────────────
 
 const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
     const sorted = {} as T;
@@ -55,7 +53,6 @@ const sortObjectKeys = <T extends Record<string, unknown>>(obj: T): T => {
     return sorted;
 };
 
-// ─────────────────────── Helper: export CSV ─────────────────────────────
 
 function exportReportCSV(results: MintResult[]) {
     const header = 'MaSV,Trang Thai,Token ID,Tx Hash,Loi\n';
@@ -78,35 +75,27 @@ function exportReportCSV(results: MintResult[]) {
     URL.revokeObjectURL(url);
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// Component
-// ═══════════════════════════════════════════════════════════════════
 
 export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
     const { getPassword, hasPassword } = usePassword();
     const fullname = localStorage.getItem('full_name') || 'Người dùng';
 
-    // ── file refs ──
     const excelInputRef = useRef<HTMLInputElement>(null);
     const folderInputRef = useRef<HTMLInputElement>(null);
 
-    // ── data ──
     const [excelRows, setExcelRows] = useState<ExcelRow[]>([]);
     const [excelFile, setExcelFile] = useState<File | null>(null);
     const [pdfFiles, setPdfFiles] = useState<File[]>([]);
     const [folderName, setFolderName] = useState('');
 
-    // ── validation ──
     const [validation, setValidation] = useState<ValidationResult | null>(null);
 
-    // ── processing ──
     const [phase, setPhase] = useState<BatchPhase>('idle');
     const [uploadProgress, setUploadProgress] = useState(0);
     const [mintProgress, setMintProgress] = useState(0);
     const [results, setResults] = useState<MintResult[]>([]);
     const [globalError, setGlobalError] = useState<string | null>(null);
 
-    // ═════════════════════ 1. EXCEL HANDLING ═════════════════════
 
     const handleExcelSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -124,7 +113,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet);
 
-                // Validate columns
                 if (json.length === 0) {
                     setGlobalError('File Excel rỗng, không có dữ liệu.');
                     return;
@@ -137,7 +125,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     return;
                 }
 
-                // Validate rows
                 const rows: ExcelRow[] = [];
                 for (let i = 0; i < json.length; i++) {
                     const r = json[i];
@@ -165,7 +152,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         if (excelInputRef.current) excelInputRef.current.value = '';
     }, []);
 
-    // ═════════════════════ 2. PDF FOLDER HANDLING ═════════════════════
 
     const handleFolderSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
@@ -182,7 +168,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         }
 
         setPdfFiles(pdfs);
-        // Extract folder name from first file's path
         const pathParts = pdfs[0].webkitRelativePath.split('/');
         setFolderName(pathParts.length > 1 ? pathParts[0] : 'Folder');
     }, []);
@@ -195,7 +180,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         if (folderInputRef.current) folderInputRef.current.value = '';
     }, []);
 
-    // ═════════════════════ 3. CROSS VALIDATION ═════════════════════
 
     const runValidation = useCallback(() => {
         if (excelRows.length === 0 || pdfFiles.length === 0) return;
@@ -219,7 +203,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         if (result.valid) setPhase('validated');
     }, [excelRows, pdfFiles]);
 
-    // ═════════════════════ 4. BATCH PROCESS (UPLOAD → MINT) ═════════════════════
 
     const startBatchProcess = useCallback(async () => {
         if (!hasPassword()) {
@@ -233,7 +216,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             return;
         }
 
-        // Decrypt private key once
         let privateKeyBytes: Uint8Array;
         try {
             const vault = localStorage.getItem('vault');
@@ -244,12 +226,10 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             return;
         }
 
-        // ──── PHASE 2: Upload PDFs + Hash (via Backend) ────
         setPhase('uploading');
         setGlobalError(null);
-        setUploadProgress(10); // Bắt đầu
+        setUploadProgress(10);
 
-        // Lọc chỉ các file PDF khớp với Excel
         const matchedFiles = pdfFiles.filter((f) => {
             const id = f.name.replace(/\.pdf$/i, '');
             return excelRows.some((r) => r.MaSV === id);
@@ -257,7 +237,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
 
         setUploadProgress(20);
 
-        // Gọi BE batch-upload endpoint
         const uploadResponse = await NFTService.batchUploadPDFs(matchedFiles);
         setUploadProgress(90);
 
@@ -268,7 +247,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             return;
         }
 
-        // Kiểm tra thiếu upload
         const pdfMap = uploadResponse.data;
         const missingUploads = excelRows
             .filter((r) => !pdfMap[r.MaSV])
@@ -288,7 +266,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
 
         setUploadProgress(100);
 
-        // ──── PHASE 3: Signing & Minting ────
         setPhase('minting');
         const total = excelRows.length;
         const mintResults: MintResult[] = [];
@@ -299,7 +276,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             const issuedAt = Math.floor(Date.now() / 1000);
 
             try {
-                // Create signing metadata (same pattern as single mint)
                 const signingMetadata = {
                     degree_type: row.LoaiBangCap,
                     pdf_url: pdfData.url,
@@ -311,7 +287,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                 const signingData = JSON.stringify(sorted);
                 const signature = signDataWithBytes(signingData, privateKeyBytes);
 
-                // Call the existing single NFT create endpoint
                 const response = await NFTService.createNFT({
                     student_id: row.MaSV,
                     degree_type: row.LoaiBangCap,
@@ -349,11 +324,9 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             setMintProgress(Math.round(((i + 1) / total) * 100));
         }
 
-        // ──── PHASE 4: Done ────
         setPhase('done');
     }, [excelRows, pdfFiles, account, fullname, hasPassword, getPassword]);
 
-    // ═════════════════════ RESET ═════════════════════
 
     const handleReset = useCallback(() => {
         setExcelRows([]);
@@ -370,9 +343,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
         if (folderInputRef.current) folderInputRef.current.value = '';
     }, []);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // RENDER
-    // ═══════════════════════════════════════════════════════════════════
 
     const successCount = results.filter((r) => r.status === 'success').length;
     const errorCount = results.filter((r) => r.status === 'error').length;
@@ -392,7 +362,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
             </CardHeader>
 
             <CardContent className="space-y-6">
-                {/* ──── INSTITUTION INFO (Read-only) ──── */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Tổ chức / Trường</Label>
@@ -404,7 +373,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 </div>
 
-                {/* ──── EXCEL UPLOAD ──── */}
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                         <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
@@ -450,7 +418,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     )}
                 </div>
 
-                {/* ──── PDF FOLDER UPLOAD ──── */}
                 <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                         <FolderOpen className="w-4 h-4 text-blue-500" />
@@ -499,7 +466,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     )}
                 </div>
 
-                {/* ──── VALIDATION BUTTON ──── */}
                 {excelRows.length > 0 && pdfFiles.length > 0 && !validation && phase === 'idle' && (
                     <Button onClick={runValidation} variant="outline" className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10">
                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -507,7 +473,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </Button>
                 )}
 
-                {/* ──── VALIDATION RESULTS ──── */}
                 {validation && (
                     <div className={`p-4 rounded-lg border ${validation.valid ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-destructive/10 border-destructive/30'}`}>
                         <div className="flex items-start gap-3">
@@ -540,7 +505,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 )}
 
-                {/* ──── GLOBAL ERROR ──── */}
                 {globalError && (
                     <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/30 flex items-start gap-3">
                         <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
@@ -548,7 +512,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 )}
 
-                {/* ──── PROGRESS: UPLOADING ──── */}
                 {phase === 'uploading' && (
                     <div className="space-y-3 p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
                         <div className="flex items-center gap-2">
@@ -562,7 +525,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 )}
 
-                {/* ──── PROGRESS: MINTING ──── */}
                 {(phase === 'minting' || phase === 'done') && (
                     <div className="space-y-3 p-4 rounded-lg bg-violet-500/5 border border-violet-500/20">
                         <div className="flex items-center gap-2">
@@ -585,7 +547,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 )}
 
-                {/* ──── RESULTS TABLE ──── */}
                 {results.length > 0 && (
                     <div className="rounded-lg border border-border/50 overflow-hidden">
                         <div className="max-h-64 overflow-y-auto">
@@ -623,7 +584,6 @@ export const NFTBatchCreate = ({ account }: NFTBatchCreateProps) => {
                     </div>
                 )}
 
-                {/* ──── ACTION BUTTONS ──── */}
                 <div className="flex gap-3">
                     {phase === 'validated' && (
                         <Button onClick={startBatchProcess} className="flex-1 bg-black from-violet-500 to-fuchsia-500 hover:opacity-90 text-white">

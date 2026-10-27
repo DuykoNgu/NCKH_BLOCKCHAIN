@@ -53,7 +53,6 @@ export const DashboardStats = () => {
       animate="show"
       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
     >
-      {/* Identity Card */}
       <motion.div variants={item}>
         <Card className="glass-card overflow-hidden relative group h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -89,7 +88,6 @@ export const DashboardStats = () => {
         </Card>
       </motion.div>
 
-      {/* Status Card */}
       <motion.div variants={item}>
         <Card className="glass-card overflow-hidden relative group h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -114,7 +112,6 @@ export const DashboardStats = () => {
         </Card>
       </motion.div>
 
-      {/* Role Card */}
       <motion.div variants={item}>
         <Card className="glass-card overflow-hidden relative group h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -138,7 +135,6 @@ export const DashboardStats = () => {
         </Card>
       </motion.div>
 
-      {/* Certificate Analytics Card */}
       <motion.div variants={item}>
         <Card className="glass-card overflow-hidden relative group h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

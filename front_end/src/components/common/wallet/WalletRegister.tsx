@@ -17,17 +17,14 @@ export const WalletRegister = () => {
     setIsSubmitting(true);
     setError('');
 
-    // Basic validation
     if (!validatorName.trim()) {
       setError('Tên đơn vị là bắt buộc');
       setIsSubmitting(false);
       return;
     }
 
-    // Simulate registration process
     try {
-      // Replace with actual registration logic
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
       toast.success("Đăng ký thành công! Vui lòng chờ phê duyệt.");
       setIsExpanded(false);
     } catch {
@@ -74,7 +71,6 @@ export const WalletRegister = () => {
         </Button>
       </div>
 
-      {/* Requirements Info */}
       <div className="bg-secondary/50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
         <h4 className="font-medium text-foreground mb-2 flex items-center gap-2 text-sm sm:text-base">
           <Activity className="w-4 h-4 text-primary" />

@@ -28,9 +28,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onBack }) => {
     try {
       await updateProfile(address || '', name, avatar);
       toast.success("Đã cập nhật hồ sơ thành công!");
-      // Force refresh of Auth state by reloading or using a global state.
-      // For now, since useAuth reads from localStorage, it will update on next render
-      // but we might need a small delay or a window reload to be sure.
       setTimeout(() => {
         window.location.reload();
       }, 500);

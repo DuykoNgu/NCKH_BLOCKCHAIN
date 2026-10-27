@@ -49,7 +49,6 @@ export default function NetworkPage() {
         </Card>
       </motion.div>
 
-      {/* Network Stats */}
       <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {networkStatsDisplay.map((stat) => {
           const IconComponent = stat.icon;
@@ -70,7 +69,6 @@ export default function NetworkPage() {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Peers List */}
         <motion.div variants={item} className="lg:col-span-2">
           <Card className="glass-card h-full">
             <CardHeader className="pb-3">
@@ -116,7 +114,6 @@ export default function NetworkPage() {
           </Card>
         </motion.div>
 
-        {/* Sync status */}
         <motion.div variants={item} className="space-y-4">
           <Card className="glass-card">
             <CardHeader className="pb-3">

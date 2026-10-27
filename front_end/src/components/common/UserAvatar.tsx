@@ -8,11 +8,9 @@ interface UserAvatarProps {
 }
 
 export const UserAvatar: React.FC<UserAvatarProps> = ({ address, avatarUrl, size = 40, className = '' }) => {
-  // Generate a unique placeholder if no avatarUrl
   const identicon = useMemo(() => {
     if (!address) return null;
     
-    // Simple hash for colors
     let hash = 0;
     for (let i = 0; i < address.length; i++) {
       hash = address.charCodeAt(i) + ((hash << 5) - hash);
@@ -35,7 +33,6 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ address, avatarUrl, size
           </linearGradient>
         </defs>
         <rect width="100" height="100" fill={`url(#grad-${address})`} />
-        {/* Geometric patterns for unique look */}
         <circle cx="50" cy="50" r="30" fill="white" fillOpacity="0.2" />
         <rect x="25" y="25" width="50" height="50" transform={`rotate(${hue1 % 90} 50 50)`} fill="white" fillOpacity="0.1" />
       </svg>

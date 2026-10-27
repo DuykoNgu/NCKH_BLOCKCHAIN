@@ -21,7 +21,6 @@ api.interceptors.response.use(
     (error: AxiosError) => {
         if (error.response?.status === 401) {
             localStorage.removeItem("access_token");
-            // Tránh redirect vô tận nếu đã ở trang login
             if (!window.location.pathname.includes('/login')) {
                 window.location.href = "/login";
             }

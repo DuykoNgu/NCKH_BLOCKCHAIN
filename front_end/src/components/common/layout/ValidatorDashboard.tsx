@@ -173,7 +173,7 @@ export const ValidatorDashboard = ({ address, onDisconnect }: ValidatorDashboard
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -182,7 +182,6 @@ export const ValidatorDashboard = ({ address, onDisconnect }: ValidatorDashboard
       <Header />
       <main className="container mx-auto px-4 py-8">
 
-        {/* Top stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             title="Trạng thái Node"
@@ -210,18 +209,14 @@ export const ValidatorDashboard = ({ address, onDisconnect }: ValidatorDashboard
           />
         </div>
 
-        {/* Main content */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left column */}
           <div className="lg:col-span-1 space-y-6">
             <WalletIn4 address={address} onDisconnect={onDisconnect} />
             <NodeStatusCard stats={stats} slot={slot} loading={loading} />
             <NetworkStatus />
           </div>
 
-          {/* Right column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Quick actions */}
             <Card className="glass-card border-border/50">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <div>

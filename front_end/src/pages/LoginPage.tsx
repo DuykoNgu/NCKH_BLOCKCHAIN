@@ -48,12 +48,10 @@ const LoginPage = () => {
   } = useLoginPage();
 
   const renderContent = () => {
-    // Render home page
     if (step === 'home' && !showSeed) {
       return <LoginHome />;
     }
 
-    // Render seed phrase display (after creation)
     if (showSeed) {
       return (
         <SeedDisplay
@@ -64,7 +62,6 @@ const LoginPage = () => {
       );
     }
 
-    // Render import existing wallet
     if (step === 'import') {
       const handleClearWallet = () => {
         if (window.confirm("CẢNH BÁO: Bạn chuẩn bị xóa dữ liệu đăng nhập khỏi thiết bị này. Lần sau muốn đăng nhập lại, bạn sẽ BẮT BUỘC phải dùng 12 từ khóa bí mật để khôi phục. Bạn có chắc chắn muốn xóa?")) {
@@ -92,7 +89,6 @@ const LoginPage = () => {
       );
     }
 
-    // Render import mnemonic
     if (step === 'import-mnemonic') {
       return (
         <ImportMnemonic
@@ -104,11 +100,9 @@ const LoginPage = () => {
       );
     }
 
-    // Render create new wallet (set password)
     if (step === 'set-password' || step === 'school-register') {
       const isSchool = step === 'school-register';
       
-      // If it's school registration and commitment not confirmed, don't render form yet
       if (isSchool && !commitmentConfirmed) {
         return null;
       }

@@ -75,7 +75,6 @@ export default function ChainHistoryModal({ isOpen, onClose }: ChainHistoryModal
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-[1200px] w-[95vw] max-h-[90vh] overflow-hidden bg-white border-none shadow-[0_32px_80px_rgba(0,0,0,0.15)] p-0 flex flex-col rounded-[40px]">
-        {/* Header - Premium Clean Design */}
         <DialogHeader className="p-10 pb-8 border-b border-slate-50 bg-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-10">
             <div className="flex items-center gap-6">
@@ -111,7 +110,6 @@ export default function ChainHistoryModal({ isOpen, onClose }: ChainHistoryModal
           </div>
         </DialogHeader>
 
-        {/* Content - Modern Premium Table */}
         <div className="flex-1 overflow-y-auto p-10 pt-0 no-scrollbar bg-white">
           <Tabs value={activeTab} className="w-full h-full">
             <TabsContent value="blocks" className="m-0 focus-visible:ring-0">
@@ -253,7 +251,6 @@ export default function ChainHistoryModal({ isOpen, onClose }: ChainHistoryModal
           </Tabs>
         </div>
 
-        {/* Footer - Premium Dark */}
         <div className="p-10 border-t border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-12">
             <div className="flex flex-col">

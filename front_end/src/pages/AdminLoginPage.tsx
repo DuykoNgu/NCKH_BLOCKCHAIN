@@ -27,7 +27,6 @@ const AdminLoginPage = () => {
     setMode(hasAdminVault ? 'unlock' : 'new-device');
   }, []);
 
-  // Đăng nhập trên thiết bị đã có vault cục bộ
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) { setError('Vui lòng nhập mật khẩu'); return; }
@@ -36,7 +35,6 @@ const AdminLoginPage = () => {
     try {
       await adminUnlockVault(password);
       
-      // Cập nhật AuthContext để hệ thống nhận diện role Admin/MOET mới
       const address = localStorage.getItem('admin_address');
       if (address) {
         try {
@@ -60,7 +58,6 @@ const AdminLoginPage = () => {
     }
   };
 
-  // Đăng nhập thiết bị mới: yêu cầu Private Key và Mật khẩu cục bộ mới
   const handleNewDeviceLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminAddressInput.trim()) { setError('Vui lòng nhập Mã Private Key'); return; }
@@ -71,7 +68,6 @@ const AdminLoginPage = () => {
     try {
       await adminImportAndSaveVault(adminAddressInput.trim(), password);
       
-      // Cập nhật AuthContext sau khi import ví admin mới
       const address = localStorage.getItem('admin_address');
       if (address) {
         try {
@@ -114,7 +110,6 @@ const AdminLoginPage = () => {
 
       <div className="relative z-10 w-full max-w-md mx-4">
         <div className="glass-card rounded-2xl p-10 shadow-[0_8px_40px_-12px_hsla(0,0%,0%,0.08)]">
-          {/* Header */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg mb-6">
               {mode === 'unlock'
@@ -146,7 +141,6 @@ const AdminLoginPage = () => {
             </div>
           )}
 
-          {/* === MODE: UNLOCK === */}
           {mode === 'unlock' && (
             <form onSubmit={handleUnlock} className="space-y-5">
               <div className="space-y-2">
@@ -183,7 +177,6 @@ const AdminLoginPage = () => {
             </form>
           )}
 
-          {/* === MODE: NEW DEVICE === */}
           {mode === 'new-device' && (
             <form onSubmit={handleNewDeviceLogin} className="space-y-4">
               <div className="space-y-2">

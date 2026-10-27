@@ -116,7 +116,6 @@ export default function AdminValidators() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {/* Chi tiết */}
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="outline" size="sm" className="gap-2">
@@ -245,7 +244,6 @@ export default function AdminValidators() {
         </Card>
       </motion.div>
 
-      {/* PDF Viewer Dialog */}
       <Dialog open={pdfUrl !== null} onOpenChange={(open) => !open && setPdfUrl(null)}>
         <DialogContent className="sm:max-w-4xl glass-card max-h-[90vh]">
           <DialogHeader>

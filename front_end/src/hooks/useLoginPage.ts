@@ -20,13 +20,11 @@ export const useLoginPage = () => {
   const [showSeed, setShowSeed] = useState(false);
   const [seed, setSeed] = useState<string[]>([]);
 
-  // Form states (kept for legacy support if needed, but updated for form compatibility)
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Individual states for direct props if not using react-hook-form
   const [schoolName, setSchoolName] = useState('');
   const [taxId, setTaxId] = useState('');
   const [representative, setRepresentative] = useState('');
@@ -50,7 +48,6 @@ export const useLoginPage = () => {
       setStep('home');
     }
 
-    // Reset states
     setShowSeed(false);
     setSeed([]);
     setPassword('');
@@ -68,7 +65,6 @@ export const useLoginPage = () => {
   });
 
   const handleCreateWallet = async (values?: any) => {
-    // If values are provided from react-hook-form
     const targetPassword = values?.password || password;
     const targetFullName = values?.fullName || fullName;
     const targetEmail = values?.email || email;
@@ -90,7 +86,6 @@ export const useLoginPage = () => {
     setError('');
     try {
       const result = await createWallet(targetPassword, targetEmail.trim());
-      // Save info that might not be in result
       localStorage.setItem('full_name', targetFullName.trim());
       localStorage.setItem('role', 'client');
       localStorage.setItem('isLoggedIn', 'true');
@@ -138,7 +133,6 @@ export const useLoginPage = () => {
     setIsLoading(true);
     setError('');
     try {
-      // Upload agreement file if selected
       let agreement_file_url = '';
       if (selectedFile) {
         try {
@@ -164,8 +158,6 @@ export const useLoginPage = () => {
 
       localStorage.setItem('full_name', data.schoolName);
 
-      // Gọi context.login() để AuthContext cập nhật isPendingApproval = true
-      // registerSchool() đã gọi saveUserData() nên public_key đã có trong localStorage
       contextLogin({
         user: {
           address: result.address || localStorage.getItem('address') || '',

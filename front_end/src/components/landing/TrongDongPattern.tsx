@@ -1,4 +1,3 @@
-// Trống Đồng (Đông Sơn drum) SVG Pattern Component
 
 export function TrongDongWatermark({className = '', opacity = 0.05}: { className?: string; opacity?: number }) {
     const getPos = (r: number, angle: number) => {
