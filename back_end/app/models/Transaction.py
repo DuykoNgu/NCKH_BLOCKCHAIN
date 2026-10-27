@@ -3,19 +3,6 @@ from typing import Dict, Any, Optional
 
 
 class Transaction:
-    """
-    Class TRANSACTION cho blockchain
-    
-    Thuộc tính:
-        - tx_id: str (Hash của giao dịch)
-        - sender_pubkey: str
-        - sender_address: str
-        - recipient_address: str
-        - payload: Dict[str, Any] (Dữ liệu NFT hoặc dữ liệu khác)
-        - signature: str (Chữ ký của người gửi giao dịch)
-        - timestamp: float
-        - tx_hash: str
-    """
 
     def __init__(
         self,
@@ -46,7 +33,6 @@ class Transaction:
 
 
     def to_dict(self) -> Dict[str, Any]:
-        """Chuyển transaction sang dictionary."""
         return {
             "tx_id": self.tx_id,
             "tx_hash": self.tx_hash,
@@ -63,7 +49,6 @@ class Transaction:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> "Transaction":
-        """Tạo đối tượng TRANSACTION từ dictionary."""
         return Transaction(
             tx_id=data.get("tx_id", ""),
             tx_hash=data.get("tx_hash", ""),

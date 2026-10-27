@@ -1,7 +1,3 @@
-"""
-Validator Worker - Automatic Block Mining Daemon
-Monitors consensus timer and creates blocks when it's the validator's turn
-"""
 import time
 import threading
 from typing import Optional
@@ -16,10 +12,6 @@ logger = get_logger(__name__)
 
 
 class ValidatorWorker:
-    """
-    Background worker that automatically mines blocks when it's the validator's turn
-    Implements Round Robin PoA consensus
-    """
     
     def __init__(
         self, 
@@ -28,15 +20,6 @@ class ValidatorWorker:
         public_key: str,
         slot_duration: int = 5
     ):
-        """
-        Initialize Validator Worker
-        
-        Args:
-            my_validator_index: Index of this validator (0-based)
-            total_validators: Total number of validators in the network
-            public_key: Public key of this validator (hex string)
-            slot_duration: Duration of each slot in seconds (default: 5)
-        """
         self.my_index = my_validator_index
         self.total_validators = total_validators
         self.__private_key: Optional[str] = None
@@ -56,15 +39,6 @@ class ValidatorWorker:
         self.last_mine_attempt_time = 0
     
     def activate(self, raw_private_key: str) -> bool:
-        """
-        Activate validator with decrypted private key
-        
-        Args:
-            raw_private_key: Decrypted private key (hex string)
-            
-        Returns:
-            True if activation successful, False otherwise
-        """
         logger.info(f"→ [activate()] Activating validator #{self.my_index}/{self.total_validators}")
         print(f"→ [activate()] Activating validator #{self.my_index}/{self.total_validators}")
         
@@ -95,9 +69,6 @@ class ValidatorWorker:
             return False
     
     def deactivate(self) -> None:
-        """
-        Deactivate validator and clear private key from memory
-        """
         if not self.is_active:
             print("⚠ Validator is not active")
             return
@@ -112,7 +83,6 @@ class ValidatorWorker:
         print("✓ Validator deactivated and private key cleared from memory")
     
     def start(self) -> None:
-        """Start the validator worker in a background thread"""
         logger.info(f"→ [start()] Attempting to start validator worker (is_running={self.is_running})")
         print(f"→ [start()] Attempting to start validator worker (is_running={self.is_running})")
         
@@ -141,7 +111,6 @@ class ValidatorWorker:
         print(f"✓ Thread is now running in background (name={self.worker_thread.name})")
     
     def stop(self) -> None:
-        """Stop the validator worker"""
         if not self.is_running:
             print("⚠ Validator worker is not running")
             return
@@ -154,18 +123,6 @@ class ValidatorWorker:
         print(f"✓ Validator Worker stopped (mined {self.blocks_mined} blocks)")
     
     def _should_mine_block(self) -> bool:
-        """
-        Determine if we should attempt to mine a block.
-        
-        Mining happens when:
-        1. Mempool has at least 1 transaction (min_transactions_to_mine)
-        
-        The max_transactions_per_block is a SIZE LIMIT, not a mining condition.
-        We mine immediately when we have transactions, creating multiple blocks if needed.
-        
-        Returns:
-            bool: True if we should mine, False otherwise
-        """
         mempool_size = len(self.blockchain.mempool)
         
         if mempool_size > 0:
@@ -176,12 +133,6 @@ class ValidatorWorker:
         return False
     
     def _should_mine_block_with_thresholds(self) -> bool:
-        """
-        Mine when one of these thresholds is met:
-        - mempool reaches max_transactions_per_block
-        - mempool reaches min_transactions_per_block
-        - oldest pending transaction waits at least max_wait_seconds
-        """
         mempool_size = len(self.blockchain.mempool)
         if mempool_size == 0:
             logger.debug("â†’ _should_mine_block_with_thresholds(): SKIP - mempool is empty")
@@ -230,7 +181,6 @@ class ValidatorWorker:
         return False
 
     def _run(self) -> None:
-        """Main worker loop - runs in background thread"""
         print(f"🚀 Validator Worker running...")
         logger.info(f"🚀 Validator Worker running... (validator #{self.my_index}/{self.total_validators})")
         
@@ -267,7 +217,6 @@ class ValidatorWorker:
                 time.sleep(5)
     
     def _mine_and_broadcast_block(self) -> None:
-        """Mine a new block and broadcast it to the network"""
         try:
             if not self.is_active or self.__private_key is None:
                 print("⚠ Validator not active, skipping block creation")
@@ -417,7 +366,6 @@ class ValidatorWorker:
             traceback.print_exc()
     
     def get_stats(self) -> dict:
-        """Get validator worker statistics"""
         return {
             "is_active": self.is_active,
             "is_running": self.is_running,
@@ -434,7 +382,6 @@ _validator_worker: Optional[ValidatorWorker] = None
 
 
 def get_validator_worker() -> Optional[ValidatorWorker]:
-    """Get the global validator worker instance"""
     return _validator_worker
 
 
@@ -443,17 +390,6 @@ def start_validator_worker(
     total_validators: int,
     public_key: str
 ) -> ValidatorWorker:
-    """
-    Initialize the global validator worker (without activation)
-    
-    Args:
-        my_validator_index: Index of this validator (0-based)
-        total_validators: Total number of validators
-        public_key: Public key of this validator
-        
-    Returns:
-        ValidatorWorker: The initialized worker instance (not yet activated)
-    """
     global _validator_worker
     
     if _validator_worker is not None:
@@ -473,7 +409,6 @@ def start_validator_worker(
 
 
 def stop_validator_worker() -> None:
-    """Stop the global validator worker"""
     global _validator_worker
     
     if _validator_worker is not None:

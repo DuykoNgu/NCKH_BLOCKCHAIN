@@ -8,10 +8,6 @@ from models.Transaction import Transaction
 class TransactionService:
     @staticmethod
     def get_signing_data(transaction: Transaction) -> bytes:
-        """
-        Dữ liệu thô cần ký (không bao gồm signature, tx_id, tx_hash).
-        Chỉ bao gồm: sender_pubkey, sender_address, recipient_address, payload, timestamp.
-        """
         data = {
             "sender_address": transaction.sender_address,
             "recipient_address": transaction.recipient_address,
@@ -22,24 +18,11 @@ class TransactionService:
 
     @staticmethod
     def calculate_hash(transaction: Transaction) -> str:
-        """
-        Tính hash của giao dịch (SHA256).
-        Hash được tính từ signing_data (không bao gồm signature).
-        """
         signing_data = TransactionService.get_signing_data(transaction)
         return hashlib.sha256(signing_data).hexdigest()
 
     @staticmethod
     def sign(transaction: Transaction, private_key: str) -> str:
-        """
-        Ký transaction bằng private key (ECDSA SECP256k1).
-
-        Args:
-            private_key: Private key dạng hex string (SECP256k1)
-
-        Returns:
-            str: Chữ ký dạng hex string (DER-encoded)
-        """
         sk = SigningKey.from_string(bytes.fromhex(private_key), curve=SECP256k1)
         signing_data = TransactionService.get_signing_data(transaction)
         message_hash = hashlib.sha256(signing_data).digest()
@@ -56,16 +39,6 @@ class TransactionService:
 
     @staticmethod
     def is_valid(transaction: Transaction) -> bool:
-        """
-        Kiểm tra tính hợp lệ của transaction.
-        
-        Special cases:
-        - account_register / account_update: verify payload["signature"] against
-          the canonical account signing data (NOT the tx-level signing data).
-          This matches the signature produced by the frontend / AccountController.
-        - System transactions (sender_address=None or "system" with empty signature)
-        - Regular transactions: verify tx.signature against tx signing data
-        """
         tx_hash_short = transaction.tx_hash[:8] if transaction.tx_hash else "???"
         print(f"[is_valid] Starting validation for tx {tx_hash_short}")
         print(f"  - sender_address: {transaction.sender_address}")

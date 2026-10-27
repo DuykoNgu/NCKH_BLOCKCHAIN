@@ -1,7 +1,3 @@
-"""
-Blockchain Singleton Instance Manager
-Provides global access to the blockchain instance for P2P network integration
-"""
 from typing import Optional, List
 from app.models.BlockChain import BlockChain
 
@@ -10,12 +6,6 @@ _blockchain_instance: Optional[BlockChain] = None
 
 
 def get_blockchain_instance() -> BlockChain:
-    """
-    Get the global blockchain instance (singleton pattern)
-    
-    Returns:
-        BlockChain: The global blockchain instance
-    """
     global _blockchain_instance
     
     if _blockchain_instance is None:
@@ -26,23 +16,6 @@ def get_blockchain_instance() -> BlockChain:
 
 
 def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int = 5000, seed_nodes: list = None) -> BlockChain:
-    """
-    Initialize the global blockchain instance with genesis block
-    
-    Logic:
-    - If genesis exists in DB: Load it (shared genesis)
-    - If genesis doesn't exist:
-      - If this node IS a seed node: Create genesis (only seed node creates)
-      - If this node is NOT a seed node: Fetch genesis from seed node
-    
-    Args:
-        super_validator_pubkey: Public key of the super validator
-        listen_port: Port this node is listening on (to identify if it's a seed node)
-        seed_nodes: List of seed nodes from config
-        
-    Returns:
-        BlockChain: The initialized blockchain instance
-    """
     from app.services.BlockChainService import BlockChainService
     from app.repositories.BlockRepository import BlockRepository
     from app.repositories.TransactionRepository import TransactionRepository
@@ -174,17 +147,6 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
 
 
 def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey: str, seed_nodes: list) -> bool:
-    """
-    Fetch genesis block and transactions from a seed node
-    
-    Args:
-        blockchain: The blockchain instance to populate
-        super_validator_pubkey: Public key of validator
-        seed_nodes: List of seed nodes to try
-        
-    Returns:
-        bool: True if genesis was successfully fetched, False otherwise
-    """
     from app.services.BlockChainService import BlockChainService
     from app.repositories.BlockRepository import BlockRepository
     from app.repositories.TransactionRepository import TransactionRepository
@@ -273,7 +235,6 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
 
 
 def _create_genesis_from_dict(data: dict, validator_pubkey: str):
-    """Reconstruct Genesis block from dict received from seed node"""
     from app.models.Block import Block
     from app.models.BlockHeader import BlockHeader
     from app.models.Transaction import Transaction
@@ -331,18 +292,6 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
 
 
 def load_chain_from_db(blockchain: BlockChain) -> int:
-    """
-    Load all blocks from DB into blockchain.chain (RAM).
-    Called on node restart so that get_local_height() returns the correct
-    persisted height instead of 0.
-    
-    CRITICAL: Uses single connection to fetch all block IDs, then closes it
-    before loading individual blocks to avoid holding multiple connections open
-    (which blocks writes in SQLite)
-    
-    Returns:
-        Number of blocks loaded
-    """
     from app.repositories.BlockRepository import BlockRepository
     
     try:
@@ -382,14 +331,6 @@ def load_chain_from_db(blockchain: BlockChain) -> int:
 
 
 def get_local_db_height() -> int:
-    """
-    Get the current blockchain height by querying the database directly.
-    This is the reliable source of truth — works even after node restart
-    when blockchain.chain may not be fully loaded.
-    
-    Returns:
-        Height (max index_num) or -1 if no blocks exist
-    """
     try:
         from app.database.connection import get_connection
         conn = get_connection()
@@ -407,7 +348,6 @@ def get_local_db_height() -> int:
 
 
 def reset_blockchain() -> None:
-    """Reset the blockchain instance (for testing purposes)"""
     global _blockchain_instance
     _blockchain_instance = None
     print("✓ Blockchain instance reset")

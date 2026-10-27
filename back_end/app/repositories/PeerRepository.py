@@ -1,4 +1,3 @@
-"""PeerRepository - Data access layer for peer operations"""
 import time
 import json
 from typing import Optional, List, Dict
@@ -9,18 +8,11 @@ logger = get_logger(__name__)
 
 
 class PeerRepository:
-    """Repository for peer database operations"""
 
     @staticmethod
     def add_or_update_peer(peer_id: str, ip_address: str, port: int, 
                           public_key: str, node_type: str = "validator", 
                           status: str = "PENDING") -> bool:
-        """Add or update a peer in database
-        
-        ⚠️  NOTE: Peer updates are NON-CRITICAL and non-blocking
-        If database is locked, skip (will retry later)
-        This prevents peer updates from blocking block saves
-        """
         try:
             if not acquire_write_lock(timeout=0.5):
                 logger.warning(f"⚠️  Could not acquire lock for peer {peer_id[:8]}... (skipping, not critical)")
@@ -56,7 +48,6 @@ class PeerRepository:
 
     @staticmethod
     def get_peer_by_id(peer_id: str) -> Optional[Dict]:
-        """Get peer by ID"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -86,7 +77,6 @@ class PeerRepository:
 
     @staticmethod
     def get_peers_by_status(status: str) -> List[Dict]:
-        """Get all peers with specific status"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -118,7 +108,6 @@ class PeerRepository:
 
     @staticmethod
     def get_all_peers() -> List[Dict]:
-        """Get all peers"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -149,7 +138,6 @@ class PeerRepository:
 
     @staticmethod
     def update_peer_status(peer_id: str, status: str) -> bool:
-        """Update peer status (PENDING -> ACTIVE -> INACTIVE)"""
         max_retries = 3
         retry_delay = 0.5
         
@@ -187,10 +175,6 @@ class PeerRepository:
 
     @staticmethod
     def update_peer_public_key_and_activate(peer_id: str, ip_address: str, port: int, public_key: str) -> bool:
-        """
-        Update peer's public_key and mark as ACTIVE (called after validator activation)
-        If peer doesn't exist, create it first (upsert pattern)
-        """
         max_retries = 3
         retry_delay = 0.5
         
@@ -273,7 +257,6 @@ class PeerRepository:
 
     @staticmethod
     def get_peer_by_public_key(public_key: str) -> Optional[Dict]:
-        """Get peer by public key"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -303,7 +286,6 @@ class PeerRepository:
 
     @staticmethod
     def is_peer_authorized(public_key: str) -> bool:
-        """Check if peer is authorized (exists in account table as validator)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -320,7 +302,6 @@ class PeerRepository:
 
     @staticmethod
     def delete_peer(peer_id: str) -> bool:
-        """Delete a peer"""
         try:
             conn = get_connection()
             cursor = conn.cursor()

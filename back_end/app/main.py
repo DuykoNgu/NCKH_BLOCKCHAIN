@@ -1,6 +1,3 @@
-"""
-Main entry point for the Flask application
-"""
 from flask import Flask, request
 from flask_cors import CORS
 from app.controllers.v1.BlockController import block_bp
@@ -16,7 +13,6 @@ from app.database.database import init_db
 
 
 def create_app():
-    """Create and configure the Flask application"""
     app = Flask(__name__)
     CORS(app, supports_credentials=True)
     

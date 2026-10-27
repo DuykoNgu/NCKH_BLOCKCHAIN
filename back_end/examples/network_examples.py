@@ -1,7 +1,3 @@
-"""
-Example: How to use the P2P Network in EduChain
-Demonstrates network initialization, peer discovery, and consensus
-"""
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -11,7 +7,6 @@ from app.services.NetworkService import NetworkService
 
 
 def example_1_initialize_network():
-    """Example 1: Initialize network and connect to peers"""
     print("\n" + "="*60)
     print("EXAMPLE 1: Network Initialization")
     print("="*60)
@@ -34,7 +29,6 @@ def example_1_initialize_network():
 
 
 def example_2_peer_discovery():
-    """Example 2: Discover and manage peers"""
     print("\n" + "="*60)
     print("EXAMPLE 2: Peer Discovery")
     print("="*60)
@@ -62,7 +56,6 @@ def example_2_peer_discovery():
 
 
 def example_3_gossip_transaction():
-    """Example 3: Broadcast transaction via gossip"""
     print("\n" + "="*60)
     print("EXAMPLE 3: Transaction Gossip")
     print("="*60)
@@ -89,7 +82,6 @@ def example_3_gossip_transaction():
 
 
 def example_4_gossip_block():
-    """Example 4: Broadcast block via gossip with INV"""
     print("\n" + "="*60)
     print("EXAMPLE 4: Block Gossip with INV")
     print("="*60)
@@ -114,7 +106,6 @@ def example_4_gossip_block():
 
 
 def example_5_consensus_timing():
-    """Example 5: Slot-based consensus timing"""
     print("\n" + "="*60)
     print("EXAMPLE 5: Consensus Timing (PoA)")
     print("="*60)
@@ -143,7 +134,6 @@ def example_5_consensus_timing():
 
 
 def example_6_validator_rotation():
-    """Example 6: Demonstrate validator rotation"""
     print("\n" + "="*60)
     print("EXAMPLE 6: Validator Rotation Demo")
     print("="*60)
@@ -178,7 +168,6 @@ def example_6_validator_rotation():
 
 
 def example_7_health_monitoring():
-    """Example 7: Network health monitoring"""
     print("\n" + "="*60)
     print("EXAMPLE 7: Network Health Monitoring")
     print("="*60)
@@ -201,7 +190,6 @@ def example_7_health_monitoring():
 
 
 def main():
-    """Run all examples"""
     print("\n" + "="*60)
     print("🚀 EduChain P2P Network Examples")
     print("="*60)

@@ -7,12 +7,10 @@ from app.utils.CryptoUtils import CryptoUtils
 from app.models.Account import Account
 
 class NFTService:
-    """Service để quản lý business logic của NFT"""
 
     @staticmethod
     def create_nft(issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, 
                    recipient: Account, issuer_signature: Optional[str] = None) -> NFT:
-        """Tạo NFT mới"""
         nft = NFT(
             issuer_address=issuer_address,
             issuer_pubkey=issuer_pubkey,
@@ -24,7 +22,6 @@ class NFTService:
 
     @staticmethod
     def sign_nft(nft: NFT, issuer_private_key: str) -> str:
-        """Ký NFT bằng private key của issuer"""
         nft_data = {
             "token_id": nft.token_id,
             "metadata": nft.metadata.to_dict(),
@@ -36,7 +33,6 @@ class NFTService:
 
     @staticmethod
     def verify_nft(nft: NFT) -> bool:
-        """Xác minh chữ ký NFT"""
         if not nft.issuer_signature:
             return False
         
@@ -58,28 +54,23 @@ class NFTService:
 
     @staticmethod
     def get_user_nfts(recipient_address: str) -> List[NFT]:
-        """Lấy tất cả NFT của một user"""
         return NFTRepository.get_nft_by_address(recipient_address)
 
     @staticmethod
     def get_all_nfts() -> List[NFT]:
-        """Lấy tất cả NFT trong hệ thống"""
         return NFTRepository.get_all_nfts()
     @staticmethod
     def get_nft_by_issuer(issuer_address: str) -> List[NFT]:
-        """Lấy tất cả NFT do một issuer phát hành"""
         return NFTRepository.get_nft_by_issuer(issuer_address)
     @staticmethod
     def get_nft_by_id(token_id : str) -> NFT:
         return NFTRepository.get_nft_by_id(token_id)
     @staticmethod
     def revoke_nft(token_id: str) -> bool:
-        """Thu hồi NFT"""
         return NFTRepository.revoke_nft(token_id, "Revoked by issuer")
 
     @staticmethod
     def verify_all_nfts(nfts: List[NFT]) -> dict:
-        """Xác minh một danh sách NFTs"""
         results = {
             "total": len(nfts),
             "valid": 0,
@@ -101,12 +92,10 @@ class NFTService:
 
     @staticmethod
     def get_nft_metadata_hash(nft: NFT) -> str:
-        """Lấy hash của metadata"""
         return nft.metadata.hash_metadata()
 
     @staticmethod
     def get_nft_info(nft: NFT) -> dict:
-        """Lấy thông tin đầy đủ của NFT"""
         return {
             "token_id": nft.token_id,
             "issuer_pubkey": nft.issuer_pubkey,

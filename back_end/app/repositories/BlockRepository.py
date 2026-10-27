@@ -1,4 +1,3 @@
-"""BlockRepository - Data access layer for Block operations"""
 from typing import Optional, List
 import json
 import time
@@ -12,15 +11,9 @@ logger = get_logger(__name__)
 
 
 class BlockRepository:
-    """Repository for Block database operations"""
 
     @staticmethod
     def create_block(block: Block, max_retries: int = 5) -> bool:
-        """Create a new block in database (idempotent - safe to call multiple times)
-        
-        Uses global write lock to serialize database writes and prevent lock contention
-        CRITICAL: Blocks MUST be saved - retries aggressively with backoff
-        """
         retry_delay = 0.5
         
         for attempt in range(max_retries):
@@ -96,7 +89,6 @@ class BlockRepository:
 
     @staticmethod
     def get_block_by_id(block_id: str) -> Optional[Block]:
-        """Get block by block_id"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -167,7 +159,6 @@ class BlockRepository:
 
     @staticmethod
     def get_block_by_index(index: int) -> Optional[Block]:
-        """Get block by index"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -185,7 +176,6 @@ class BlockRepository:
 
     @staticmethod
     def get_all_blocks() -> List[Block]:
-        """Get all blocks"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -206,7 +196,6 @@ class BlockRepository:
 
     @staticmethod
     def get_blocks_by_range(start_index: int, end_index: int) -> List[Block]:
-        """Get blocks in index range"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -231,7 +220,6 @@ class BlockRepository:
 
     @staticmethod
     def get_latest_block() -> Optional[Block]:
-        """Get the latest block"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -250,7 +238,6 @@ class BlockRepository:
 
     @staticmethod
     def update_block(block: Block) -> bool:
-        """Update block"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -270,7 +257,6 @@ class BlockRepository:
 
     @staticmethod
     def delete_block(block_id: str) -> bool:
-        """Delete block by block_id"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -290,7 +276,6 @@ class BlockRepository:
 
     @staticmethod
     def count_blocks() -> int:
-        """Get total number of blocks"""
         try:
             conn = get_connection()
             cursor = conn.cursor()

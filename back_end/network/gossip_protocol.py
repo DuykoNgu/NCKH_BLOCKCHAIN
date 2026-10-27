@@ -1,7 +1,3 @@
-"""
-Gossip Protocol for EduChain P2P Network
-Implements transaction and block propagation using gossip algorithm
-"""
 import time
 import math
 import random
@@ -15,7 +11,6 @@ from network.config_loader import get_config
 
 
 class GossipMessage:
-    """Represents a gossip message"""
     
     def __init__(self, msg_type: str, data: Dict, msg_id: str = None):
         self.msg_type = msg_type
@@ -25,12 +20,10 @@ class GossipMessage:
         self.ttl = self.get_ttl_for_type(msg_type)
     
     def generate_msg_id(self) -> str:
-        """Generate unique message ID"""
         data_str = json.dumps(self.data, sort_keys=True)
         return hashlib.sha256(data_str.encode()).hexdigest()
     
     def get_ttl_for_type(self, msg_type: str) -> int:
-        """Get TTL based on message type"""
         config = get_config()
         gossip_config = config.get_gossip_config()
         
@@ -42,11 +35,9 @@ class GossipMessage:
             return 300
     
     def is_expired(self) -> bool:
-        """Check if message has expired"""
         return (time.time() - self.timestamp) > self.ttl
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary for transmission"""
         return {
             'msg_type': self.msg_type,
             'msg_id': self.msg_id,
@@ -56,7 +47,6 @@ class GossipMessage:
 
 
 class GossipProtocol:
-    """Implements gossip-based message propagation"""
     
     def __init__(self, peer_manager: PeerManager):
         self.peer_manager = peer_manager
@@ -70,10 +60,6 @@ class GossipProtocol:
         self.known_transactions: Set[str] = set()
     
     def calculate_fan_out(self, total_peers: int) -> int:
-        """
-        Calculate optimal fan-out factor
-        Formula: k = sqrt(N) * fan_out_factor
-        """
         if total_peers == 0:
             return 0
         
@@ -89,10 +75,6 @@ class GossipProtocol:
         return k
     
     def select_random_peers(self, k: int, exclude_peers: List[str] = None) -> List[Peer]:
-        """
-        Select k random peers for gossip
-        Excludes peers in exclude_peers list
-        """
         active_peers = self.peer_manager.get_active_peers()
         
         if exclude_peers:
@@ -104,11 +86,9 @@ class GossipProtocol:
         return random.sample(active_peers, k)
     
     def has_seen_message(self, msg_id: str) -> bool:
-        """Check if we've already seen this message"""
         return msg_id in self.seen_messages
     
     def mark_message_seen(self, msg_id: str, message: GossipMessage = None) -> None:
-        """Mark message as seen"""
         self.seen_messages.add(msg_id)
         
         if message:
@@ -118,7 +98,6 @@ class GossipProtocol:
             self.cleanup_old_messages()
     
     def cleanup_old_messages(self) -> None:
-        """Remove expired messages from cache"""
         current_time = time.time()
         expired_ids = []
         
@@ -134,7 +113,6 @@ class GossipProtocol:
     
     def send_message_to_peer(self, peer: Peer, endpoint: str, message: Dict, 
                             timeout: int = 5) -> bool:
-        """Send message to a specific peer with sender identification"""
         try:
             url = f"{peer.get_url()}/api/v1/network{endpoint}"
             
@@ -156,11 +134,6 @@ class GossipProtocol:
             return False
     
     def propagate_transaction(self, tx_data: Dict, exclude_peers: List[str] = None) -> int:
-        """
-        Propagate transaction using fan-out gossip
-        First attempts to activate INACTIVE peers if needed
-        Returns number of peers successfully notified
-        """
         message = GossipMessage('transaction', tx_data)
         
         tx_hash = tx_data.get('tx_hash')
@@ -213,11 +186,6 @@ class GossipProtocol:
         return success_count
     
     def propagate_block(self, block_data: Dict, use_inv: bool = True) -> int:
-        """
-        Propagate block with high priority
-        Uses INV (inventory) messages for efficiency
-        Returns number of peers successfully notified
-        """
         block_hash = block_data.get('block_hash')
         block_index = block_data.get('index', 0)
         
@@ -268,7 +236,6 @@ class GossipProtocol:
         return success_count
     
     def request_block(self, peer: Peer, block_hash: str) -> Optional[Dict]:
-        """Request full block data from peer"""
         try:
             url = f"{peer.get_url()}/api/v1/network/gossip/block/{block_hash}"
             response = requests.get(url, timeout=10)
@@ -286,10 +253,6 @@ class GossipProtocol:
             return None
     
     def handle_inv_message(self, inv_data: Dict, sender_peer_id: str = None) -> Optional[Dict]:
-        """
-        Handle incoming INV message
-        If we don't have the block, request it from sender (if provided)
-        """
         block_hash = inv_data.get('block_hash')
         
         if not block_hash:
@@ -320,11 +283,6 @@ class GossipProtocol:
         return block_data
     
     def _process_validator_activation(self, tx: 'Transaction') -> None:
-        """
-        Process validator activation transaction:
-        Extract public_key, ip_address, port from payload
-        Update peer record with public_key and set to ACTIVE
-        """
         try:
             payload = tx.payload
             
@@ -368,10 +326,6 @@ class GossipProtocol:
             traceback.print_exc()
     
     def receive_transaction(self, tx_data: Dict, sender_peer_id: str = None) -> bool:
-        """
-        Handle received transaction from gossip
-        Returns True if transaction is new and should be processed
-        """
         tx_hash = tx_data.get('tx_hash')
         
         if not tx_hash:
@@ -453,11 +407,6 @@ class GossipProtocol:
         return True
     
     def receive_block(self, block_data: Dict, sender_peer_id: str = None) -> bool:
-        """
-        Handle received block from gossip
-        Returns True if block is new and should be processed
-        Triggers sync if block gap > 1 is detected
-        """
         block_hash = block_data.get('block_hash')
         block_id = block_data.get('block_id')
         block_index = block_data.get('index', 0)

@@ -1,7 +1,3 @@
-"""
-Keystore Manager - Secure Private Key Encryption/Decryption
-Handles AES-256-GCM encryption with PBKDF2 key derivation
-"""
 import os
 import json
 import hashlib
@@ -18,7 +14,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 class KeystoreManager:
-    """Manages secure keystore operations for private key encryption"""
     
     KDF_ITERATIONS = 100000
     SALT_LENGTH = 32
@@ -27,16 +22,6 @@ class KeystoreManager:
     
     @staticmethod
     def derive_key(passphrase: str, salt: bytes) -> bytes:
-        """
-        Derive encryption key from passphrase using PBKDF2-HMAC-SHA256
-        
-        Args:
-            passphrase: User's passphrase
-            salt: Random salt bytes
-            
-        Returns:
-            Derived key bytes
-        """
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=KeystoreManager.KEY_LENGTH,
@@ -48,16 +33,6 @@ class KeystoreManager:
     
     @staticmethod
     def encrypt_private_key(private_key_hex: str, passphrase: str) -> Dict:
-        """
-        Encrypt private key with passphrase using AES-256-GCM
-        
-        Args:
-            private_key_hex: Private key as hex string
-            passphrase: User's passphrase
-            
-        Returns:
-            Dictionary containing encrypted keystore data
-        """
         salt = os.urandom(KeystoreManager.SALT_LENGTH)
         nonce = os.urandom(KeystoreManager.NONCE_LENGTH)
         
@@ -82,16 +57,6 @@ class KeystoreManager:
     
     @staticmethod
     def decrypt_private_key(keystore_data: Dict, passphrase: str) -> Optional[str]:
-        """
-        Decrypt private key from keystore using passphrase
-        
-        Args:
-            keystore_data: Keystore dictionary
-            passphrase: User's passphrase
-            
-        Returns:
-            Decrypted private key as hex string, or None if decryption fails
-        """
         try:
             salt = base64.b64decode(keystore_data['salt'])
             nonce = base64.b64decode(keystore_data['nonce'])
@@ -110,16 +75,6 @@ class KeystoreManager:
     
     @staticmethod
     def save_keystore(filepath: str, keystore_data: Dict) -> bool:
-        """
-        Save keystore to file
-        
-        Args:
-            filepath: Path to save keystore file
-            keystore_data: Keystore dictionary
-            
-        Returns:
-            True if successful, False otherwise
-        """
         try:
             with open(filepath, 'w') as f:
                 json.dump(keystore_data, f, indent=2)
@@ -134,15 +89,6 @@ class KeystoreManager:
     
     @staticmethod
     def load_keystore(filepath: str) -> Optional[Dict]:
-        """
-        Load keystore from file
-        
-        Args:
-            filepath: Path to keystore file
-            
-        Returns:
-            Keystore dictionary, or None if load fails
-        """
         try:
             with open(filepath, 'r') as f:
                 return json.load(f)
@@ -155,12 +101,6 @@ class KeystoreManager:
     
     @staticmethod
     def secure_delete(data: any) -> None:
-        """
-        Securely delete sensitive data from memory
-        
-        Args:
-            data: Data to delete (string, bytes, etc.)
-        """
         if isinstance(data, str):
             data = '0' * len(data)
         elif isinstance(data, bytes):
@@ -170,15 +110,6 @@ class KeystoreManager:
     
     @staticmethod
     def validate_passphrase(passphrase: str) -> tuple[bool, str]:
-        """
-        Validate passphrase strength
-        
-        Args:
-            passphrase: Passphrase to validate
-            
-        Returns:
-            Tuple of (is_valid, error_message)
-        """
         if len(passphrase) < 8:
             return False, "Passphrase must be at least 8 characters long"
         
@@ -193,12 +124,6 @@ class KeystoreManager:
         
         return True, ""
 def generate_keypair():
-    """
-    Generate ECDSA SECP256k1 keypair
-    
-    Returns:
-        Tuple of (private_key_hex, public_key_hex, address)
-    """
     private_key = SigningKey.generate(curve=SECP256k1)
     public_key = private_key.get_verifying_key()
     

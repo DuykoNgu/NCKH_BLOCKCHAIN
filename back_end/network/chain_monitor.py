@@ -1,8 +1,3 @@
-"""
-Chain Monitor for EduChain
-Periodically monitors blockchain state across connected peers
-Automatically triggers synchronization when block gaps are detected
-"""
 
 import time
 import threading
@@ -15,7 +10,6 @@ from network.chain_sync import ChainSync
 from network.config_loader import get_config
 
 class PeerBlockStatus:
-    """Track block status of each peer"""
     
     def __init__(self, peer: Peer):
         self.peer = peer
@@ -31,26 +25,8 @@ class PeerBlockStatus:
 
 
 class ChainMonitor:
-    """
-    Monitors blockchain synchronization state
-    
-    Features:
-    - Periodically queries peer chain heights
-    - Identifies missing blocks and block gaps
-    - Automatically triggers chain sync when needed
-    - Maintains peer block statistics
-    - Non-blocking background monitoring
-    """
     
     def __init__(self, peer_manager: PeerManager, blockchain, check_interval: int = 30):
-        """
-        Initialize chain monitor
-        
-        Args:
-            peer_manager: PeerManager instance
-            blockchain: Blockchain instance
-            check_interval: Seconds between checks (default: 30s)
-        """
         self.peer_manager = peer_manager
         self.blockchain = blockchain
         self.config = get_config()
@@ -76,14 +52,6 @@ class ChainMonitor:
         print(f"[ChainMonitor] Initialized (interval={check_interval}s, gap_threshold={self.block_gap_threshold})")
     
     def get_local_height(self) -> int:
-        """
-        Get current local blockchain height.
-        
-        Priority:
-        1. Query DB directly (MAX index_num) - the reliable persistent source
-        2. If RAM chain is behind DB (e.g. after restart), reload chain from DB
-        3. Fallback to RAM chain length if DB query fails
-        """
         try:
             from app.database.connection import get_connection
             conn = get_connection()
@@ -119,12 +87,6 @@ class ChainMonitor:
                 return 0
     
     def query_peer_block_info(self, peer: Peer) -> Optional[int]:
-        """
-        Query a peer for its chain height and update status
-        
-        Returns:
-            Chain height or None if query failed
-        """
         if peer.peer_id not in self.peer_block_status:
             self.peer_block_status[peer.peer_id] = PeerBlockStatus(peer)
         
@@ -157,17 +119,6 @@ class ChainMonitor:
             return None
     
     def get_peer_block_info(self, peer: Peer, block_index: int, timeout: int = 5) -> Optional[Dict]:
-        """
-        Get a specific block from a peer
-        
-        Args:
-            peer: Peer to query
-            block_index: Block index to fetch
-            timeout: Request timeout
-            
-        Returns:
-            Block data dict or None if failed
-        """
         try:
             url = f"{peer.get_url()}/api/v1/network/blocks/{block_index}"
             import requests
@@ -182,17 +133,6 @@ class ChainMonitor:
             return None
     
     def scan_peer_blocks(self, peer: Peer, start_index: int, end_index: int) -> Dict[int, bool]:
-        """
-        Scan a peer to identify which blocks it has
-        
-        Args:
-            peer: Peer to scan
-            start_index: Starting block index
-            end_index: Ending block index
-            
-        Returns:
-            Dict {block_index: has_block}
-        """
         block_map = {}
         
         for idx in range(start_index, end_index + 1):
@@ -202,13 +142,6 @@ class ChainMonitor:
         return block_map
     
     def identify_missing_blocks(self) -> List[int]:
-        """
-        Identify missing blocks in local chain
-        by comparing with connected peers
-        
-        Returns:
-            List of missing block indices
-        """
         local_height = self.get_local_height()
         missing_blocks = []
         
@@ -219,7 +152,6 @@ class ChainMonitor:
         return missing_blocks
     
     def monitor_loop(self):
-        """Main monitoring loop - runs in background thread"""
         print(f"\n[ChainMonitor] 🔄 Monitor loop started (check_interval={self.check_interval}s)")
         print(f"[ChainMonitor] 🔄 block_gap_threshold={self.block_gap_threshold}, auto_sync_enabled={self.sync_check_enabled}")
         print(f"[ChainMonitor] ⏳ Waiting {self.check_interval} seconds before first check...\n")
@@ -250,7 +182,6 @@ class ChainMonitor:
                 time.sleep(self.check_interval)
     
     def _do_monitor_check(self):
-        """Perform one monitoring check iteration"""
         check_time = datetime.now().strftime("%H:%M:%S")
         
         self.get_local_height()
@@ -300,17 +231,6 @@ class ChainMonitor:
             print(f"   ✓ Chain is synced with network")
     
     def _trigger_auto_sync(self) -> int:
-        """
-        Trigger automatic chain synchronization with safety checks
-        
-        Implements exponential backoff to prevent infinite retry loops:
-        - Tracks failed sync attempts
-        - Enforces minimum cooldown between syncs
-        - Gives up after max consecutive failures
-        
-        Returns:
-            Number of blocks synced
-        """
         current_time = time.time()
         gap_state = (self.local_height, self.max_height)
         
@@ -356,7 +276,6 @@ class ChainMonitor:
             return 0
     
     def start(self):
-        """Start monitoring in background thread"""
         if self.is_running:
             print("[ChainMonitor] ⚠️  Monitor already running (cannot start twice)")
             return
@@ -371,7 +290,6 @@ class ChainMonitor:
         print("[ChainMonitor] ✓ Background thread started")
     
     def stop(self):
-        """Stop monitoring"""
         if not self.is_running:
             print("[ChainMonitor] Monitor not running")
             return
@@ -383,7 +301,6 @@ class ChainMonitor:
         print("[ChainMonitor] ✓ Stopped")
     
     def get_monitored_peers_summary(self) -> Dict:
-        """Get summary of monitored peers"""
         local_h = self.get_local_height()
         
         summary = {
@@ -411,7 +328,6 @@ class ChainMonitor:
         return summary
     
     def get_statistics(self) -> Dict:
-        """Get monitoring statistics"""
         stats = {
             'is_running': self.is_running,
             'check_interval': self.check_interval,
@@ -434,25 +350,21 @@ _global_monitor: Optional[ChainMonitor] = None
 
 
 def init_chain_monitor(peer_manager: PeerManager, blockchain, check_interval: int = 30) -> ChainMonitor:
-    """Initialize global chain monitor"""
     global _global_monitor
     _global_monitor = ChainMonitor(peer_manager, blockchain, check_interval)
     return _global_monitor
 
 
 def get_chain_monitor() -> Optional[ChainMonitor]:
-    """Get global chain monitor instance"""
     return _global_monitor
 
 
 def start_chain_monitoring():
-    """Start chain monitoring"""
     if _global_monitor:
         _global_monitor.start()
 
 
 def stop_chain_monitoring():
-    """Stop chain monitoring"""
     if _global_monitor:
         _global_monitor.stop()
 

@@ -43,6 +43,5 @@ class NFTmetadata:
           return NFTmetadata(**data)
           
      def hash_metadata(self) -> str:
-          """Hash the metadata using SHA256"""
           metadata_json = self.get_signing_data()
           return hashlib.sha256(metadata_json.encode('utf-8')).hexdigest()

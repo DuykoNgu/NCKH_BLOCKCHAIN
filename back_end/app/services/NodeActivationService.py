@@ -1,7 +1,3 @@
-"""
-Node Activation Service
-Handles node activation flow: signing, broadcasting, and transaction creation
-"""
 import json
 import time
 import hashlib
@@ -16,28 +12,9 @@ logger = get_logger(__name__)
 
 
 class NodeActivationService:
-    """Service for handling node activation with signing and broadcasting"""
 
     @staticmethod
     def create_activation_payload(node_id: str, ip: str, port: int) -> Dict[str, Any]:
-        """
-        Create a JSON payload for node activation
-        
-        Payload includes:
-        - node_id: Public Key of the node
-        - ip: Node IP address
-        - port: Node port
-        - timestamp: Current timestamp
-        - status: ACTIVE
-        
-        Args:
-            node_id: Public key of the node
-            ip: IP address
-            port: Port number
-            
-        Returns:
-            dict: Activation payload
-        """
         payload = {
             "node_id": node_id,
             "ip": ip,
@@ -49,16 +26,6 @@ class NodeActivationService:
 
     @staticmethod
     def sign_activation_payload(payload: Dict[str, Any], private_key: str) -> str:
-        """
-        Sign the activation payload using node's private key
-        
-        Args:
-            payload: The payload to sign
-            private_key: Private key (hex format)
-            
-        Returns:
-            str: Signature (hex format)
-        """
         try:
             payload_json = json.dumps(payload, sort_keys=True)
             
@@ -73,17 +40,6 @@ class NodeActivationService:
     @staticmethod
     def verify_activation_signature(payload: Dict[str, Any], 
                                    signature: str, public_key: str) -> bool:
-        """
-        Verify the activation signature
-        
-        Args:
-            payload: The payload
-            signature: The signature to verify
-            public_key: Public key to verify against
-            
-        Returns:
-            bool: True if signature is valid
-        """
         try:
             payload_json = json.dumps(payload, sort_keys=True)
             is_valid = CryptoUtils.verify_signature(payload_json, signature, public_key)
@@ -95,19 +51,6 @@ class NodeActivationService:
     @staticmethod
     def broadcast_activation(node_id: str, ip: str, port: int, 
                            signature: str, seed_nodes: list) -> Dict[str, Any]:
-        """
-        Broadcast node activation to all seed nodes
-        
-        Args:
-            node_id: Public key
-            ip: Node IP
-            port: Node port
-            signature: Signed payload
-            seed_nodes: List of seed nodes to broadcast to
-            
-        Returns:
-            dict: Broadcast results
-        """
         try:
             payload = NodeActivationService.create_activation_payload(node_id, ip, port)
             
@@ -188,21 +131,6 @@ class NodeActivationService:
 
     @staticmethod
     def handle_activation_message(activation_message: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle received activation message from another node
-        
-        Steps:
-        1. Extract payload and signature
-        2. Verify authentication (signature verification)
-        3. Check authorization (peer is authorized)
-        4. Update peer status (PENDING -> ACTIVE)
-        
-        Args:
-            activation_message: The activation message received
-            
-        Returns:
-            dict: Result of handling
-        """
         try:
             payload = activation_message.get('payload', {})
             signature = activation_message.get('signature', '')
@@ -284,22 +212,6 @@ class NodeActivationService:
     @staticmethod
     def create_activation_transaction(node_id: str, ip: str, port: int, 
                                      sender_address: str, private_key: str) -> Optional[Transaction]:
-        """
-        Create a transaction for peer activation to be added to mempool
-        
-        Transaction type: PEER_ACTIVATION
-        Payload contains: node_id, ip, port
-        
-        Args:
-            node_id: Public key of the node being activated
-            ip: IP address
-            port: Port number
-            sender_address: Address of the node creating the transaction
-            private_key: Private key for signing
-            
-        Returns:
-            Transaction: The transaction object ready for mempool
-        """
         try:
             activation_data = {
                 "type": "PEER_ACTIVATION",
@@ -328,16 +240,6 @@ class NodeActivationService:
 
     @staticmethod
     def add_activation_to_mempool(transaction: Transaction, mempool: list = None) -> bool:
-        """
-        Add activation transaction to mempool
-        
-        Args:
-            transaction: The transaction to add
-            mempool: Reference to mempool list (if using in-memory)
-            
-        Returns:
-            bool: Success status
-        """
         try:
             if mempool is None:
                 from app.repositories.TransactionRepository import TransactionRepository

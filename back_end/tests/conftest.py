@@ -15,7 +15,6 @@ from app.database.database import schema_sql
 
 @pytest.fixture
 def app():
-    """Create and configure a new app instance for each test."""
     db_fd, db_path = tempfile.mkstemp()
     
     app = create_app()
@@ -52,10 +51,8 @@ def app():
 
 @pytest.fixture
 def client(app):
-    """A test client for the app."""
     return app.test_client()
 
 @pytest.fixture
 def runner(app):
-    """A test runner for the app's Click commands."""
     return app.test_cli_runner()

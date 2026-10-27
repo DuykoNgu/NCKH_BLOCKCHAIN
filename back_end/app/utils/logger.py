@@ -37,10 +37,6 @@ LOG_JSON_FORMAT = os.getenv("LOG_JSON_FORMAT", "False").lower() == "true"
 
 
 def _safe_rotate(source: str, dest: str) -> None:
-    """
-    Safe file rotation that handles Windows file locking issues.
-    Retries up to 3 times before giving up.
-    """
     max_retries = 3
     retry_delay = 0.1
     
@@ -62,11 +58,6 @@ def _safe_rotate(source: str, dest: str) -> None:
 
 
 def _safe_namer(name: str) -> str:
-    """
-    Safely generate backup log filename.
-    Input: "/path/to/app.log"
-    Output: "/path/to/app.2026-04-18.log"
-    """
     if name.endswith('.log'):
         return name
     return name
@@ -98,10 +89,6 @@ def get_logger(
     name: Optional[str] = None,
     level: Optional[str] = None,
 ) -> logging.Logger:
-    """
-    Lấy logger đã được config sẵn.
-    Cách dùng: logger = get_logger(__name__)
-    """
     logger_name = name or "app"
     logger = logging.getLogger(logger_name)
 
@@ -168,12 +155,6 @@ root_logger = get_logger("app")
 
 
 class LoggerAdapter(logging.LoggerAdapter):
-    """
-    Ví dụ dùng trong FastAPI:
-        log = LoggerAdapter(logger, {"request_id": "abc123", "user_id": 999})
-        log.info("Xử lý thanh toán")
-        → tự động thêm request_id, user_id vào extra
-    """
     def process(self, msg, kwargs):
         extras = {k: v for k, v in self.extra.items() if v is not None}
         extra = kwargs.get("extra", {})

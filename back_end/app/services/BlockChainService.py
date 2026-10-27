@@ -11,24 +11,6 @@ from typing import List, Optional, Dict
 class BlockChainService:
     @staticmethod
     def cleanup_mempool_from_chain(blockchain: BlockChain) -> int:
-        """
-        ✅ CRITICAL FIX: Remove all transactions that are already committed in blockchain
-        
-        Vấn đề: Khi receive block từ gossip, các node khác vẫn có transactions đó trong mempool
-        Nếu những transactions đó được include trong block của peer, thì node này không nên mine lại
-        
-        This function:
-        1. Scans all blocks in the chain
-        2. Collects all tx_hash from committed transactions
-        3. Removes them from mempool
-        4. Returns count of removed transactions
-        
-        Args:
-            blockchain: The blockchain instance
-            
-        Returns:
-            int: Number of transactions removed from mempool
-        """
         committed_tx_hashes = set()
         
         for block in blockchain.chain:
@@ -50,10 +32,6 @@ class BlockChainService:
     
     @staticmethod
     def deduplicate_mempool(blockchain: BlockChain) -> int:
-        """
-        Remove duplicate transactions from mempool
-        Keeps first occurrence, removes duplicates
-        """
         seen_hashes = set()
         deduplicated = []
         duplicates = 0
@@ -74,10 +52,6 @@ class BlockChainService:
     
     @staticmethod
     def validate_mempool_transactions(blockchain: BlockChain) -> int:
-        """
-        Re-validate all mempool transactions
-        Remove invalid ones (e.g., invalid signatures, sender not authorized)
-        """
         valid_tx = []
         invalid_count = 0
         
@@ -104,16 +78,6 @@ class BlockChainService:
     
     @staticmethod
     def rebuild_mempool(blockchain: BlockChain) -> None:
-        """
-        🔧 COMPREHENSIVE MEMPOOL REBUILD
-        Called when receiving new blocks to ensure mempool consistency across network
-        
-        Steps:
-        1. Remove transactions already in blockchain
-        2. Deduplicate remaining transactions
-        3. Validate all remaining transactions
-        4. Log results
-        """
         print(f"\n📋 [MEMPOOL REBUILD] Before: {len(blockchain.mempool)} transactions")
         
         BlockChainService.cleanup_mempool_from_chain(blockchain)
@@ -176,12 +140,6 @@ class BlockChainService:
 
     @staticmethod
     def execute_transaction(blockchain: BlockChain, tx: Transaction) -> bool:
-        """
-        Execute transaction and update blockchain state
-        Sets tx.tx_status and tx.error_reason on failure
-        
-        Returns: True if successful, False if failed (logged to tx status)
-        """
         payload = tx.payload
 
         if payload.get("op") == "genesis":
@@ -457,24 +415,6 @@ class BlockChainService:
     @staticmethod
     def mine_block(blockchain: BlockChain, private_key: SigningKey, public_key_hex: str, 
                    max_transactions: int = None) -> tuple:
-        """
-        Mine a new block with transactions from mempool
-        
-        Logic:
-        - Genesis block (index 0): max 1 transaction (already has 1 system transaction)
-        - Other blocks: max 100 transactions
-        - If last block has < max_transactions: append transactions to it until it reaches max
-        - Only create a new block when last block is FULL
-        
-        Args:
-            blockchain: The blockchain instance
-            private_key: Private key for signing
-            public_key_hex: Public key of the validator
-            max_transactions: Maximum number of transactions to include (optional)
-        
-        Returns:
-            Tuple: (block, is_new_block) where is_new_block indicates if it's a new block to be added
-        """
 
         if max_transactions is None:
             try:
@@ -588,24 +528,6 @@ class BlockChainService:
 
     @staticmethod
     def add_block(blockchain: BlockChain, block: Block) -> bool:
-        """
-        Add block to blockchain and remove included transactions from mempool
-        
-        ⚠️  IMPORTANT: This is called ONLY after mine_block(), which already executed transactions.
-        So we DO NOT execute transactions again here (to avoid double-execution).
-        
-        For blocks received via gossip (receive_block), transactions ARE executed there.
-        This ensures single execution per node:
-        - Validator node: mine_block() executes, add_block() skips
-        - Non-validator node: receive_block() executes
-        
-        Args:
-            blockchain: The blockchain instance
-            block: The block to add
-            
-        Returns:
-            bool: True if successful
-        """
         if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
             raise ValueError("invalid block")
 

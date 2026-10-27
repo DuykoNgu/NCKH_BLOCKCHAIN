@@ -1,12 +1,3 @@
-"""AccountService - Business logic layer for Account operations
-
-Strategy for cross-node sync:
-  Every mutating operation (register / update_profile) does TWO things:
-  1. Writes to the LOCAL database immediately so the API call is fast.
-  2. Creates a blockchain Transaction and submits it to the mempool so that
-     validators will package it into a Block, broadcast via gossip, and
-     OTHER nodes will apply it via BlockChainService.execute_transaction().
-"""
 import hashlib
 import datetime
 import json
@@ -26,13 +17,6 @@ SYSTEM_ADDRESS = "system"
 
 
 def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Transaction:
-    """Build and hash a system Transaction for an account operation.
-    
-    NOTE: tx.signature is intentionally left EMPTY for account_register /
-    account_update transactions.  The user's proof-of-ownership signature is
-    stored inside payload["signature"].  TransactionService.is_valid() knows
-    how to verify that field separately.
-    """
     data_to_hash = json.dumps(payload, sort_keys=True).encode()
     tx_hash = hashlib.sha256(data_to_hash).hexdigest()
     sender_pubkey = ""
@@ -54,7 +38,6 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
 
 
 def _submit_tx(tx: Transaction) -> None:
-    """Push tx into mempool, save to database, and broadcast to peers (best-effort)."""
     try:
         from app.services.BlockChainService import BlockChainService
         from app.repositories.TransactionRepository import TransactionRepository
@@ -94,7 +77,6 @@ def _submit_tx(tx: Transaction) -> None:
 
 
 class AccountService:
-    """Service for Account business logic"""
 
     @staticmethod
     def register_account(
@@ -185,7 +167,6 @@ class AccountService:
 
     @staticmethod
     def get_account_by_address(address_or_name: str) -> Optional[Account]:
-        """Get account by address or name"""
         try:
             return AccountRepository.get_account_by_identifier(address_or_name)
         except Exception as e:
@@ -194,7 +175,6 @@ class AccountService:
 
     @staticmethod
     def get_all_account() -> List[Account]:
-        """Get all accounts"""
         try:
             return AccountRepository.get_all_accounts()
         except Exception as e:
@@ -203,7 +183,6 @@ class AccountService:
 
     @staticmethod
     def delete_account(address: str) -> Tuple[bool, str]:
-        """Delete account"""
         address = address.lower()
         try:
             account = AccountRepository.get_account_by_address(address)
@@ -222,7 +201,6 @@ class AccountService:
     def verify_user_signature(
         address: str, message: str, signature: str
     ) -> Tuple[bool, str]:
-        """Verify a message signed by account"""
         try:
             account = AccountRepository.get_account_by_address(address)
             if not account:
@@ -238,7 +216,6 @@ class AccountService:
 
     @staticmethod
     def update_profile(account: Account, address: str, full_name: str = None, avatar_url: str = None, tax_id: str = None, representative: str = None, email: str = None, phone: str = None) -> Tuple[bool, Optional[Account], str]:
-        """Update account profile (name and avatar)"""
         address = address.lower()
         logger.info(f"Updating profile for address: {address}")
         try:
@@ -284,7 +261,6 @@ class AccountService:
 
     @staticmethod
     def update_vault(address: str, vault: str) -> Tuple[bool, str]:
-        """Update encrypted vault (on forgot password / recovery)"""
         address = address.lower()
         try:
             account = AccountRepository.get_account_by_address(address)

@@ -1,7 +1,3 @@
-"""
-Peer Manager for EduChain P2P Network
-Handles peer discovery, connection management, and health checks
-"""
 import sqlite3
 import time
 import requests
@@ -14,14 +10,12 @@ from network.config_loader import get_config
 
 
 class PeerStatus(Enum):
-    """Peer status enum"""
     PENDING = "PENDING"
     ACTIVE = "ACTIVE"
     INACTIVE = "INACTIVE"
 
 
 class Peer:
-    """Represents a peer node in the network"""
     
     def __init__(self, peer_id: str, ip_address: str, port: int, 
                  public_key: str = "", node_type: str = "observer", status: str = "PENDING"):
@@ -37,11 +31,9 @@ class Peer:
         self.last_seen = time.time()
     
     def get_url(self) -> str:
-        """Get full URL for this peer"""
         return f"http://{self.ip_address}:{self.port}"
     
     def to_dict(self) -> Dict:
-        """Convert peer to dictionary"""
         return {
             'peer_id': self.peer_id,
             'ip_address': self.ip_address,
@@ -54,7 +46,6 @@ class Peer:
     
     @staticmethod
     def from_dict(data: Dict) -> 'Peer':
-        """Create peer from dictionary"""
         peer = Peer(
             peer_id=data['peer_id'],
             ip_address=data['ip_address'],
@@ -68,7 +59,6 @@ class Peer:
 
 
 class PeerManager:
-    """Manages peer connections and discovery"""
     
     def __init__(self):
         self.config = get_config()
@@ -77,7 +67,6 @@ class PeerManager:
         self.load_peers_from_db()
     
     def load_peers_from_db(self) -> None:
-        """Load peers from database"""
         conn = get_connection()
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -110,7 +99,6 @@ class PeerManager:
             conn.close()
     
     def save_peer_to_db(self, peer: Peer) -> bool:
-        """Save peer to database with write lock (non-blocking)"""
         from app.database.connection import acquire_write_lock, release_write_lock
         
         lock_acquired = False
@@ -148,13 +136,11 @@ class PeerManager:
                 release_write_lock()
     
     def generate_peer_id(self, ip: str, port: int) -> str:
-        """Generate unique peer ID from IP and port"""
         data = f"{ip}:{port}".encode()
         return hashlib.sha256(data).hexdigest()[:16]
     
     def add_peer(self, ip_address: str, port: int, public_key: str = "", 
                  node_type: str = "observer") -> Optional[Peer]:
-        """Add a new peer to the network"""
         peer_id = self.generate_peer_id(ip_address, port)
         
         if peer_id in self.peers:
@@ -178,12 +164,10 @@ class PeerManager:
         return peer
     
     def is_peer_authorized(self, public_key: str) -> bool:
-        """Check if peer's public key is in whitelist"""
         authorized_keys = self.config.get_authorized_validators()
         return public_key in authorized_keys
     
     def remove_peer(self, peer_id: str) -> bool:
-        """Remove peer from network"""
         if peer_id in self.peers:
             peer = self.peers[peer_id]
             peer.status = "INACTIVE"
@@ -194,7 +178,6 @@ class PeerManager:
         return False
     
     def ping_peer(self, peer: Peer, timeout: int = 5) -> bool:
-        """Ping peer to check if it's alive"""
         try:
             url = f"{peer.get_url()}/api/v1/network/health"
             response = requests.get(url, timeout=timeout)
@@ -210,7 +193,6 @@ class PeerManager:
             return False
     
     def get_active_peers(self, timeout: int = 120) -> List[Peer]:
-        """Get list of active peers (seen within timeout seconds)"""
         current_time = time.time()
         active_peers = []
         
@@ -221,14 +203,9 @@ class PeerManager:
         return active_peers
     
     def get_validator_peers(self) -> List[Peer]:
-        """Get list of validator peers"""
         return [p for p in self.get_active_peers() if p.node_type == 'validator']
     
     def discover_peers_from_seed(self, seed_node: Dict) -> List[Peer]:
-        """
-        Discover peers from a seed node
-        Implements Peer Exchange (PEX) protocol
-        """
         discovered_peers = []
         
         try:
@@ -259,10 +236,6 @@ class PeerManager:
         return discovered_peers
     
     def announce_self_to_seed_node(self, seed_node: Dict, node_ip: str, node_port: int, public_key: str) -> bool:
-        """
-        Announce this node to a seed node so seed node knows about us
-        This enables bidirectional peer discovery
-        """
         try:
             url = f"http://{seed_node['ip']}:{seed_node['port']}/api/v1/network/peers/register"
             payload = {
@@ -285,18 +258,6 @@ class PeerManager:
             return False
 
     def bootstrap_network(self, node_ip: str = None, node_port: int = None, public_key: str = "") -> int:
-        """
-        Bootstrap network by connecting to seed nodes
-        Also announces this node to seed nodes for bidirectional discovery
-        
-        Args:
-            node_ip: This node's IP address (for reverse registration)
-            node_port: This node's port (for reverse registration)  
-            public_key: This node's public key
-            
-        Returns:
-            Number of discovered peers
-        """
         print("\n=== Starting Network Bootstrap ===")
         seed_nodes = self.config.get_seed_nodes()
         total_discovered = 0
@@ -330,10 +291,6 @@ class PeerManager:
         return total_discovered
     
     def health_check_all_peers(self) -> Tuple[int, int]:
-        """
-        Ping all peers to check health
-        Returns (alive_count, dead_count)
-        """
         alive = 0
         dead = 0
         
@@ -349,20 +306,9 @@ class PeerManager:
         return alive, dead
     
     def get_peers_by_status(self, status: str) -> List[Peer]:
-        """Get peers by status"""
         return [peer for peer in self.peers.values() if peer.status == status]
     
     def approve_peer(self, peer_id: str) -> bool:
-        """
-        Approve a pending peer (PENDING -> INACTIVE)
-        Peer will become ACTIVE when node activates and sends public_key
-        
-        Args:
-            peer_id: ID of peer to approve
-            
-        Returns:
-            True if successful, False otherwise
-        """
         if peer_id not in self.peers:
             conn = get_connection()
             conn.row_factory = sqlite3.Row
@@ -412,22 +358,6 @@ class PeerManager:
             return False
     
     def update_peer_activation_by_ip_port(self, ip_address: str, port: int, public_key: str, node_type: str = "validator") -> bool:
-        """
-        Update peer activation by IP:port (called when node activates and sends public_key)
-        Stage 3 of peer lifecycle: INACTIVE -> ACTIVE with public_key saved
-        
-        ENHANCED: Now handles peers in any status (not just INACTIVE) to be more resilient
-        If peer exists, update it regardless of current status
-        
-        Args:
-            ip_address: IP address of peer
-            port: Port of peer
-            public_key: Public key from node's keystore
-            node_type: Node type (validator, observer, etc.)
-            
-        Returns:
-            True if successful, False otherwise
-        """
         peer_id = self.generate_peer_id(ip_address, port)
         
         if peer_id not in self.peers:
@@ -485,17 +415,6 @@ class PeerManager:
             return False
     
     def update_peer_status_by_public_key(self, public_key: str, status: str, node_type: str = "validator") -> bool:
-        """
-        Update peer status by public key (used for activation/deactivation broadcasts)
-        
-        Args:
-            public_key: Public key of peer
-            status: New status (ACTIVE, INACTIVE, PENDING)
-            node_type: Type of node (validator, observer)
-            
-        Returns:
-            True if successful, False otherwise
-        """
         target_peer = None
         for peer in self.peers.values():
             if peer.public_key == public_key:
@@ -519,32 +438,11 @@ class PeerManager:
             return False
     
     def set_local_peer_id(self, ip_address: str, port: int) -> str:
-        """
-        Set this node's peer ID for message identification
-        Called during network initialization
-        
-        Args:
-            ip_address: This node's IP address
-            port: This node's port
-            
-        Returns:
-            Generated peer_id
-        """
         self.local_peer_id = self.generate_peer_id(ip_address, port)
         print(f"✓ Local peer ID set: {self.local_peer_id}")
         return self.local_peer_id
     
     def get_known_peers(self, include_inactive: bool = True) -> List[Peer]:
-        """
-        Get well-known peers for peer discovery (PEX)
-        
-        Args:
-            include_inactive: If True, include INACTIVE peers (recently seen)
-                             If False, only active peers
-        
-        Returns:
-            List of known peers for bootstrapping nodes
-        """
         if not include_inactive:
             return self.get_active_peers()
         
@@ -560,23 +458,9 @@ class PeerManager:
         return peers
     
     def get_peer_list_for_api(self) -> List[Dict]:
-        """
-        Get peer list for API response (used by /api/v1/network/peers endpoint)
-        Returns both ACTIVE and INACTIVE peers so bootstrapping nodes can discover all known peers
-        """
         return [peer.to_dict() for peer in self.get_known_peers(include_inactive=True)]
     
     def query_peer_height(self, peer: Peer, timeout: int = 5) -> Optional[int]:
-        """
-        Query a peer for its blockchain height
-        
-        Args:
-            peer: Peer to query
-            timeout: Request timeout in seconds
-            
-        Returns:
-            Chain height or None if query failed
-        """
         try:
             url = f"{peer.get_url()}/api/v1/network/blocks/height"
             response = requests.get(url, timeout=timeout)

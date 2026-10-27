@@ -1,13 +1,3 @@
-"""
-Run script for EduChain Backend
-This script properly sets up the Python path and starts the Flask server
-with full P2P network initialization and chain synchronization.
-
-Usage:
-    python run.py                           # Default: port 5000
-    python run.py --port 5001               # Custom port
-    python run.py --port 5001 --db node_b.db  # Custom port + DB (multi-node local test)
-"""
 import sys
 import os
 import argparse
@@ -16,7 +6,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
 def parse_args():
-    """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='EduChain Backend Server')
     parser.add_argument('--port', type=int, default=5000,
                         help='Port to run the server on (default: 5000)')
@@ -34,7 +23,6 @@ def parse_args():
 
 
 def setup_custom_db(db_filename):
-    """Override database path for multi-node testing"""
     import app.database.database as db_module
     custom_db_path = os.path.join(current_dir, db_filename)
     db_module.DB_PATH = custom_db_path
@@ -42,14 +30,6 @@ def setup_custom_db(db_filename):
 
 
 def initialize_p2p_network(host, port, public_key=""):
-    """
-    Initialize P2P network: NTP sync, bootstrap peers, health check
-    
-    Args:
-        host: The host this node is running on
-        port: The port this node is running on (for self-registration)
-        public_key: This node's public key (for reverse registration to seed nodes)
-    """
     from app.services.NetworkService import get_network_service, initialize_network
     from network.config_loader import get_config
     
@@ -71,7 +51,6 @@ def initialize_p2p_network(host, port, public_key=""):
 
 
 def sync_chain_from_peers():
-    """Sync blockchain from peers if local chain is behind"""
     from app.services.NetworkService import get_network_service
     from network.chain_sync import ChainSync
     from app.blockchain_instance import get_blockchain_instance
@@ -96,7 +75,6 @@ def sync_chain_from_peers():
 
 
 def start_network_background_tasks():
-    """Start background daemon for health checks and peer sync"""
     from app.services.NetworkService import get_network_service
     from network.network_daemon import start_network_daemon
     from network.config_loader import get_config

@@ -29,11 +29,9 @@ BASE_NFT_SELECT = """
 """
 
 class NFTRepository:
-    """Repository để quản lý NFT trong database"""
 
     @staticmethod
     def create_nft(nft: NFT) -> bool:
-        """Tạo NFT mới trong database"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -80,7 +78,6 @@ class NFTRepository:
 
     @staticmethod
     def get_nft_by_id(token_id: str) -> Optional[NFT]:
-        """Lấy NFT theo token_id sử dụng helper để parse dữ liệu"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -100,7 +97,6 @@ class NFTRepository:
 
     @staticmethod
     def get_nft_by_address(owner_address: str) -> List[NFT]:
-        """Lấy tất cả NFT của một recipient"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -116,7 +112,6 @@ class NFTRepository:
     
     @staticmethod
     def get_nft_by_issuer(issuer_address: str) -> List[NFT]:
-        """Lấy tất cả NFT do một issuer phát hành"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -131,7 +126,6 @@ class NFTRepository:
             return []
     @staticmethod
     def get_all_nfts() -> List[NFT]:
-        """Lấy tất cả NFT trong hệ thống"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -146,7 +140,6 @@ class NFTRepository:
 
     @staticmethod
     def update_nft_signature(token_id: str, signature: str) -> bool:
-        """Cập nhật signature của NFT"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -166,7 +159,6 @@ class NFTRepository:
 
     @staticmethod
     def revoke_nft(token_id: str, revoke_reason: str) -> bool:
-        """Thu hồi (revoke) NFT"""
         try:
             conn = get_connection()
             cursor = conn.cursor()

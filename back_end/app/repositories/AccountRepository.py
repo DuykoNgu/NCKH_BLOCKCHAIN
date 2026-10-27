@@ -1,4 +1,3 @@
-"""AccountRepository - Data access layer for account operations"""
 from typing import Optional, List
 import time
 from app.database.connection import get_connection, acquire_write_lock, release_write_lock
@@ -9,14 +8,9 @@ logger = get_logger(__name__)
 
 
 class AccountRepository:
-    """Repository for account database operations"""
 
     @staticmethod
     def create_account(account: Account, max_retries: int = 3) -> bool:
-        """Create a new account in database
-        
-        Uses global write lock to serialize database writes and prevent lock contention
-        """
         retry_delay = 0.1
         
         for attempt in range(max_retries):
@@ -69,7 +63,6 @@ class AccountRepository:
         
     @staticmethod
     def get_account_by_address(address: str) -> Optional[Account]:
-        """Get account by address"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -101,7 +94,6 @@ class AccountRepository:
 
     @staticmethod
     def get_account_by_identifier(identifier: str) -> Optional[Account]:
-        """Get account by address or full_name (helper for login)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -148,7 +140,6 @@ class AccountRepository:
 
     @staticmethod
     def get_all_accounts() -> List[Account]:
-        """Get all accounts"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -181,7 +172,6 @@ class AccountRepository:
 
     @staticmethod
     def update_account(account: Account) -> bool:
-        """Update account by address"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -210,7 +200,6 @@ class AccountRepository:
 
     @staticmethod
     def delete_account(address: str) -> bool:
-        """Delete account by address"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -224,7 +213,6 @@ class AccountRepository:
 
     @staticmethod
     def check_email_exists(email: str) -> bool:
-        """Check if an account with this email already exists"""
         try:
             conn = get_connection()
             cursor = conn.cursor()

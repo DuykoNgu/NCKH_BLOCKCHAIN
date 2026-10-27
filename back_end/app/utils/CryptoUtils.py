@@ -9,11 +9,6 @@ from app.utils.HashUtils import HashUtils
 class CryptoUtils:
     @staticmethod
     def decompress_public_key(public_key_hex: str) -> str:
-        """
-        Decompress a compressed public key to uncompressed format (65 bytes)
-        Compressed format: 02/03 + 32 bytes (33 bytes total)
-        Uncompressed format: 04 + 32 bytes x + 32 bytes y (65 bytes total)
-        """
         if len(public_key_hex) == 130:
             return public_key_hex
         
@@ -30,9 +25,6 @@ class CryptoUtils:
 
     @staticmethod
     def sign_data(data, private_key_hex: str) -> str:
-        """
-        Ký dữ liệu bằng private key
-        """
         data_bytes = _to_bytes(data)
         
         sk = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
@@ -42,9 +34,6 @@ class CryptoUtils:
 
     @staticmethod
     def verify_signature(data, signature_hex: str, public_key_hex: str) -> bool:
-        """
-        Xác minh chữ ký dữ liệu
-        """
         data_bytes = _to_bytes(data)
 
         try:

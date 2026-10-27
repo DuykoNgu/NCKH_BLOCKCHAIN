@@ -1,7 +1,3 @@
-"""
-Chain Synchronization Protocol for EduChain
-Syncs blockchain data from peers when a node starts up or falls behind
-"""
 import time
 import requests
 from typing import List, Dict, Optional
@@ -11,15 +7,6 @@ from network.config_loader import get_config
 
 
 class ChainSync:
-    """
-    Handles blockchain synchronization between nodes.
-    
-    On startup, a node needs to:
-    1. Query peers for their chain height
-    2. Compare with local chain height
-    3. Download missing blocks from the peer with the longest valid chain
-    4. Validate and add each block to the local chain
-    """
     
     def __init__(self, peer_manager: PeerManager, blockchain):
         self.peer_manager = peer_manager
@@ -27,10 +14,6 @@ class ChainSync:
         self.config = get_config()
     
     def get_local_height(self) -> int:
-        """Get local blockchain height from database (source of truth)
-        
-        CRITICAL: Read from DB, not RAM, to ensure all nodes see persistent state
-        """
         try:
             from app.database.connection import get_connection
             conn = get_connection()
@@ -52,16 +35,6 @@ class ChainSync:
             return len(self.blockchain.chain) - 1
     
     def query_peer_height(self, peer: Peer, timeout: int = 5) -> Optional[int]:
-        """
-        Query a peer for its blockchain height
-        
-        Args:
-            peer: Peer to query
-            timeout: Request timeout in seconds
-            
-        Returns:
-            Chain height or None if query failed
-        """
         try:
             url = f"{peer.get_url()}/api/v1/network/blocks/height"
             response = requests.get(url, timeout=timeout)
@@ -79,12 +52,6 @@ class ChainSync:
             return None
     
     def find_best_peer(self) -> Optional[tuple]:
-        """
-        Find the peer with the longest chain
-        
-        Returns:
-            Tuple of (peer, height) or None if no peers available with longer chain
-        """
         active_peers = self.peer_manager.get_active_peers()
         
         if not active_peers:
@@ -107,18 +74,6 @@ class ChainSync:
     
     def download_blocks(self, peer: Peer, start_index: int, end_index: int, 
                         timeout: int = 30) -> Optional[List[Dict]]:
-        """
-        Download a range of blocks from a peer
-        
-        Args:
-            peer: Peer to download from
-            start_index: Starting block index (inclusive)
-            end_index: Ending block index (inclusive)
-            timeout: Request timeout
-            
-        Returns:
-            List of block dicts or None if download failed
-        """
         try:
             url = (f"{peer.get_url()}/api/v1/network/blocks/range"
                    f"?start={start_index}&end={end_index}")
@@ -142,15 +97,6 @@ class ChainSync:
             return None
     
     def validate_and_add_block(self, block_data: Dict) -> bool:
-        """
-        Validate a downloaded block and add it to the local chain
-        
-        Args:
-            block_data: Block dictionary from peer
-            
-        Returns:
-            True if block was added successfully
-        """
         from app.models.Block import Block
         from app.services.BlockService import BlockService
         from app.services.BlockChainService import BlockChainService
@@ -224,12 +170,6 @@ class ChainSync:
             return False
     
     def sync(self) -> int:
-        """
-        Main sync method - synchronize blockchain from peers
-        
-        Returns:
-            Number of blocks synced
-        """
         print("\n" + "=" * 50)
         print("🔄 Starting Chain Synchronization")
         print("=" * 50)

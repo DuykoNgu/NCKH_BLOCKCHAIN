@@ -7,7 +7,6 @@ from typing import Optional, Dict, Any
 import datetime
 from app.models.Account import Account
 class NFT:
-    """Model NFT - Token không fungible"""
 
     def __init__(self, issuer_address: str, issuer_pubkey: str, metadata: NFTmetadata, owner_address: Account,issuer_signature: Optional[str] = None):
         self.metadata = metadata
@@ -23,7 +22,6 @@ class NFT:
 
 
     def to_dict(self) -> Dict[str, Any]:
-        """Chuyển NFT thành dict"""
         return {
             "token_id": self.token_id,
             "issuer_address": self.issuer_address,
@@ -38,5 +36,4 @@ class NFT:
 
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> "NFT":
-        """Tạo NFT từ dict"""
         return NFT(**data)

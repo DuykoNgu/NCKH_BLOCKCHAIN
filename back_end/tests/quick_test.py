@@ -1,7 +1,3 @@
-"""
-Quick NFT Performance Test
-Simplified version for quick testing with configurable NFT count
-"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -15,7 +11,6 @@ from ecdsa.util import sigencode_der
 BASE_URL = "http://127.0.0.1:5000"
 
 def generate_keypair():
-    """Generate ECDSA keypair"""
     private_key = SigningKey.generate(curve=SECP256k1)
     public_key = private_key.get_verifying_key()
     
@@ -26,13 +21,11 @@ def generate_keypair():
     return private_key_hex, public_key_hex, address
 
 def sign_data(data: str, private_key_hex: str) -> str:
-    """Sign data with private key using DER encoding"""
     private_key = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
     signature = private_key.sign(data.encode(), hashfunc=hashlib.sha256, sigencode=sigencode_der)
     return signature.hex()
 
 def quick_test(num_nfts: int = 10):
-    """Quick test with specified number of NFTs"""
     print(f"\n🧪 Quick Test: Minting {num_nfts} NFTs\n")
     
     print("Creating issuer account...")

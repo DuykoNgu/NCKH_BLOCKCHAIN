@@ -1,7 +1,3 @@
-"""
-Authentication Controller - Validator Activation API
-Handles passphrase authentication and validator activation
-"""
 from flask import Blueprint, request, jsonify
 import os
 from app.services.NetworkService import get_network_service
@@ -20,13 +16,11 @@ logger = get_logger(__name__)
 
 
 def generate_peer_id(ip: str, port: int) -> str:
-    """Generate peer ID from IP and port (same as PeerManager)"""
     data = f"{ip}:{port}".encode()
     return hashlib.sha256(data).hexdigest()[:16]
 
 
 def try_update_peer_after_activation(validator_worker, public_key: str,private_key_hex: str) -> None:
-    """Try to update peer record in database after validator activation"""
     try:
         logger.info(f"→ [DEBUG] try_update_peer_after_activation called with public_key={public_key[:20] if public_key else 'EMPTY'}...")
         
@@ -76,10 +70,6 @@ def try_update_peer_after_activation(validator_worker, public_key: str,private_k
 
 
 def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str, private_key_hex: str) -> None:
-    """
-    Create a validator activation transaction and broadcast to peers
-    This allows other nodes to sync the validator's public_key to their local DB
-    """
     try:
         from app.models.Transaction import Transaction
         from app.services.BlockChainService import BlockChainService
@@ -142,24 +132,6 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
 @auth_bp.route('/activate', methods=['POST'])
 def activate_validator():
-    """
-    Activate validator with passphrase
-    
-    Request Body:
-        {
-            "passphrase": "string"
-        }
-    
-    Response:
-        {
-            "success": true/false,
-            "message": "string",
-            "validator_info": {
-                "is_active": bool,
-                "public_key": "string"
-            }
-        }
-    """
     logger.info("📨 [POST /api/v1/auth/activate] Validator activation request with passphrase")
     try:
         data = request.get_json()
@@ -254,26 +226,6 @@ def activate_validator():
 
 @auth_bp.route('/activate-with-key', methods=['POST'])
 def activate_validator_with_key():
-    """
-    Activate validator with pre-decrypted private key (used by active_node.py)
-    This is called from active_node.py which has already decrypted the private key
-    
-    Request Body:
-        {
-            "private_key_hex": "string"
-        }
-    
-    Response:
-        {
-            "success": true/false,
-            "message": "string",
-            "validator_info": {
-                "is_active": bool,
-                "validator_index": int,
-                "total_validators": int
-            }
-        }
-    """
     logger.info("📨 [POST /api/v1/auth/activate-with-key] Validator activation with private key")
     try:
         data = request.get_json()
@@ -395,15 +347,6 @@ def create_key_store():
 
 @auth_bp.route('/deactivate', methods=['POST'])
 def deactivate_validator():
-    """
-    Deactivate validator (stop mining and clear private key from memory)
-    
-    Response:
-        {
-            "success": true/false,
-            "message": "string"
-        }
-    """
     try:
         validator_worker = get_validator_worker()
         
@@ -433,17 +376,6 @@ def deactivate_validator():
 
 @auth_bp.route('/status', methods=['GET'])
 def get_validator_status():
-    """
-    Get validator activation status
-    
-    Response:
-        {
-            "is_active": bool,
-            "validator_index": int,
-            "total_validators": int,
-            "blocks_mined": int
-        }
-    """
     try:
         validator_worker = get_validator_worker()
         

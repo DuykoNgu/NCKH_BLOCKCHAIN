@@ -5,7 +5,6 @@ transaction_bp = Blueprint('transaction_bp', __name__, url_prefix='/api/v1/trans
 
 @transaction_bp.route('/all', methods=['GET'])
 def get_all_transactions():
-    """Lấy tất cả giao dịch trong hệ thống"""
     try:
         transactions = TransactionRepository.get_all_transactions()
         return jsonify({
@@ -18,7 +17,6 @@ def get_all_transactions():
 
 @transaction_bp.route('/address/<address>', methods=['GET'])
 def get_transactions_by_address(address):
-    """Lấy giao dịch theo địa chỉ ví (cả gửi và nhận)"""
     try:
         sent = TransactionRepository.get_transactions_by_sender(address)
         received = TransactionRepository.get_transactions_by_recipient(address)

@@ -1,16 +1,4 @@
 #!/usr/bin/env python3
-"""
-Node Activate Script - Activate a node as an active validator
-This script:
-1. Loads the keystore created by setup.py
-2. Asks for passphrase to unlock private key
-3. Activates the validator for block mining
-4. Creates signed activation payload and broadcasts to network
-5. Optionally creates activation transaction for mempool
-
-Usage:
-    python active_node.py
-"""
 
 import os
 import sys
@@ -31,10 +19,8 @@ load_dotenv()
 
 
 class NodeActivator:
-    """Handles node activation and status broadcasting"""
     
     def __init__(self):
-        """Initialize activation manager"""
         self.keystore_path = os.getenv("KEYSTORE_PATH", "node.keystore")
         self.node_ip = os.getenv("NODE_IP", "127.0.0.1")
         self.node_port = int(os.getenv("NODE_PORT", "5000"))
@@ -47,35 +33,28 @@ class NodeActivator:
         self.public_key: Optional[str] = None
     
     def print_header(self, text: str):
-        """Print formatted header"""
         print("\n" + "="*70)
         print(f"  {text}")
         print("="*70)
     
     def print_section(self, text: str):
-        """Print formatted section"""
         print(f"\n{"─"*70}")
         print(f"  {text}")
         print(f"{"─"*70}")
     
     def print_success(self, text: str):
-        """Print success message"""
         print(f"✅  {text}")
     
     def print_error(self, text: str):
-        """Print error message"""
         print(f"❌  {text}")
     
     def print_info(self, text: str):
-        """Print info message"""
         print(f"ℹ️   {text}")
     
     def print_warning(self, text: str):
-        """Print warning message"""
         print(f"⚠️   {text}")
     
     def load_keystore(self) -> bool:
-        """Load keystore from file"""
         self.print_section("Step 1: Loading Keystore")
         
         if not os.path.exists(self.keystore_path):
@@ -107,7 +86,6 @@ class NodeActivator:
             return False
     
     def get_passphrase(self) -> Optional[str]:
-        """Get passphrase from user"""
         self.print_section("Step 2: Unlock Private Key")
         self.print_info("Keystore is encrypted. Enter passphrase to unlock private key.")
         
@@ -125,7 +103,6 @@ class NodeActivator:
         return None
     
     def unlock_private_key(self, passphrase: str) -> bool:
-        """Decrypt and unlock private key"""
         try:
             self.print_info("Decrypting private key...")
             
@@ -149,7 +126,6 @@ class NodeActivator:
             return False
     
     def activate_validator(self) -> bool:
-        """Activate validator via HTTP API call to running server"""
         self.print_section("Step 3: Activating Validator")
         
         try:
@@ -221,11 +197,6 @@ class NodeActivator:
             return False
     
     def broadcast_peer_status_update(self) -> bool:
-        """
-        Broadcast peer status update to bootstrap node
-        Sends: ip_address, port, public_key, node_type
-        Triggers Stage 3: INACTIVE -> ACTIVE transition
-        """
         self.print_section("Step 4: Broadcasting Peer Status")
         
         try:
@@ -290,21 +261,6 @@ class NodeActivator:
             return True
     
     def broadcast_signed_activation(self, private_key: str, seed_nodes: list) -> Dict:
-        """
-        Broadcast SIGNED node activation message to all seed nodes.
-        
-        This implements Step 1 of the node activation protocol:
-        - Create a JSON payload with node identification info
-        - Sign the payload with the node's private key
-        - Broadcast to all seed nodes
-        
-        Args:
-            private_key: Node's private key (hex format)
-            seed_nodes: List of seed nodes from config
-            
-        Returns:
-            dict: Broadcast results with success/failure counts
-        """
         self.print_section("Step 5: Broadcasting Signed Activation Message")
         
         try:
@@ -358,7 +314,6 @@ class NodeActivator:
     
     
     def display_summary(self) -> None:
-        """Display activation summary"""
         self.print_header("✅ Node Activated Successfully!")
         
         print(f"""
@@ -400,7 +355,6 @@ class NodeActivator:
 """)
     
     def run(self) -> bool:
-        """Execute full activation procedure"""
         self.print_header("EduChain Node Activation")
         
         if not self.load_keystore():
@@ -451,7 +405,6 @@ class NodeActivator:
 
 
 def main():
-    """Main entry point"""
     try:
         activator = NodeActivator()
         success = activator.run()

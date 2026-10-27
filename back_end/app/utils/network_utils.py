@@ -1,7 +1,3 @@
-"""
-Network Utilities for EduChain
-Helper functions for P2P networking
-"""
 import re
 import hashlib
 from typing import Optional
@@ -9,10 +5,6 @@ import ipaddress
 
 
 def is_valid_ip(ip: str) -> bool:
-    """
-    Validate IP address format
-    Supports both IPv4 and IPv6
-    """
     try:
         ipaddress.ip_address(ip)
         return True
@@ -21,42 +13,20 @@ def is_valid_ip(ip: str) -> bool:
 
 
 def is_valid_port(port: int) -> bool:
-    """Validate port number"""
     return 1 <= port <= 65535
 
 
 def create_peer_id(ip: str, port: int) -> str:
-    """
-    Generate unique peer identifier from IP and port
-    Uses SHA-256 hash
-    """
     data = f"{ip}:{port}".encode()
     return hashlib.sha256(data).hexdigest()[:16]
 
 
 def verify_peer_signature(public_key: str, message: str, signature: str) -> bool:
-    """
-    Verify peer authentication signature
-    TODO: Implement actual ECDSA signature verification
-    """
     return True
 
 
 def calculate_fan_out(total_peers: int, factor: float = 0.5, 
                      min_k: int = 3, max_k: int = 10) -> int:
-    """
-    Calculate optimal gossip fan-out factor
-    Formula: k = sqrt(N) * factor
-    
-    Args:
-        total_peers: Total number of peers in network
-        factor: Multiplication factor (default 0.5)
-        min_k: Minimum fan-out (default 3)
-        max_k: Maximum fan-out (default 10)
-    
-    Returns:
-        Optimal fan-out value
-    """
     import math
     
     if total_peers == 0:
@@ -70,15 +40,10 @@ def calculate_fan_out(total_peers: int, factor: float = 0.5,
 
 
 def format_peer_address(ip: str, port: int) -> str:
-    """Format peer address as IP:port"""
     return f"{ip}:{port}"
 
 
 def parse_peer_address(address: str) -> Optional[tuple]:
-    """
-    Parse peer address string into (ip, port) tuple
-    Supports formats: "ip:port" or "http://ip:port"
-    """
     address = re.sub(r'^https?://', '', address)
     
     parts = address.split(':')
@@ -99,17 +64,6 @@ def parse_peer_address(address: str) -> Optional[tuple]:
 
 
 def get_peer_url(ip: str, port: int, endpoint: str = "") -> str:
-    """
-    Construct full URL for peer endpoint
-    
-    Args:
-        ip: Peer IP address
-        port: Peer port
-        endpoint: API endpoint (should start with /)
-    
-    Returns:
-        Full URL string
-    """
     base_url = f"http://{ip}:{port}"
     
     if endpoint:
@@ -121,17 +75,14 @@ def get_peer_url(ip: str, port: int, endpoint: str = "") -> str:
 
 
 def calculate_network_latency(start_time: float, end_time: float) -> float:
-    """Calculate network latency in milliseconds"""
     return (end_time - start_time) * 1000
 
 
 def is_localhost(ip: str) -> bool:
-    """Check if IP is localhost"""
     return ip in ['127.0.0.1', 'localhost', '::1', '0.0.0.0']
 
 
 def is_private_ip(ip: str) -> bool:
-    """Check if IP is in private range"""
     try:
         ip_obj = ipaddress.ip_address(ip)
         return ip_obj.is_private
@@ -140,10 +91,6 @@ def is_private_ip(ip: str) -> bool:
 
 
 def sanitize_peer_data(data: dict) -> dict:
-    """
-    Sanitize peer data for safe storage/transmission
-    Removes potentially dangerous fields
-    """
     allowed_fields = {
         'peer_id', 'ip_address', 'port', 'public_key', 
         'node_type', 'is_active', 'last_seen'

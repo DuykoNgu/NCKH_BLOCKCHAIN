@@ -13,19 +13,6 @@ nft_bp = Blueprint('nft', __name__, url_prefix='/api/v1/nft')
 
 @nft_bp.route('/create', methods=['POST'])
 def create_nft():
-    """
-    Tạo NFT mới từ chứng chỉ
-    
-    Request body:
-    {
-        "issuer_id": "teacher_001",
-        "student_id": "STU_001",
-        "degree_type": "Bachelor of Science",
-        "pdf_url": "https://example.com/cert.pdf",
-        "institution_address": "Harvard University",
-        "recipient_address": "0x..."
-    }
-    """
     try:
         data = request.get_json()
         
@@ -151,7 +138,6 @@ def create_nft():
 
 @nft_bp.route('/<token_id>', methods=['GET'])
 def get_nft(token_id: str):
-    """Lấy thông tin NFT theo token_id"""
     try:
         nft = NFTService.get_nft_by_id(token_id)
         
@@ -168,7 +154,6 @@ def get_nft(token_id: str):
 
 @nft_bp.route('/user/<recipient_address>', methods=['GET'])
 def get_user_nfts(recipient_address: str):
-    """Lấy tất cả NFT của một user"""
     try:
         nfts = NFTService.get_user_nfts(recipient_address)
         
@@ -183,7 +168,6 @@ def get_user_nfts(recipient_address: str):
 
 @nft_bp.route('/all', methods=['GET'])
 def get_all_nfts():
-    """Lấy tất cả NFT trong hệ thống"""
     try:
         nfts = NFTService.get_all_nfts()
         
@@ -208,7 +192,6 @@ def get_nfts_by_issuer(issuer_address: str):
 
 @nft_bp.route('/<token_id>/verify', methods=['POST'])
 def verify_nft(token_id: str):
-    """Xác minh NFT signature"""
     try:
         nft = NFTService.get_nft_by_id(token_id)
         
@@ -230,7 +213,6 @@ def verify_nft(token_id: str):
 
 @nft_bp.route('/<token_id>/revoke', methods=['POST'])
 def revoke_nft(token_id: str):
-    """Thu hồi NFT"""
     try:
         nft = NFTService.get_nft_by_id(token_id)
         
@@ -253,7 +235,6 @@ def revoke_nft(token_id: str):
 
 @nft_bp.route('/verify/batch', methods=['POST'])
 def verify_batch_nfts():
-    """Xác minh một batch NFTs"""
     try:
         data = request.get_json()
         token_ids = data.get('token_ids', data.get('token_id', []))
@@ -288,7 +269,6 @@ def verify_batch_nfts():
 
 @nft_bp.route('/<token_id>/metadata-hash', methods=['GET'])
 def get_metadata_hash(token_id: str):
-    """Lấy hash của metadata"""
     try:
         nft = NFTService.get_nft_by_id(token_id)
         
@@ -308,24 +288,6 @@ def get_metadata_hash(token_id: str):
 
 @nft_bp.route('/batch-upload', methods=['POST'])
 def batch_upload_pdfs():
-    """
-    Giai đoạn 2: Nhận nhiều file PDF, upload lên Cloudinary, tính hash.
-    
-    Request: multipart/form-data
-    - files[]: multiple PDF files (tên file = MaSV.pdf)
-    
-    Response:
-    {
-        "success": true,
-        "data": {
-            "SV001": { "url": "https://...", "hash": "abc..." },
-            "SV002": { "url": "https://...", "hash": "def..." }
-        },
-        "errors": {
-            "SV003": "Upload failed: ..."
-        }
-    }
-    """
     import hashlib
     import cloudinary
     import cloudinary.uploader
@@ -352,7 +314,6 @@ def batch_upload_pdfs():
         errors = {}
 
         def process_single_file(file_data, student_id):
-            """Upload 1 file lên Cloudinary + tính hash"""
             try:
                 file_bytes = file_data
                 pdf_hash = hashlib.sha256(file_bytes).hexdigest()

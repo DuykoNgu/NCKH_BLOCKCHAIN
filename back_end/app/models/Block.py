@@ -17,7 +17,6 @@ class Block:
         self.validator_signature: str = ""
     
     def to_dict(self) -> dict:
-        """Convert Block to dictionary for P2P transmission"""
         return {
             "block_id": self.block_id,
             "index": self.index,
@@ -36,7 +35,6 @@ class Block:
     
     @staticmethod
     def from_dict(data: dict) -> 'Block':
-        """Create Block from dictionary received from P2P network"""
         header_data = data.get("block_header", {})
         block_header = BlockHeader(
             index=header_data.get("index", 0),

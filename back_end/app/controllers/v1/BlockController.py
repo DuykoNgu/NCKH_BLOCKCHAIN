@@ -1,4 +1,3 @@
-"""BlockController - REST API endpoints for Block operations"""
 from flask import Blueprint, request, jsonify
 from app.services.BlockService import BlockService
 from app.repositories.BlockRepository import BlockRepository
@@ -12,7 +11,6 @@ block_bp = Blueprint('block', __name__, url_prefix='/api/v1/block')
 
 @block_bp.route('/<block_id>', methods=['GET'])
 def get_block(block_id):
-    """Get block by block_id"""
     try:
         block = BlockRepository.get_block_by_id(block_id)
         
@@ -40,7 +38,6 @@ def get_block(block_id):
 
 @block_bp.route('/index/<int:index>', methods=['GET'])
 def get_block_by_index(index):
-    """Get block by index"""
     try:
         block = BlockRepository.get_block_by_index(index)
         
@@ -64,7 +61,6 @@ def get_block_by_index(index):
 
 @block_bp.route('/all', methods=['GET'])
 def get_all_blocks():
-    """Get all blocks with pagination"""
     try:
         page = request.args.get('page', 1, type=int)
         page_size = request.args.get('page_size', 20, type=int)
@@ -98,7 +94,6 @@ def get_all_blocks():
 
 @block_bp.route('/range', methods=['GET'])
 def get_blocks_by_range():
-    """Get blocks in index range"""
     try:
         start_index = request.args.get('start_index', 0, type=int)
         end_index = request.args.get('end_index', 100, type=int)
@@ -124,7 +119,6 @@ def get_blocks_by_range():
 
 @block_bp.route('/latest', methods=['GET'])
 def get_latest_block():
-    """Get the latest block"""
     try:
         block = BlockRepository.get_latest_block()
         
@@ -149,7 +143,6 @@ def get_latest_block():
 
 @block_bp.route('/<block_id>/verify', methods=['POST'])
 def verify_block(block_id):
-    """Verify block signature"""
     try:
         data = request.get_json()
         
@@ -176,7 +169,6 @@ def verify_block(block_id):
 
 @block_bp.route('/<block_id>', methods=['DELETE'])
 def delete_block(block_id):
-    """Delete block"""
     try:
         success = BlockRepository.delete_block(block_id)
         
@@ -194,7 +186,6 @@ def delete_block(block_id):
 
 @block_bp.route('/count', methods=['GET'])
 def count_blocks():
-    """Get total number of blocks"""
     try:
         count = BlockRepository.count_blocks()
         
@@ -209,7 +200,6 @@ def count_blocks():
 
 @block_bp.route('/genesis', methods=['GET'])
 def get_genesis_block():
-    """Get genesis block with all transactions for seed node sharing"""
     try:
         genesis_block = BlockRepository.get_block_by_id("GENESIS")
         

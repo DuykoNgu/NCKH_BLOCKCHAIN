@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""
-Node Deactivate Script - Safely deactivate an active validator
-This script:
-1. Stops the validator from mining
-2. Clears private key from memory
-3. Broadcasts peer status update to other nodes
-
-Usage:
-    python deactivate_node.py
-"""
 
 import os
 import sys
@@ -24,10 +14,8 @@ load_dotenv()
 
 
 class NodeDeactivator:
-    """Handles node deactivation and status broadcasting"""
     
     def __init__(self):
-        """Initialize deactivation manager"""
         self.node_ip = os.getenv("NODE_IP", "127.0.0.1")
         self.node_port = int(os.getenv("NODE_PORT", "5000"))
         self.bootstrap_url = os.getenv("BOOTSTRAP_NODE_URL", "http://127.0.0.1:5000")
@@ -37,35 +25,28 @@ class NodeDeactivator:
         self.public_key: Optional[str] = None
     
     def print_header(self, text: str):
-        """Print formatted header"""
         print("\n" + "="*70)
         print(f"  {text}")
         print("="*70)
     
     def print_section(self, text: str):
-        """Print formatted section"""
         print(f"\n{"─"*70}")
         print(f"  {text}")
         print(f"{"─"*70}")
     
     def print_success(self, text: str):
-        """Print success message"""
         print(f"✅  {text}")
     
     def print_error(self, text: str):
-        """Print error message"""
         print(f"❌  {text}")
     
     def print_info(self, text: str):
-        """Print info message"""
         print(f"ℹ️   {text}")
     
     def print_warning(self, text: str):
-        """Print warning message"""
         print(f"⚠️   {text}")
     
     def load_node_config(self) -> bool:
-        """Load node configuration"""
         self.print_section("Step 1: Loading Node Configuration")
         
         config_path = ".node_config.json"
@@ -93,7 +74,6 @@ class NodeDeactivator:
             return False
     
     def check_validator_status(self) -> bool:
-        """Check if validator is currently active via HTTP API"""
         self.print_section("Step 2: Checking Validator Status")
         
         try:
@@ -128,7 +108,6 @@ class NodeDeactivator:
             return False
     
     def deactivate_validator(self) -> bool:
-        """Deactivate validator via HTTP API call"""
         self.print_section("Step 3: Deactivating Validator")
         
         try:
@@ -164,10 +143,6 @@ class NodeDeactivator:
             return False
     
     def broadcast_peer_status_update(self) -> bool:
-        """
-        Broadcast peer status update to bootstrap node
-        Sends: ip_address, port, public_key, updates status back to INACTIVE
-        """
         self.print_section("Step 4: Broadcasting Deactivation Status")
         
         try:
@@ -232,7 +207,6 @@ class NodeDeactivator:
             return True
     
     def display_summary(self) -> None:
-        """Display deactivation summary"""
         self.print_header("✅ Validator Deactivated Successfully!")
         
         print(f"""
@@ -269,7 +243,6 @@ class NodeDeactivator:
 """)
     
     def run(self) -> bool:
-        """Execute full deactivation procedure"""
         self.print_header("EduChain Node Deactivation")
         
         if not self.load_node_config():
@@ -294,7 +267,6 @@ class NodeDeactivator:
 
 
 def main():
-    """Main entry point"""
     try:
         deactivator = NodeDeactivator()
         success = deactivator.run()

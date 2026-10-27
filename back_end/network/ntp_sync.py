@@ -1,7 +1,3 @@
-"""
-NTP Time Synchronization for EduChain
-Ensures accurate time synchronization for slot-based PoA consensus
-"""
 import time
 import ntplib
 from typing import List, Tuple, Optional
@@ -11,7 +7,6 @@ from network.config_loader import get_config
 
 
 class NTPClient:
-    """NTP client for time synchronization"""
     
     def __init__(self):
         self.config = get_config()
@@ -25,10 +20,6 @@ class NTPClient:
         self.sync_interval = self.ntp_config.get('sync_interval', 3600)
     
     def query_ntp_server(self, server: str, timeout: int = 5) -> Optional[float]:
-        """
-        Query single NTP server and return offset
-        Returns None if query fails
-        """
         try:
             response = self.client.request(server, version=3, timeout=timeout)
             offset = response.offset
@@ -38,10 +29,6 @@ class NTPClient:
             return None
     
     def get_ntp_time(self, use_multiple_servers: bool = True) -> Tuple[float, float]:
-        """
-        Get accurate time from NTP servers
-        Returns (ntp_timestamp, offset_from_local)
-        """
         offsets = []
         
         if use_multiple_servers:
@@ -70,10 +57,6 @@ class NTPClient:
         return ntp_time, median_offset
     
     def calculate_offset(self) -> float:
-        """
-        Calculate time offset from NTP servers
-        Uses cached value if recent sync exists
-        """
         current_time = time.time()
         
         if self.cached_offset is not None:
@@ -87,15 +70,10 @@ class NTPClient:
         return offset
     
     def get_synchronized_time(self) -> float:
-        """Get current time synchronized with NTP"""
         offset = self.calculate_offset()
         return time.time() + offset
     
     def check_time_sync(self) -> bool:
-        """
-        Check if local time is synchronized within acceptable range
-        Returns True if offset is within max_offset
-        """
         offset = self.calculate_offset()
         
         if abs(offset) > self.max_offset:
@@ -108,12 +86,6 @@ class NTPClient:
 
 
 class ConsensusTimer:
-    """
-    Manages slot-based timing for PoA consensus
-    Implements formulas:
-    - Current Slot = ⌊Current Timestamp / Slot Duration⌋
-    - Leader Index = Current Slot mod Total Validators
-    """
     
     def __init__(self, ntp_client: NTPClient = None):
         self.config = get_config()
@@ -122,23 +94,14 @@ class ConsensusTimer:
         self.ntp_client = ntp_client or NTPClient()
     
     def get_current_timestamp(self) -> float:
-        """Get current synchronized timestamp"""
         return self.ntp_client.get_synchronized_time()
     
     def get_current_slot(self) -> int:
-        """
-        Calculate current slot number
-        Formula: Current Slot = ⌊Current Timestamp / Slot Duration⌋
-        """
         current_time = self.get_current_timestamp()
         slot = int(current_time // self.slot_duration)
         return slot
     
     def get_leader_index(self, total_validators: int) -> int:
-        """
-        Determine which validator should create block in current slot
-        Formula: Leader Index = Current Slot mod Total Validators
-        """
         if total_validators == 0:
             return 0
         
@@ -147,25 +110,21 @@ class ConsensusTimer:
         return leader_index
     
     def get_leader_for_slot(self, slot: int, total_validators: int) -> int:
-        """Get leader index for specific slot"""
         if total_validators == 0:
             return 0
         return slot % total_validators
     
     def is_my_turn(self, my_validator_index: int, total_validators: int) -> bool:
-        """Check if it's current node's turn to create block"""
         leader_index = self.get_leader_index(total_validators)
         return leader_index == my_validator_index
     
     def time_until_next_slot(self) -> float:
-        """Calculate seconds until next slot begins"""
         current_time = self.get_current_timestamp()
         current_slot = self.get_current_slot()
         next_slot_time = (current_slot + 1) * self.slot_duration
         return next_slot_time - current_time
     
     def time_until_my_turn(self, my_validator_index: int, total_validators: int) -> float:
-        """Calculate seconds until it's my turn to create block"""
         if total_validators == 0:
             return float('inf')
         
@@ -186,7 +145,6 @@ class ConsensusTimer:
         return total_time
     
     def get_slot_info(self, total_validators: int) -> dict:
-        """Get comprehensive slot information"""
         current_slot = self.get_current_slot()
         leader_index = self.get_leader_index(total_validators)
         time_remaining = self.time_until_next_slot()
@@ -200,14 +158,12 @@ class ConsensusTimer:
         }
     
     def wait_for_next_slot(self) -> None:
-        """Sleep until next slot begins"""
         wait_time = self.time_until_next_slot()
         if wait_time > 0:
             print(f"⏳ Waiting {wait_time:.2f}s for next slot...")
             time.sleep(wait_time)
     
     def wait_for_my_turn(self, my_validator_index: int, total_validators: int) -> None:
-        """Sleep until it's my turn to create block"""
         wait_time = self.time_until_my_turn(my_validator_index, total_validators)
         if wait_time > 0:
             print(f"⏳ Waiting {wait_time:.2f}s for my turn (validator #{my_validator_index})...")
@@ -215,10 +171,6 @@ class ConsensusTimer:
 
 
 def verify_time_synchronization() -> bool:
-    """
-    Verify that time synchronization is working correctly
-    Should be called before starting consensus
-    """
     print("\n=== Time Synchronization Check ===")
     
     ntp_client = NTPClient()

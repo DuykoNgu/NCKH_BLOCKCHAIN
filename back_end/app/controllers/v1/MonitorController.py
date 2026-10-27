@@ -1,7 +1,3 @@
-"""
-Monitor Controller - API endpoints for chain and network monitoring
-Provides real-time status of blockchain synchronization and peer connectivity
-"""
 
 from flask import Blueprint, jsonify
 from network.chain_monitor import get_chain_monitor
@@ -13,25 +9,6 @@ monitor_bp = Blueprint('monitor', __name__, url_prefix='/api/v1/monitor')
 
 @monitor_bp.route('/status', methods=['GET'])
 def get_monitor_status():
-    """
-    Get current chain monitor status
-    
-    Returns:
-        {
-            'is_running': bool,
-            'local_height': int,
-            'max_remote_height': int,
-            'block_gap': int,
-            'peers_monitored': int,
-            'peer_details': [{
-                'ip_address': str,
-                'port': int,
-                'chain_height': int,
-                'status': str,
-                'query_count': int
-            }"]
-        }
-    """
     try:
         monitor = get_chain_monitor()
         
@@ -57,20 +34,6 @@ def get_monitor_status():
 
 @monitor_bp.route('/statistics', methods=['GET'])
 def get_monitor_statistics():
-    """
-    Get chain monitor statistics
-    
-    Returns:
-        {
-            'is_running': bool,
-            'check_interval': int,
-            'block_gap_threshold': int,
-            'local_height': int,
-            'max_peer_height': int,
-            'peers_monitored': int,
-            'avg_peer_height': float
-        }
-    """
     try:
         monitor = get_chain_monitor()
         
@@ -96,17 +59,6 @@ def get_monitor_statistics():
 
 @monitor_bp.route('/chain-info', methods=['GET'])
 def get_chain_info():
-    """
-    Get local chain information
-    
-    Returns:
-        {
-            'chain_height': int,
-            'block_count': int,
-            'genesis_block': dict,
-            'last_block': dict
-        }
-    """
     try:
         blockchain = get_blockchain_instance()
         
@@ -134,17 +86,6 @@ def get_chain_info():
 
 @monitor_bp.route('/sync-status', methods=['GET'])
 def get_sync_status():
-    """
-    Get current synchronization status
-    
-    Returns:
-        {
-            'is_synced': bool,
-            'sync_percentage': float (0-100),
-            'blocks_remaining': int,
-            'estimated_time_remaining': float (seconds)
-        }
-    """
     try:
         monitor = get_chain_monitor()
         blockchain = get_blockchain_instance()
@@ -191,23 +132,6 @@ def get_sync_status():
 
 @monitor_bp.route('/peers', methods=['GET'])
 def get_peer_details():
-    """
-    Get detailed information about all monitored peers
-    
-    Returns:
-        {
-            'peers': [{
-                'peer_id': str,
-                'ip_address': str,
-                'port': int,
-                'chain_height': int,
-                'status': str,
-                'query_count': int,
-                'failed_count': int,
-                'last_queried': datetime
-            }"]
-        }
-    """
     try:
         monitor = get_chain_monitor()
         

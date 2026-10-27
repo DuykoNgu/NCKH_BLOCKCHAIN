@@ -1,4 +1,3 @@
-"""TransactionRepository - Data access layer for Transaction operations"""
 from typing import Optional, List
 from app.database.connection import get_connection, acquire_write_lock, release_write_lock
 from app.models.Transaction import Transaction
@@ -14,18 +13,9 @@ BASE_TRANSACTION_SELECT = """
     FROM transactions
 """
 class TransactionRepository:
-    """Repository for Transaction database operations"""
     
     @staticmethod
     def create_transaction(transaction: Transaction, conn=None, max_retries=3) -> bool:
-        """Tạo transaction mới với retry logic, bao gồm status tracking
-        
-        Args:
-            transaction: Transaction object to create
-            conn: Optional existing database connection. If provided, uses it instead of creating new one.
-                 Caller is responsible for commit/close.
-            max_retries: Maximum number of retries on database lock
-        """
         retry_delay = 0.1
         should_close = conn is None
         use_lock = conn is None
@@ -139,18 +129,6 @@ class TransactionRepository:
         
     @staticmethod
     def create_transactions_batch(transactions: List[Transaction], max_retries=3) -> bool:
-        """Create multiple transactions in a single batch operation (holds lock once)
-        
-        More efficient than calling create_transaction() multiple times
-        since lock is acquired and released only once for all transactions
-        
-        Args:
-            transactions: List of Transaction objects to create
-            max_retries: Maximum number of retries on database lock
-            
-        Returns:
-            bool: True if all transactions created successfully
-        """
         if not transactions:
             return True
             
@@ -223,7 +201,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_transaction_by_id(tx_id: str) -> Optional[Transaction]:
-        """Lấy transaction theo hash (Đã sửa lỗi tên cột và index)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -240,7 +217,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_transactions_by_sender(sender_address: str) -> List[Transaction]:
-        """Lấy danh sách transaction theo người gửi (Đã rút gọn bằng helper)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -257,7 +233,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_transactions_by_recipient(recipient_address: str) -> List[Transaction]:
-        """Lấy tất cả giao dịch theo người nhận"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -272,7 +247,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_all_transactions() -> List[Transaction]:
-        """Lấy toàn bộ lịch sử giao dịch"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -287,7 +261,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_transactions_by_type(tx_type: str) -> List[Transaction]:
-        """Get transactions by type (from payload)"""
         try:
             all_txs = TransactionRepository.get_all_transactions()
             return [tx for tx in all_txs if tx.payload.get('type') == tx_type]
@@ -297,7 +270,6 @@ class TransactionRepository:
 
     @staticmethod
     def count_transactions() -> int:
-        """Get total number of transactions"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -312,7 +284,6 @@ class TransactionRepository:
 
     @staticmethod
     def get_transactions_by_date_range(start_timestamp: float, end_timestamp: float) -> List[Transaction]:
-        """Lấy danh sách giao dịch trong khoảng thời gian xác định"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -331,7 +302,6 @@ class TransactionRepository:
     
     @staticmethod
     def _parse_transaction_row(row) -> Optional[Transaction]:
-        """Helper method to parse database row into Transaction object"""
         if not row:
             return None
         
@@ -357,7 +327,6 @@ class TransactionRepository:
     
     @staticmethod
     def get_transaction_by_hash(tx_hash: str) -> Optional[Transaction]:
-        """Get transaction by hash (idempotency check)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()
@@ -374,7 +343,6 @@ class TransactionRepository:
     
     @staticmethod
     def update_transaction_block_id(tx_hash: str, block_id: str) -> bool:
-        """Update transaction with block_id (idempotent linking)"""
         try:
             conn = get_connection()
             cursor = conn.cursor()

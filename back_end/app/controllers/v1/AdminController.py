@@ -10,7 +10,6 @@ admin_bp = Blueprint('admin_bp', __name__, url_prefix='/api/v1/admin')
 
 @admin_bp.route('/stats', methods=['GET'])
 def get_dashboard_stats():
-    """Lấy số liệu thống kê tổng quan cho Dashboard Admin"""
     try:
         all_nfts = NFTRepository.get_all_nfts()
         total_nfts = len(all_nfts)
@@ -51,7 +50,6 @@ def get_dashboard_stats():
 
 @admin_bp.route('/recent-activities', methods=['GET'])
 def get_recent_activities():
-    """Lấy danh sách NFT và Giao dịch gần đây"""
     try:
         all_nfts = NFTRepository.get_all_nfts()
         all_nfts.sort(key=lambda x: x.minted_at if x.minted_at else 0, reverse=True)

@@ -1,7 +1,3 @@
-"""
-EduChain P2P Blockchain - Complete Integration Example
-Demonstrates how to initialize and run the complete P2P blockchain system
-"""
 
 
 from app.blockchain_instance import initialize_blockchain, get_blockchain_instance
@@ -75,7 +71,6 @@ else:
 
 
 def monitor_blockchain():
-    """Monitor blockchain and mempool status"""
     blockchain = get_blockchain_instance()
     network_service = get_network_service()
     
@@ -134,7 +129,6 @@ import signal
 import sys
 
 def shutdown_handler(signum, frame):
-    """Handle graceful shutdown"""
     print("\n\n🛑 Shutting down...")
     
     from consensus.validator_worker import stop_validator_worker
@@ -151,34 +145,10 @@ print("\n✓ System running. Press Ctrl+C to shutdown gracefully.")
 
 
 
-"""
-To run multiple nodes for testing:
-
-# Terminal 1 - Validator Node 0
-python run_node.py --validator-index=0 --total-validators=3 --port=5000
-
-# Terminal 2 - Validator Node 1
-python run_node.py --validator-index=1 --total-validators=3 --port=5001
-
-# Terminal 3 - Validator Node 2
-python run_node.py --validator-index=2 --total-validators=3 --port=5002
-
-# Terminal 4 - Observer Node (non-validator)
-python run_node.py --observer --port=5003
-
-Each node will:
-1. Bootstrap from seed nodes
-2. Discover peers via PEX
-3. Sync time via NTP
-4. Start validator worker (if validator)
-5. Listen for transactions and blocks
-6. Propagate via gossip protocol
-"""
 
 
 
 def test_transaction_flow():
-    """Test complete transaction flow"""
     print("\n" + "="*60)
     print("TESTING TRANSACTION FLOW")
     print("="*60)
@@ -213,7 +183,6 @@ def test_transaction_flow():
 
 
 def verify_block_propagation():
-    """Verify that blocks propagate correctly across nodes"""
     import requests
     
     nodes = [

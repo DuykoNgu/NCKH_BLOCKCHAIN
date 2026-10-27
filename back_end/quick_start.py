@@ -1,7 +1,3 @@
-"""
-Quick Start Guide - EduChain P2P Network
-Run this script to verify the installation
-"""
 import sys
 import os
 

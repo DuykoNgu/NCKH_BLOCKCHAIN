@@ -51,12 +51,6 @@ class BlockService:
     
     @staticmethod
     def get_signing_data(block: Block) -> bytes:
-        """Lấy data để ký block (không bao gồm signature)
-        
-        CRITICAL: Must use SAME transaction fields as calculate_merkle_root()
-        to ensure block_hash is consistent across nodes.
-        Excludes: block_id, tx_status, error_reason (metadata added after creation)
-        """
         tx_list = []
         for tx in block.transactions:
             if isinstance(tx, Transaction):
@@ -95,7 +89,6 @@ class BlockService:
 
     @staticmethod
     def sign_block(block: Block, private_key_hex: str) -> str:
-        """Ký block bằng ECDSA SECP256k1"""
         print("SIGN BLOCK", block.to_dict())
         print("PRIVATE KEY", private_key_hex)
         message = BlockService.get_signing_data(block)
@@ -106,7 +99,6 @@ class BlockService:
 
     @staticmethod
     def verify_block(block: Block, public_key_hex: str) -> bool:
-        """Xác thực chữ ký block"""
         if block.index == 0 and block.validator_signature == "GENESIS":
             return True
             
@@ -117,24 +109,6 @@ class BlockService:
     def create_block(index: int, block_id: str, pre_hash: str, merkle_root: str,
                      validator_pubkey: str, private_key: str, 
                      transactions: List[Transaction] = None) -> Block:
-        """
-        Create a new block
-        
-        Args:
-            index (int): Block index
-            block_id (str): Block ID
-            pre_hash (str): Previous block hash
-            merkle_root (str): Merkle root of transactions
-            validator_pubkey (str): Validator's public key
-            private_key (str): Validator's private key for signing
-            transactions (List[Transaction]): List of transactions in the block
-            
-        Returns:
-            Block: The created block object
-            
-        Raises:
-            ValueError: If required parameters are missing
-        """
         try:
             if transactions is None:
                 transactions = []

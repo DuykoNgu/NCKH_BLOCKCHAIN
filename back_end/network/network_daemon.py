@@ -1,28 +1,11 @@
-"""
-Network Daemon for EduChain P2P Network
-Background threads for periodic health checks and peer synchronization
-"""
 import time
 import threading
 from typing import Optional
 
 
 class NetworkDaemon:
-    """
-    Background daemon that manages periodic network tasks:
-    1. Health check thread: Pings all peers periodically
-    2. Peer sync thread: Discovers new peers via PEX protocol
-    """
     
     def __init__(self, network_service, health_interval: int = 30, sync_interval: int = 60):
-        """
-        Initialize NetworkDaemon
-        
-        Args:
-            network_service: NetworkService instance
-            health_interval: Seconds between health checks (default: 30)
-            sync_interval: Seconds between peer sync (default: 60)
-        """
         self.network_service = network_service
         self.health_interval = health_interval
         self.sync_interval = sync_interval
@@ -35,7 +18,6 @@ class NetworkDaemon:
         self.peer_syncs_count = 0
     
     def start(self) -> None:
-        """Start all daemon threads"""
         if self.is_running:
             print("⚠ Network daemon is already running")
             return
@@ -61,7 +43,6 @@ class NetworkDaemon:
         print(f"  Peer sync interval: {self.sync_interval}s")
     
     def stop(self) -> None:
-        """Stop all daemon threads"""
         if not self.is_running:
             return
         
@@ -76,7 +57,6 @@ class NetworkDaemon:
               f"(health_checks={self.health_checks_count}, peer_syncs={self.peer_syncs_count})")
     
     def _health_check_loop(self) -> None:
-        """Background thread: periodic health check of all peers"""
         time.sleep(10)
         
         while self.is_running:
@@ -94,7 +74,6 @@ class NetworkDaemon:
             self._interruptible_sleep(self.health_interval)
     
     def _peer_sync_loop(self) -> None:
-        """Background thread: periodic peer discovery via PEX"""
         time.sleep(15)
         
         while self.is_running:
@@ -112,7 +91,6 @@ class NetworkDaemon:
             self._interruptible_sleep(self.sync_interval)
     
     def _interruptible_sleep(self, seconds: float) -> None:
-        """Sleep in small increments so daemon can be stopped quickly"""
         interval = 1.0
         elapsed = 0.0
         while elapsed < seconds and self.is_running:
@@ -120,7 +98,6 @@ class NetworkDaemon:
             elapsed += interval
     
     def get_stats(self) -> dict:
-        """Get daemon statistics"""
         return {
             'is_running': self.is_running,
             'health_checks_count': self.health_checks_count,
@@ -134,13 +111,11 @@ _daemon_instance: Optional[NetworkDaemon] = None
 
 
 def get_network_daemon() -> Optional[NetworkDaemon]:
-    """Get global network daemon instance"""
     return _daemon_instance
 
 
 def start_network_daemon(network_service, health_interval: int = 30, 
                           sync_interval: int = 60) -> NetworkDaemon:
-    """Start the global network daemon"""
     global _daemon_instance
     
     if _daemon_instance is not None:
@@ -157,7 +132,6 @@ def start_network_daemon(network_service, health_interval: int = 30,
 
 
 def stop_network_daemon() -> None:
-    """Stop the global network daemon"""
     global _daemon_instance
     
     if _daemon_instance is not None:
