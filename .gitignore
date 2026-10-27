@@ -81,3 +81,4 @@ Thumbs.db
 # Generated output files
 moet_account.txt
 db_output.txt
+*.tsbuildinfo
