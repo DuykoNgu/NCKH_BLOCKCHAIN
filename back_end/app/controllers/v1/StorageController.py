@@ -5,14 +5,15 @@ import os
 from flask import Blueprint, jsonify, request
 import cloudinary
 import cloudinary.utils
+from app.core.config import CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 
 
 storage_bp = Blueprint('storage', __name__, url_prefix='/api/v1/storage')
 
 cloudinary.config(
-    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
-    api_key=os.getenv('CLOUDINARY_API_KEY'),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET')
+    cloud_name=CLOUDINARY_CLOUD_NAME,
+    api_key=CLOUDINARY_API_KEY,
+    api_secret=CLOUDINARY_API_SECRET
 )
 @storage_bp.route('/signature', methods=['GET'])
 def get_signature():
