@@ -28,7 +28,7 @@ Frontend (from `front_end/`): `npm run dev` (port 5173), `npm run build` (`tsc -
 
 ## Backend architecture
 
-Layering: `app/controllers/v1/*Controller.py` (Flask blueprints, all prefixed `/api/v1/<area>`) → `app/services/` → `app/repositories/` (raw `sqlite3`, no ORM) → `app/models/` (plain classes with `to_dict`). Blueprints are registered in `app/main.py::create_app`; `app/controllers/router.py` is a stale duplicate.
+Layering: `app/controllers/v1/*Controller.py` (Flask blueprints, all prefixed `/api/v1/<area>`) → `app/services/` → `app/repositories/` (raw `sqlite3`, no ORM) → `app/models/` (plain classes with `to_dict`). Blueprints are registered in `app/main.py::create_app`. Packages have no `__init__.py` (implicit namespace packages) — import modules by full path, e.g. `from app.database.connection import get_connection`.
 
 Key cross-cutting pieces:
 - **Startup order matters** (`run.py`): `--db` must patch `app.database.database.DB_PATH` *before* any `app.*` import. Default DB is `app/database/node_a.db`.
