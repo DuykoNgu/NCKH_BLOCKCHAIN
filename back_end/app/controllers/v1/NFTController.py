@@ -29,18 +29,15 @@ def create_nft():
     try:
         data = request.get_json()
         
-        # Validate required fields
         required_fields = [ 'degree_type', 'pdf_url', 
                     'pdf_hash', 'institution_address', 'recipient_address', 'signature']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
         
-        # Get issuer
         issuer = AccountRepository.get_account_by_address(data['institution_address'])
         if not issuer:
             return jsonify({"error": "Issuer user not found"}), 404
         
-        # Get recipient user
         recipient = AccountRepository.get_account_by_address(data['recipient_address'])
         if not recipient:
             return jsonify({"error": "Recipient user not found"}), 404
@@ -73,14 +70,12 @@ def create_nft():
         if not is_authentic:
             return jsonify({"error": "Invalid digital signature. "}), 401
         
-        # ✅ CREATE TRANSACTION FOR BLOCKCHAIN
         from app.models.Transaction import Transaction
         from app.services.TransactionService import TransactionService
         from app.services.BlockChainService import BlockChainService
         from app.services.NetworkService import get_network_service
         from app.blockchain_instance import get_blockchain_instance
         
-        # Create NFT object first to get the canonical token_id
         nft_pre = NFTService.create_nft(
             issuer_address=issuer.address,
             issuer_pubkey=issuer.public_key,
@@ -89,20 +84,16 @@ def create_nft():
             issuer_signature=data['signature']
         )
 
-        # Create transaction payload – include ALL fields so peer nodes can
-        # reconstruct and persist the NFT when they execute this transaction.
         tx = Transaction(
             sender_pubkey=issuer.public_key,
             sender_address=issuer.address,
             recipient_address=recipient.address,
             payload={
                 "op": "mint_nft",
-                # --- core identification ---
                 "token_id": nft_pre.token_id,
                 "issuer_address": issuer.address,
                 "issuer_pubkey": issuer.public_key,
                 "recipient_address": recipient.address,
-                # --- metadata (all fields) ---
                 "degree_type": data['degree_type'],
                 "pdf_url": data['pdf_url'],
                 "pdf_hash": data['pdf_hash'],
@@ -110,39 +101,31 @@ def create_nft():
                 "institution": data.get('institution', ''),
                 "student_id": data.get('student_id', ''),
                 "issued_at": issued_at,
-                # --- signature ---
                 "issuer_signature": data['signature'],
                 "minted_at": nft_pre.minted_at,
             }
         )
 
-        # Calculate tx_hash (no private-key signing needed for NFT tx at this stage)
         tx.tx_hash = TransactionService.calculate_hash(tx)
         tx.tx_id = tx.tx_hash
         tx.signature= data['signature']
-        # Add to mempool
         blockchain = get_blockchain_instance()
         if not BlockChainService.add_transaction_to_mempool(blockchain, tx):
             return jsonify({"error": "Failed to add transaction to mempool"}), 500
         
-        # 💾 SAVE TRANSACTION TO DATABASE FOR PERSISTENCE
         from app.repositories.TransactionRepository import TransactionRepository
         if TransactionRepository.create_transaction(tx):
             print(f"✓ Transaction saved to database: {tx.tx_hash[:16]}...")
         else:
             print(f"⚠ Warning: Failed to save transaction to database, but still in mempool")
         
-        # Broadcast transaction to P2P network
         try:
             network_service = get_network_service()
             propagated = network_service.broadcast_transaction(tx.to_dict())
             print(f"✓ Transaction propagated to {propagated} peers")
         except Exception as e:
             print(f"⚠ Warning: Failed to propagate transaction: {e}")
-            # Continue even if propagation fails
         
-        # 💾 Save NFT to the LOCAL node's database right away.
-        # Peer nodes will create their own record via execute_transaction when the block syncs.
         success = NFTRepository.create_nft(nft_pre)
         
         if success:
@@ -273,20 +256,17 @@ def verify_batch_nfts():
     """Xác minh một batch NFTs"""
     try:
         data = request.get_json()
-        # Hỗ trợ cả token_ids và token_id
         token_ids = data.get('token_ids', data.get('token_id', []))
         
         if not token_ids:
             return jsonify({"error": "token_ids hoặc token_id required"}), 400
         
-        # Kiểm tra giới hạn số lượng token để tránh quá tải
         max_batch_size = 100
         if len(token_ids) > max_batch_size:
             return jsonify({
                 "error": f"Quá nhiều NFTs, tối đa {max_batch_size} trong một lần"
             }), 400
         
-        # Lấy NFT một lần duy nhất cho mỗi token_id (tối ưu hiệu suất)
         nfts = []
         for tid in token_ids:
             nft = NFTService.get_nft_by_id(tid)
@@ -356,14 +336,12 @@ def batch_upload_pdfs():
         if not files or len(files) == 0:
             return jsonify({"error": "Không có file nào được gửi"}), 400
 
-        # Validate: chỉ chấp nhận PDF
         for f in files:
             if not f.filename or not f.filename.lower().endswith('.pdf'):
                 return jsonify({
                     "error": f"File '{f.filename}' không phải PDF"
                 }), 400
 
-        # Giới hạn batch size
         MAX_BATCH = 200
         if len(files) > MAX_BATCH:
             return jsonify({
@@ -376,11 +354,9 @@ def batch_upload_pdfs():
         def process_single_file(file_data, student_id):
             """Upload 1 file lên Cloudinary + tính hash"""
             try:
-                # Tính SHA-256 hash
                 file_bytes = file_data
                 pdf_hash = hashlib.sha256(file_bytes).hexdigest()
 
-                # Upload lên Cloudinary
                 import io
                 upload_result = cloudinary.uploader.upload(
                     io.BytesIO(file_bytes),
@@ -404,7 +380,6 @@ def batch_upload_pdfs():
                     "error": str(e)
                 }
 
-        # Đọc tất cả file data trước (vì file stream chỉ đọc 1 lần)
         file_items = []
         for f in files:
             pure_filename = os.path.basename(f.filename)
@@ -412,7 +387,6 @@ def batch_upload_pdfs():
             file_bytes = f.read()
             file_items.append((file_bytes, student_id))
 
-        # Upload song song 5 file cùng lúc
         CONCURRENCY = 5
         with ThreadPoolExecutor(max_workers=CONCURRENCY) as executor:
             futures = {

@@ -38,7 +38,6 @@ class NFTRepository:
             conn = get_connection()
             cursor = conn.cursor()
 
-            # Trước tiên lưu metadata
             metadata_dict = nft.metadata.to_dict()
             cursor.execute("""
                 INSERT INTO nft_metadata 
@@ -56,7 +55,6 @@ class NFTRepository:
             
             metadata_id = cursor.lastrowid
 
-            # Sau đó lưu NFT
             cursor.execute("""
                 INSERT INTO nft 
                 (nft_id, issuer_pubkey, issuer_address, metadata_id, owner_address, 
@@ -87,7 +85,6 @@ class NFTRepository:
             conn = get_connection()
             cursor = conn.cursor()
 
-            # Kết hợp chuỗi SELECT gốc với điều kiện WHERE
             query = f"{BASE_NFT_SELECT} WHERE nft.nft_id = ?"
             
             cursor.execute(query, (token_id,))
@@ -95,12 +92,9 @@ class NFTRepository:
             
             close_connection(conn)
 
-            # Sử dụng hàm static helper để xử lý logic dựng đối tượng
-            # Nếu tìm thấy row, trả về kết quả từ hàm parse, ngược lại trả về None
             return NFTRepository._parse_nft_row(row) if row else None
 
         except Exception as e:
-            # Bạn nên log lỗi cụ thể để dễ debug
             print(f"Error fetching NFT with ID {token_id}: {str(e)}")
             return None
 
@@ -196,13 +190,10 @@ class NFTRepository:
         if not row: return None
         
         try:
-            # Critical field validations - skip if essential fields are None
-            if row[0] is None:  # nft_id is required
+            if row[0] is None:
                 print(f"Skipping row: missing nft_id")
                 return None
             
-            # Handle NULL metadata fields from LEFT JOIN
-            # Provide defaults for NULL values
             metadata = NFTmetadata(
                 degree_type=row[6] or '',
                 student_id=row[7] or '',
@@ -213,12 +204,7 @@ class NFTRepository:
                 issued_at=row[12] if row[12] is not None else None
             )
             
-            # Handle NULL owner fields from LEFT JOIN
-            # If owner doesn't exist in account table, create a minimal placeholder
-            # This handles orphaned NFTs that reference non-existent accounts
             if row[13] is None:
-                # NFT exists but owner account doesn't exist in DB
-                # Create a placeholder to avoid breaking the response
                 owner = Account(
                     public_key='',
                     address='Unknown',

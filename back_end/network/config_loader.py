@@ -12,7 +12,6 @@ class NetworkConfig:
     
     def __init__(self, config_path: str = None):
         if config_path is None:
-            # Default to config.json in network directory
             current_dir = os.path.dirname(os.path.abspath(__file__))
             config_path = os.path.join(current_dir, 'config.json')
         
@@ -107,7 +106,6 @@ class NetworkConfig:
                 print(f"✗ Missing required section: {section}")
                 return False
         
-        # Validate seed nodes
         seed_nodes = self.get_seed_nodes()
         if not seed_nodes:
             print("⚠ Warning: No seed nodes configured")
@@ -121,7 +119,6 @@ class NetworkConfig:
         return True
 
 
-# Global configuration instance
 _config_instance: Optional[NetworkConfig] = None
 
 
@@ -141,7 +138,6 @@ def reload_config() -> NetworkConfig:
 
 
 if __name__ == "__main__":
-    # Test configuration loading
     config = NetworkConfig()
     if config.validate_config():
         print("\n=== Network Configuration ===")

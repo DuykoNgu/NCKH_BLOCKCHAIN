@@ -21,14 +21,12 @@ import time
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
-# Add app to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.utils.KeystoreManager import KeystoreManager
 from app.services.NodeActivationService import NodeActivationService
 from app.utils.CryptoUtils import CryptoUtils
 
-# Load environment variables
 load_dotenv()
 
 
@@ -116,7 +114,6 @@ class NodeActivator:
         for attempt in range(3):
             passphrase = getpass.getpass(f"Enter passphrase (attempt {attempt + 1}/3): ")
             
-            # Validate passphrase format
             is_valid, error_msg = KeystoreManager.validate_passphrase(passphrase)
             if not is_valid:
                 self.print_error(f"Invalid passphrase format: {error_msg}")
@@ -137,7 +134,6 @@ class NodeActivator:
                 passphrase
             )
             
-            # Securely delete passphrase from memory
             KeystoreManager.secure_delete(passphrase)
             
             if private_key_hex is None:
@@ -157,14 +153,12 @@ class NodeActivator:
         self.print_section("Step 3: Activating Validator")
         
         try:
-            # Prepare request data with private key
             activation_data = {
                 'private_key_hex': self.private_key
             }
             
             self.print_info("Sending activation request to local server...")
             
-            # Send activation request to server (run.py)
             activate_url = f"http://{self.node_ip}:{self.node_port}/api/v1/auth/activate-with-key"
             
             response = requests.post(
@@ -173,7 +167,6 @@ class NodeActivator:
                 timeout=10
             )
             
-            # Securely delete private key from local reference
             if self.private_key:
                 KeystoreManager.secure_delete(self.private_key)
                 self.private_key = None
@@ -200,7 +193,6 @@ class NodeActivator:
                 if error_text:
                     self.print_error(f"Details: {error_text[:100]}")
                 
-                # Check if run.py is actually running
                 if response.status_code == 0 or "Connection" in str(response):
                     self.print_warning(f"\nCould not connect to server at http://{self.node_ip}:{self.node_port}")
                     self.print_info("Make sure 'python run.py' is running in another terminal")
@@ -211,7 +203,6 @@ class NodeActivator:
             self.print_error("Connection refused - server not running")
             self.print_info(f"Make sure 'python run.py' is running at http://{self.node_ip}:{self.node_port}")
             
-            # Clean up private key
             if self.private_key:
                 KeystoreManager.secure_delete(self.private_key)
                 self.private_key = None
@@ -223,7 +214,6 @@ class NodeActivator:
             import traceback
             traceback.print_exc()
             
-            # Clean up private key
             if self.private_key:
                 KeystoreManager.secure_delete(self.private_key)
                 self.private_key = None
@@ -239,21 +229,17 @@ class NodeActivator:
         self.print_section("Step 4: Broadcasting Peer Status")
         
         try:
-            # Load node config
             config_path = ".node_config.json"
             if not os.path.exists(config_path):
                 self.print_warning("Node config not found")
-                return True  # Non-critical
+                return True
             
             with open(config_path, 'r') as f:
                 node_config = json.load(f)
             
-            # Extract IP and port from config
             node_ip = node_config.get('ip_address') or os.getenv('NODE_IP', '127.0.0.1')
             node_port = node_config.get('port') or int(os.getenv('NODE_PORT', '5000'))
             
-            # Prepare status update with IP:port + public_key
-            # This triggers Stage 3 of peer lifecycle: INACTIVE -> ACTIVE
             status_update = {
                 'ip_address': node_ip,
                 'port': node_port,
@@ -262,7 +248,6 @@ class NodeActivator:
                 'timestamp': time.time()
             }
             
-            # Try to broadcast to bootstrap node
             self.print_info(f"Broadcasting activation status to {self.bootstrap_url}")
             
             broadcast_url = f"{self.bootstrap_url}/api/v1/network/peers/status-update"
@@ -292,18 +277,17 @@ class NodeActivator:
                         f"Connection error (attempt {attempt + 1}/{self.max_retries}): {str(e)[:50]}"
                     )
                 
-                # Retry with delay
                 if attempt < self.max_retries - 1:
                     self.print_info(f"Retrying in {self.retry_delay} seconds...")
                     time.sleep(self.retry_delay)
             
             self.print_warning("Could not broadcast status to bootstrap node")
             self.print_info("Network will discover your activation through gossip protocol")
-            return True  # Non-critical
+            return True
         
         except Exception as e:
             self.print_warning(f"Error broadcasting status: {e}")
-            return True  # Non-critical
+            return True
     
     def broadcast_signed_activation(self, private_key: str, seed_nodes: list) -> Dict:
         """
@@ -324,7 +308,6 @@ class NodeActivator:
         self.print_section("Step 5: Broadcasting Signed Activation Message")
         
         try:
-            # Load node configuration for IP and port
             config_path = ".node_config.json"
             if not os.path.exists(config_path):
                 self.print_warning("Node config not found - skipping signed broadcast")
@@ -336,7 +319,6 @@ class NodeActivator:
             node_ip = node_config.get('ip_address', '127.0.0.1')
             node_port = node_config.get('port', 5000)
             
-            # Step 1: Create activation payload
             self.print_info("Step 5.1: Creating activation payload...")
             payload = NodeActivationService.create_activation_payload(
                 node_id=self.public_key,
@@ -345,12 +327,10 @@ class NodeActivator:
             )
             self.print_success(f"Payload created: {self.public_key[:16]}... at {node_ip}:{node_port}")
             
-            # Step 2: Sign the payload
             self.print_info("Step 5.2: Signing activation payload...")
             signature = NodeActivationService.sign_activation_payload(payload, private_key)
             self.print_success(f"Payload signed: {signature[:32]}...")
             
-            # Step 3: Broadcast to seed nodes
             self.print_info("Step 5.3: Broadcasting to seed nodes...")
             results = NodeActivationService.broadcast_activation(
                 node_id=self.public_key,
@@ -360,7 +340,6 @@ class NodeActivator:
                 seed_nodes=seed_nodes
             )
             
-            # Display results
             self.print_info(f"\nBroadcast Results:")
             self.print_success(f"  ✓ Successful: {results['success_count']}")
             self.print_warning(f"  ✗ Failed: {results['failed_count']}")
@@ -377,7 +356,6 @@ class NodeActivator:
             traceback.print_exc()
             return {'success_count': 0, 'failed_count': 0, 'results': [], 'error': str(e)}
     
-    # Redundant method removed to avoid duplicate transactions with wrong format
     
     def display_summary(self) -> None:
         """Display activation summary"""
@@ -425,28 +403,22 @@ class NodeActivator:
         """Execute full activation procedure"""
         self.print_header("EduChain Node Activation")
         
-        # Step 1: Load keystore
         if not self.load_keystore():
             return False
         
-        # Step 2: Get and validate passphrase
         passphrase = self.get_passphrase()
         if not passphrase:
             self.print_error("Activation cancelled - no passphrase provided")
             return False
         
-        # Step 3: Unlock private key
         if not self.unlock_private_key(passphrase):
             return False
         
-        # Step 4: Activate validator
         if not self.activate_validator():
             return False
         
-        # Step 5: Broadcast status update (backward compatibility)
         self.broadcast_peer_status_update()
         
-        # Step 6: Load network config for seed nodes
         try:
             network_config_path = os.path.join(
                 os.path.dirname(__file__),
@@ -461,7 +433,6 @@ class NodeActivator:
                 seed_nodes = network_config.get('seed_nodes', [])
                 
                 if seed_nodes and self.private_key:
-                    # Broadcast signed activation to seed nodes
                     self.broadcast_signed_activation(self.private_key, seed_nodes)
             else:
                 self.print_info("Network config not found - skipping signed broadcast")
@@ -470,12 +441,10 @@ class NodeActivator:
             self.print_warning(f"Error in additional activation steps: {e}")
         
         finally:
-            # Clean up private key from memory
             if self.private_key:
                 KeystoreManager.secure_delete(self.private_key)
                 self.private_key = None
         
-        # Display summary
         self.display_summary()
         
         return True

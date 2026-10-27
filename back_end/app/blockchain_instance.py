@@ -6,7 +6,6 @@ from typing import Optional, List
 from app.models.BlockChain import BlockChain
 
 
-# Global blockchain instance
 _blockchain_instance: Optional[BlockChain] = None
 
 
@@ -50,7 +49,6 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
     from app.models.Transaction import Transaction
     import datetime
     
-    # DEBUG LOGGING
     print(f"\n=== GENESIS BLOCK INITIALIZATION DEBUG ===")
     print(f"listen_port: {listen_port}")
     print(f"seed_nodes: {seed_nodes}")
@@ -65,9 +63,7 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
     
     blockchain = get_blockchain_instance()
     
-    # Only process if chain is empty
     if len(blockchain.chain) == 0:
-        # Step 0: Check if genesis block already exists in database (shared genesis)
         print("→ Checking if genesis block already exists in database...")
         existing_genesis = BlockRepository.get_block_by_id("GENESIS")
         
@@ -76,14 +72,12 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
             blockchain.super_validator_pubkey = super_validator_pubkey
             blockchain.authority_set.add(super_validator_pubkey)
             
-            # 🔥 Load FULL chain from DB (not just genesis) to restore RAM state on restart
             print("→ Loading full chain from database into memory...")
             load_chain_from_db(blockchain)
             print(f"✓ Chain restored: {len(blockchain.chain)} block(s) loaded from DB")
             
             return blockchain
         
-        # Step 1: Determine if this node is a seed node
         is_seed_node = False
         print(f"→ [DEBUG] Determining if node is seed node...")
         print(f"  listen_port={listen_port}, seed_nodes={seed_nodes}")
@@ -106,7 +100,6 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
             print(f"✓ This node is a SEED NODE (port {listen_port})")
         
         if not is_seed_node and seed_nodes:
-            # This is not a seed node - try to fetch genesis from seed nodes
             print(f"→ This is a non-seed node. Attempting to fetch genesis block from seed node...")
             genesis_fetched = _fetch_genesis_from_seed_node(blockchain, super_validator_pubkey, seed_nodes)
             if genesis_fetched:
@@ -117,10 +110,7 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
                 print(f"⚠ ERROR: Could not fetch genesis from any seed node!")
                 print(f"⚠ This node cannot continue without genesis from seed node.")
                 print(f"⚠ Make sure seed node is running and accessible.")
- # Exit with error - cannot proceed without genesis
         
-        # At this point: either is_seed_node=True OR seed_nodes is empty
-        # Step 2: Create genesis block (only seed node or standalone mode)
         print("→ Creating genesis block...")
         genesis_block = BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
         
@@ -137,7 +127,6 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Insert block header
                 cursor.execute('''
                     INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                     VALUES (?, ?, ?, ?, ?)
@@ -147,7 +136,6 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
                 
                 header_id = cursor.lastrowid
                 
-                # Insert block (genesis block)
                 cursor.execute('''
                     INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
                     VALUES (?, ?, ?, ?, ?)
@@ -163,16 +151,13 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
         except Exception as e:
             print(f"⚠ Failed to save genesis block to database: {e}")
         
-        # Step 3: Save genesis transaction (inside genesis block) to database
         print("→ Saving genesis block transaction to database...")
         try:
-            # Get the genesis transaction from the genesis block
-            genesis_tx = genesis_block.transactions[0]  # The one created in create_genesis_block
+            genesis_tx = genesis_block.transactions[0]
             
             TransactionRepository.create_transaction(genesis_tx)
             print(f"✓ Genesis transaction saved to database (tx_hash={genesis_tx.tx_hash[:16]}...)")
             
-            # Broadcast genesis to peers
             try:
                 from app.services.NetworkService import get_network_service
                 network_service = get_network_service()
@@ -213,7 +198,6 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
             
             print(f"  → Trying seed node: {seed_name}")
             
-            # Request genesis block from seed node
             url = f"http://{seed_ip}:{seed_port}/api/v1/block/genesis"
             print(f"    → GET {url}")
             response = requests.get(url, timeout=5)
@@ -223,14 +207,12 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                 genesis_data = response.json()
                 print(f"    → Genesis data received, block_id: {genesis_data.get('block_id')}")
                 
-                # Create block from received data
                 genesis_block = _create_genesis_from_dict(genesis_data, super_validator_pubkey)
                 
                 if genesis_block is None:
                     print(f"    ✗ Failed to create genesis block object from seed data")
                     continue
                 
-                # Save to database
                 try:
                     from app.database.connection import get_connection, acquire_write_lock, release_write_lock
                     lock_acquired = False
@@ -243,7 +225,6 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                         conn = get_connection()
                         cursor = conn.cursor()
                         
-                        # Insert block header
                         cursor.execute('''
                             INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                             VALUES (?, ?, ?, ?, ?)
@@ -253,21 +234,18 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                         
                         header_id = cursor.lastrowid
                         
-                        # Insert block
                         cursor.execute('''
                             INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
                             VALUES (?, ?, ?, ?, ?)
                         ''', (genesis_block.block_id, genesis_block.index, header_id, 
                               genesis_block.block_hash, genesis_block.validator_signature))
                         
-                        # Insert transactions using same connection to avoid lock
                         for tx in genesis_block.transactions:
                             TransactionRepository.create_transaction(tx, conn=conn)
                         
                         conn.commit()
                         conn.close()
                         
-                        # Add to blockchain
                         blockchain.chain.append(genesis_block)
                         blockchain.super_validator_pubkey = super_validator_pubkey
                         blockchain.authority_set.add(super_validator_pubkey)
@@ -302,7 +280,6 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
     import json
     
     try:
-        # Reconstruct block header
         header_data = data.get('block_header', {})
         print(f"    → Reconstructing block header from seed node data...")
         header = BlockHeader(
@@ -314,7 +291,6 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
         )
         print(f"    ✓ Block header reconstructed")
         
-        # Reconstruct transactions
         transactions = []
         tx_count = len(data.get('transactions', []))
         print(f"    → Reconstructing {tx_count} transaction(s)...")
@@ -335,7 +311,6 @@ def _create_genesis_from_dict(data: dict, validator_pubkey: str):
             transactions.append(tx)
         print(f"    ✓ All {tx_count} transaction(s) reconstructed")
         
-        # Create block
         print(f"    → Creating block object...")
         block = Block(
             block_id=data.get('block_id', 'GENESIS'),
@@ -371,27 +346,22 @@ def load_chain_from_db(blockchain: BlockChain) -> int:
     from app.repositories.BlockRepository import BlockRepository
     
     try:
-        # IMPORTANT: Get all block IDs in one query, then close connection
-        # This prevents multiple concurrent connections which block writes in SQLite
         from app.database.connection import get_connection
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute('SELECT block_id FROM block ORDER BY index_num ASC')
         rows = cursor.fetchall()
-        conn.close()  # Close immediately - don't hold connection while loading blocks
+        conn.close()
         
         if not rows:
             print("⚠ No blocks found in DB to load")
             return 0
         
-        # Extract block IDs (close connection before this loop)
         block_ids = [row[0] for row in rows]
         
-        # Clear chain and reload entirely from DB
         blockchain.chain.clear()
         loaded = 0
         
-        # Now load each block (each will open/close its own connection)
         for block_id in block_ids:
             block = BlockRepository.get_block_by_id(block_id)
             if block:

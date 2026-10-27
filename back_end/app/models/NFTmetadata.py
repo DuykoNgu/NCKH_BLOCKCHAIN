@@ -29,7 +29,6 @@ class NFTmetadata:
           }
      
      def get_signing_data(self) -> str:
-          # Keep signing data consistent with what was used to generate signatures
           data = {
                "degree_type": self.degree_type,
                "pdf_url": self.pdf_url,
@@ -45,6 +44,5 @@ class NFTmetadata:
           
      def hash_metadata(self) -> str:
           """Hash the metadata using SHA256"""
-          # Use local hashlib to avoid potential missing util imports during merge
           metadata_json = self.get_signing_data()
           return hashlib.sha256(metadata_json.encode('utf-8')).hexdigest()

@@ -28,8 +28,8 @@ class Transaction:
         signature: str = "",
         timestamp: Optional[float] = None,
         block_id: str = "",
-        tx_status: str = "PENDING",  # 'PENDING', 'COMMITTED', 'FAILED'
-        error_reason: str = ""  # Error message if tx fails
+        tx_status: str = "PENDING",
+        error_reason: str = ""
     ) -> None:
         self.tx_id = tx_id
         self.tx_hash = tx_hash
@@ -68,7 +68,7 @@ class Transaction:
             tx_id=data.get("tx_id", ""),
             tx_hash=data.get("tx_hash", ""),
             sender_pubkey=data.get("sender_pubkey", ""),
-            sender_address=data.get("sender_address"),  # Allow None for system transactions
+            sender_address=data.get("sender_address"),
             recipient_address=data.get("recipient_address", ""),
             payload=data.get("payload", {}),
             signature=data.get("signature", ""),

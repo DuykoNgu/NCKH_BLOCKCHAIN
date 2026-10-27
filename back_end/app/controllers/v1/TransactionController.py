@@ -20,12 +20,9 @@ def get_all_transactions():
 def get_transactions_by_address(address):
     """Lấy giao dịch theo địa chỉ ví (cả gửi và nhận)"""
     try:
-        # Lấy giao dịch gửi
         sent = TransactionRepository.get_transactions_by_sender(address)
-        # Lấy giao dịch nhận
         received = TransactionRepository.get_transactions_by_recipient(address)
         
-        # Hợp nhất và sắp xếp theo timestamp mới nhất
         all_txs = sent + received
         all_txs.sort(key=lambda x: x.timestamp, reverse=True)
         

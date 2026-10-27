@@ -116,7 +116,6 @@ class NFTService:
                 "role": getattr(nft.owner_address, 'role', 'client').value if hasattr(getattr(nft.owner_address, 'role', None), 'value') else str(getattr(nft.owner_address, 'role', 'client')),
                 "org_name": getattr(nft.owner_address, 'org_name', 'Unknown')
             },
-            # Các trường phẳng bổ sung cho FE
             "recipient_address": nft.owner_address.address if hasattr(nft.owner_address, 'address') else nft.owner_address,
             "recipient_name": getattr(nft.owner_address, 'full_name', 'Unknown') if hasattr(nft.owner_address, 'full_name') else "Unknown",
             "issuer_signature": nft.issuer_signature or None,

@@ -29,22 +29,18 @@ class NetworkService:
         print("🚀 Initializing EduChain Network Service")
         print("="*50)
         
-        # Step 0: Set local peer ID for message identification
         if node_ip and node_port:
             self.peer_manager.set_local_peer_id(node_ip, node_port)
         
-        # Step 1: Verify time synchronization
         print("\n[1/3] Verifying time synchronization...")
         if not verify_time_synchronization():
             print("✗ Time synchronization check failed")
             return False
         
-        # Step 2: Bootstrap network with optional node info for bidirectional discovery
         print("\n[2/3] Bootstrapping P2P network...")
         discovered = self.bootstrap_network(node_ip, node_port, public_key)
         print(f"✓ Network bootstrap complete: {discovered} peers discovered")
         
-        # Step 3: Initial health check
         print("\n[3/3] Performing initial health check...")
         alive, dead = self.peer_manager.health_check_all_peers()
         print(f"✓ Health check complete: {alive} alive, {dead} dead")
@@ -65,17 +61,15 @@ class NetworkService:
         """Synchronize peer list with network"""
         print("→ Synchronizing peer list...")
         
-        # Get current active peers
         active_peers = self.peer_manager.get_active_peers()
         
         if not active_peers:
             print("⚠ No active peers, attempting bootstrap...")
             return self.bootstrap_network()
         
-        # Discover new peers from existing peers
         total_discovered = 0
         
-        for peer in active_peers[:5]:  # Query up to 5 peers
+        for peer in active_peers[:5]:
             seed_node_format = {
                 'name': f"Peer {peer.peer_id[:8]}",
                 'ip': peer.ip_address,
@@ -241,7 +235,6 @@ class NetworkService:
         }
 
 
-# Global network service instance
 _network_service: Optional[NetworkService] = None
 
 
@@ -260,7 +253,6 @@ def initialize_network(node_ip: str = None, node_port: int = None, public_key: s
 
 
 if __name__ == "__main__":
-    # Test network service
     service = NetworkService()
     
     if service.initialize():

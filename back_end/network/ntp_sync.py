@@ -17,13 +17,12 @@ class NTPClient:
         self.config = get_config()
         self.ntp_config = self.config.get_ntp_config()
         self.ntp_servers = self.ntp_config.get('servers', ['pool.ntp.org'])
-        self.max_offset = self.ntp_config.get('max_offset', 2.0)  # seconds
+        self.max_offset = self.ntp_config.get('max_offset', 2.0)
         self.client = ntplib.NTPClient()
         
-        # Cache for time offset
         self.cached_offset: Optional[float] = None
         self.last_sync_time: float = 0
-        self.sync_interval = self.ntp_config.get('sync_interval', 3600)  # 1 hour
+        self.sync_interval = self.ntp_config.get('sync_interval', 3600)
     
     def query_ntp_server(self, server: str, timeout: int = 5) -> Optional[float]:
         """
@@ -32,7 +31,6 @@ class NTPClient:
         """
         try:
             response = self.client.request(server, version=3, timeout=timeout)
-            # Offset is the difference between server time and local time
             offset = response.offset
             return offset
         except Exception as e:
@@ -47,14 +45,12 @@ class NTPClient:
         offsets = []
         
         if use_multiple_servers:
-            # Query multiple servers for better accuracy
             for server in self.ntp_servers:
                 offset = self.query_ntp_server(server)
                 if offset is not None:
                     offsets.append(offset)
                     print(f"✓ NTP {server}: offset = {offset:.3f}s")
         else:
-            # Query only first server
             offset = self.query_ntp_server(self.ntp_servers[0])
             if offset is not None:
                 offsets.append(offset)
@@ -63,14 +59,11 @@ class NTPClient:
             print("✗ Failed to query any NTP servers, using local time")
             return time.time(), 0.0
         
-        # Use median offset for robustness
         median_offset = statistics.median(offsets)
         
-        # Get current local time and adjust
         local_time = time.time()
         ntp_time = local_time + median_offset
         
-        # Cache the offset
         self.cached_offset = median_offset
         self.last_sync_time = local_time
         
@@ -83,14 +76,11 @@ class NTPClient:
         """
         current_time = time.time()
         
-        # Use cached offset if sync was recent
         if self.cached_offset is not None:
             time_since_sync = current_time - self.last_sync_time
             if time_since_sync < self.sync_interval:
-              #  print(f"✓ Using cached NTP offset: {self.cached_offset:.3f}s (synced {time_since_sync:.0f}s ago)")
                 return self.cached_offset
         
-        # Need fresh sync
         print("→ Synchronizing with NTP servers...")
         _, offset = self.get_ntp_time()
         
@@ -128,7 +118,7 @@ class ConsensusTimer:
     def __init__(self, ntp_client: NTPClient = None):
         self.config = get_config()
         self.consensus_config = self.config.get_consensus_config()
-        self.slot_duration = self.consensus_config.get('slot_duration', 5)  # 5 seconds
+        self.slot_duration = self.consensus_config.get('slot_duration', 5)
         self.ntp_client = ntp_client or NTPClient()
     
     def get_current_timestamp(self) -> float:
@@ -183,15 +173,12 @@ class ConsensusTimer:
         current_leader = self.get_leader_index(total_validators)
         
         if current_leader == my_validator_index:
-            # It's my turn now
             return 0.0
         
-        # Calculate slots until my turn
         slots_until_turn = (my_validator_index - current_leader) % total_validators
         if slots_until_turn == 0:
             slots_until_turn = total_validators
         
-        # Calculate time
         time_in_current_slot = self.time_until_next_slot()
         additional_slots = slots_until_turn - 1
         
@@ -236,7 +223,6 @@ def verify_time_synchronization() -> bool:
     
     ntp_client = NTPClient()
     
-    # Check sync status
     is_synced = ntp_client.check_time_sync()
     
     if not is_synced:
@@ -246,7 +232,6 @@ def verify_time_synchronization() -> bool:
         print("   - Linux: ntpd or chronyd service")
         return False
     
-    # Show current time info
     local_time = time.time()
     ntp_time = ntp_client.get_synchronized_time()
     offset = ntp_time - local_time
@@ -259,19 +244,15 @@ def verify_time_synchronization() -> bool:
 
 
 if __name__ == "__main__":
-    # Test NTP synchronization
     print("=== Testing NTP Client ===")
     
     ntp_client = NTPClient()
     
-    # Test time sync
     verify_time_synchronization()
     
-    # Test consensus timer
     print("\n=== Testing Consensus Timer ===")
     timer = ConsensusTimer(ntp_client)
     
-    # Example with 3 validators
     total_validators = 3
     
     for i in range(5):
@@ -280,13 +261,11 @@ if __name__ == "__main__":
         print(f"  Leader: Validator #{info['leader_index']}")
         print(f"  Time remaining: {info['time_remaining_in_slot']:.2f}s")
         
-        # Check each validator
         for v_idx in range(total_validators):
             is_turn = timer.is_my_turn(v_idx, total_validators)
             time_until = timer.time_until_my_turn(v_idx, total_validators)
             status = "🟢 ACTIVE" if is_turn else f"⏳ {time_until:.1f}s"
             print(f"  Validator #{v_idx}: {status}")
         
-        # Wait for next slot
         if i < 4:
             timer.wait_for_next_slot()

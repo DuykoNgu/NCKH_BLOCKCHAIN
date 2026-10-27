@@ -39,24 +39,21 @@ class ValidatorWorker:
         """
         self.my_index = my_validator_index
         self.total_validators = total_validators
-        self.__private_key: Optional[str] = None  # Private key stored securely in memory
+        self.__private_key: Optional[str] = None
         self.public_key = public_key
         self.slot_duration = slot_duration
-        self.is_active = False  # Validator activation status
+        self.is_active = False
         
-        # Get blockchain and network instances
         self.blockchain = get_blockchain_instance()
         self.network_service = get_network_service()
         self.consensus_timer = ConsensusTimer()
         
-        # Worker state
         self.is_running = False
         self.worker_thread: Optional[threading.Thread] = None
         
-        # Statistics
         self.blocks_mined = 0
         self.last_block_time = 0
-        self.last_mine_attempt_time = 0  # Track when we last tried to mine
+        self.last_mine_attempt_time = 0
     
     def activate(self, raw_private_key: str) -> bool:
         """
@@ -76,12 +73,10 @@ class ValidatorWorker:
             return True
         
         try:
-            # Store private key in memory
             logger.info("→ [activate()] Storing private key in memory")
             self.__private_key = raw_private_key
             self.is_active = True
             
-            # Start mining worker
             logger.info("→ [activate()] Calling start() to spawn background thread")
             print(f"→ [activate()] Calling start() to spawn background thread")
             self.start()
@@ -107,10 +102,8 @@ class ValidatorWorker:
             print("⚠ Validator is not active")
             return
         
-        # Stop mining worker
         self.stop()
         
-        # Securely clear private key from memory
         if self.__private_key:
             self.__private_key = '0' * len(self.__private_key)
             self.__private_key = None
@@ -175,12 +168,10 @@ class ValidatorWorker:
         """
         mempool_size = len(self.blockchain.mempool)
         
-        # Only condition: Mempool not empty
         if mempool_size > 0:
             logger.info(f"✓ _should_mine_block(): YES - mempool_size={mempool_size} >= 1 (MINE NOW!)")
             return True
         
-        # Mempool is empty - wait for transactions
         logger.debug(f"→ _should_mine_block(): SKIP - mempool is empty, waiting for transactions")
         return False
     
@@ -248,25 +239,20 @@ class ValidatorWorker:
             try:
                 loop_count += 1
                 
-                # Check if it's my turn to create a block
                 is_my_turn = self.consensus_timer.is_my_turn(self.my_index, self.total_validators)
                 
                 if is_my_turn:
                     
                     if self._should_mine_block_with_thresholds():
-                        self.last_mine_attempt_time = time.time()  # Update attempt time
+                        self.last_mine_attempt_time = time.time()
                         logger.info(f"→ [Loop #{loop_count}] MY TURN! Starting to mine block...")
                         self._mine_and_broadcast_block()
                         
-                        # Wait for next slot to avoid mining multiple blocks in same slot
                         self.consensus_timer.wait_for_next_slot()
                     else:
-                        # Not ready to mine yet, check again soon
                         logger.debug(f"→ [Loop #{loop_count}] MY TURN but mempool not ready, retrying in 1s")
                         time.sleep(1)
                 else:
-                    # Not my turn, sleep briefly and check again
-                    # Only log every 20 loops to avoid spam
                     if loop_count % 20 == 0:
                         slot_info = self.consensus_timer.get_slot_info(self.total_validators)
                         logger.debug(f"→ [Loop #{loop_count}] Not my turn (slot={slot_info['current_slot']}, leader={slot_info['leader_index']}, me={self.my_index})")
@@ -278,17 +264,15 @@ class ValidatorWorker:
                 import traceback
                 traceback.print_exc()
                 logger.error(traceback.format_exc())
-                time.sleep(5)  # Wait before retrying
+                time.sleep(5)
     
     def _mine_and_broadcast_block(self) -> None:
         """Mine a new block and broadcast it to the network"""
         try:
-            # Check if validator is active
             if not self.is_active or self.__private_key is None:
                 print("⚠ Validator not active, skipping block creation")
                 return
             
-            # Get max transactions per block from config
             from network.config_loader import get_config
             config = get_config()
             consensus_config = config.get_consensus_config()
@@ -297,24 +281,16 @@ class ValidatorWorker:
             
             slot_info = self.consensus_timer.get_slot_info(self.total_validators)
             
-            # 🔥 CRITICAL FIX #1: Wait for gossip propagation
-            # When it's my turn, other nodes might have just broadcast their blocks
-            # Give them time to reach us (typically 500ms-2s)
             print(f"\n⏳ Waiting 1.5s for gossip propagation of recent blocks...")
             time.sleep(1.5)
             
-            # 🔥 CRITICAL FIX #2: Rebuild mempool before mining
-            # This removes transactions that were already committed in gossip blocks
             print(f"🔧 Rebuilding mempool to ensure consistency...")
             from app.services.BlockChainService import BlockChainService
             BlockChainService.rebuild_mempool(self.blockchain)
             
-            # 🔥 CRITICAL FIX #3: Verify chain is not too far behind
-            # If there's a big gap, sync first before mining
             from network.chain_sync import ChainSync
             local_height = len(self.blockchain.chain) - 1
             
-            # Query random peers for height
             active_peers = self.network_service.peer_manager.get_active_peers()
             if active_peers:
                 import random
@@ -339,7 +315,6 @@ class ValidatorWorker:
                     synced = chain_sync.sync()
                     if synced > 0:
                         print(f"✅ Synced {synced} blocks before mining")
-                        # Rebuild mempool again after sync
                         BlockChainService.rebuild_mempool(self.blockchain)
             
             mempool_size = len(self.blockchain.mempool)
@@ -352,27 +327,23 @@ class ValidatorWorker:
             print(f"  Max TX per Block: {max_tx_per_block}")
             print(f"{'='*60}")
             
-            # Check if there are transactions to mine
             if len(self.blockchain.mempool) == 0:
                 print("⚠ No transactions in mempool, skipping block creation")
                 return
             
-            # Calculate how many blocks we need to create
             total_transactions = len(self.blockchain.mempool)
-            blocks_needed = (total_transactions + max_tx_per_block - 1) // max_tx_per_block  # Ceiling division
+            blocks_needed = (total_transactions + max_tx_per_block - 1) // max_tx_per_block
             
             if blocks_needed > 1:
                 print(f"📦 Creating {blocks_needed} blocks to process all {total_transactions} transactions")
             
             blocks_created = 0
             
-            # Create multiple blocks if needed
             while len(self.blockchain.mempool) > 0 and blocks_created < blocks_needed:
                 blocks_created += 1
                 
                 print(f"\n--- Block {blocks_created}/{blocks_needed} ---")
                 
-                # Mine the block with size limit using private key from memory
                 block, is_new_block = BlockChainService.mine_block(
                     self.blockchain,
                     self.__private_key,
@@ -391,50 +362,35 @@ class ValidatorWorker:
                     print("âš  No new block created, skipping broadcast")
                     break
                 
-                # Only add block if it's a NEW block (not already in chain)
                 if is_new_block:
-                    # CRITICAL: Save to database FIRST before adding to RAM
-                    # This ensures DB is always the source of truth for fork detection
                     from app.repositories.BlockRepository import BlockRepository
                     from app.repositories.TransactionRepository import TransactionRepository
                     
-                    # 1. Prepare transaction records
                     for tx in block.transactions:
                         tx.block_id = block.block_id
                         tx.tx_status = "COMMITTED"
                     
-                    # 2. CRITICAL: Save ALL transactions in ONE batch (efficient lock usage)
-                    # This prevents FK constraint violations when the block references them
-                    # Batch method acquires lock once for all transactions instead of per-transaction
                     if not TransactionRepository.create_transactions_batch(block.transactions):
                         print(f"✗ Failed to save transactions to database - skipping this block")
                         break
                     
-                    # 3. Now save the block (transactions already in DB, FK constraint satisfied)
                     if not BlockRepository.create_block(block):
                         print(f"✗ Failed to save block to database - skipping this block")
-                        # Don't add to RAM or broadcast if DB save failed
                         break
                     
                     print(f"✓ Block and transactions saved to database")
                     
-                    # 4. NOW add to local blockchain RAM (after DB persistence)
                     BlockChainService.add_block(self.blockchain, block)
                     print(f"✓ Block added to local chain")
                     
-                    # 4. Broadcast to peers (after both DB and RAM are updated)
                     propagated = self.network_service.broadcast_block(block.to_dict(), use_inv=False)
                     
                     print(f"✓ Block propagated to {propagated} peers")
                 else:
-                    # Block was updated (not new), save only newly appended transactions
-                    # Transactions that were already in the block (like genesis tx) already have block_id set
                     from app.repositories.TransactionRepository import TransactionRepository
                     
-                    # Only save transactions that don't have block_id set yet
                     appended_tx_count = 0
                     for tx in block.transactions:
-                        # Skip if transaction already has block_id (genesis tx)
                         if not tx.block_id or tx.block_id == "":
                             tx.block_id = block.block_id
                             tx.tx_status = "COMMITTED"
@@ -445,11 +401,9 @@ class ValidatorWorker:
                 
                 print(f"✓ Remaining in mempool: {len(self.blockchain.mempool)} transactions")
                 
-                # Update statistics
                 self.blocks_mined += 1
                 self.last_block_time = time.time()
                 
-                # Small delay between blocks to allow network propagation
                 if len(self.blockchain.mempool) > 0:
                     time.sleep(0.5)
             
@@ -476,7 +430,6 @@ class ValidatorWorker:
         }
 
 
-# Global validator worker instance
 _validator_worker: Optional[ValidatorWorker] = None
 
 

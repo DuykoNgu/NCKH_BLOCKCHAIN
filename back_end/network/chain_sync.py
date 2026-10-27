@@ -46,7 +46,6 @@ class ChainSync:
                     print(f"⚠️  Height mismatch: DB={db_height}, RAM={ram_height}. Using DB height.")
                 return db_height
             else:
-                # Fallback to genesis block (height 0)
                 return 0
         except Exception as e:
             print(f"⚠ Failed to get height from DB, using RAM: {e}")
@@ -159,22 +158,18 @@ class ChainSync:
         from app.repositories.TransactionRepository import TransactionRepository
         
         try:
-            # Parse block
             block = Block.from_dict(block_data)
             
-            # 0. Check if block already exists (skip duplicates)
             if len(self.blockchain.chain) > 0:
                 local_height = len(self.blockchain.chain) - 1
                 if block.index <= local_height:
                     print(f"⚠ Block #{block.index} already exists in chain (local height: {local_height})")
-                    return True  # Not an error, just already have this block
+                    return True
             
-            # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):
                 print(f"✗ Block #{block.index}: invalid signature")
                 return False
             
-            # 2. Verify chain continuity (skip for genesis)
             if block.index > 0 and len(self.blockchain.chain) > 0:
                 prev_block = self.blockchain.get_last_block()
                 if not BlockChainService.is_valid_new_block(
@@ -183,15 +178,11 @@ class ChainSync:
                     print(f"✗ Block #{block.index}: chain continuity check failed")
                     return False
             
-            # 3. Verify merkle root
             calculated_merkle = BlockService.calculate_merkle_root(block.transactions)
             if calculated_merkle != block.block_header.merkle_root:
                 print(f"✗ Block #{block.index}: merkle root mismatch")
                 return False
             
-            # 4. CRITICAL FIX: Execute transactions to update blockchain state
-            # This is ESSENTIAL for data sync! All nodes MUST execute transactions
-            # when receiving blocks to ensure consistent state across the network
             print(f"→ [SYNC] Executing {len(block.transactions)} transactions from block #{block.index}...")
             execution_errors = 0
             for tx in block.transactions:
@@ -206,11 +197,9 @@ class ChainSync:
             print(f"→ Adding block #{block.index} to chain")
             self.blockchain.chain.append(block)
             
-            # 5. Remove synced transactions from mempool
             included_tx_hashes = {tx.tx_hash for tx in block.transactions}
             self.blockchain.mempool = [tx for tx in self.blockchain.mempool if tx.tx_hash not in included_tx_hashes]
             
-            # 6. Save to database
             try:
                 BlockRepository.create_block(block)
                 for tx in block.transactions:
@@ -218,7 +207,6 @@ class ChainSync:
                         tx.block_id = block.block_id
                         tx.tx_status = "COMMITTED"
                     
-                    # Check if tx already exists (idempotent)
                     existing_tx = TransactionRepository.get_transaction_by_hash(tx.tx_hash)
                     if not existing_tx:
                         TransactionRepository.create_transaction(tx)
@@ -249,7 +237,6 @@ class ChainSync:
         local_height = self.get_local_height()
         print(f"  Local chain height: {local_height}")
         
-        # Find best peer
         result = self.find_best_peer()
         
         if result is None:
@@ -263,7 +250,6 @@ class ChainSync:
               f"{best_peer.ip_address}:{best_peer.port}")
         print(f"  Local: {local_height} → Remote: {remote_height}")
         
-        # Download blocks in batches
         batch_size = 20
         total_synced = 0
         current_index = local_height + 1
@@ -271,17 +257,14 @@ class ChainSync:
         while current_index <= remote_height:
             end_index = min(current_index + batch_size - 1, remote_height)
             
-            # Download batch
             blocks = self.download_blocks(best_peer, current_index, end_index)
             
             if blocks is None:
                 print(f"✗ Failed to download blocks {current_index}-{end_index}")
                 break
             
-            # Sort blocks by index to ensure correct order
             blocks.sort(key=lambda b: b.get('index', 0))
             
-            # Validate and add each block
             for block_data in blocks:
                 if self.validate_and_add_block(block_data):
                     total_synced += 1
@@ -291,11 +274,9 @@ class ChainSync:
                           f"(validation failed)")
                     break
             else:
-                # All blocks in batch were valid, continue
                 current_index = end_index + 1
                 continue
             
-            # If inner loop broke, stop syncing
             break
         
         print(f"\n{'=' * 50}")

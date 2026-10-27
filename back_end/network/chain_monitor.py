@@ -23,7 +23,7 @@ class PeerBlockStatus:
         self.last_queried = 0
         self.query_count = 0
         self.failed_count = 0
-        self.status = "UNKNOWN"  # ACTIVE, SYNCED, BEHIND, AHEAD, UNREACHABLE
+        self.status = "UNKNOWN"
     
     def __repr__(self):
         return (f"PeerBlockStatus({self.peer.ip_address}:{self.peer.port} "
@@ -56,20 +56,17 @@ class ChainMonitor:
         self.config = get_config()
         self.check_interval = check_interval
         
-        # Monitoring state
         self.peer_block_status: Dict[str, PeerBlockStatus] = {}
         
-        # Sync failure tracking - prevent infinite retry loops
         self.last_sync_attempt_time = 0
         self.failed_sync_count = 0
-        self.last_gap_state = (0, 0)  # (local_height, remote_height) to detect changes
+        self.last_gap_state = (0, 0)
         self.max_consecutive_failed_syncs = 5
-        self.sync_cooldown_multiplier = 2  # Exponential backoff
+        self.sync_cooldown_multiplier = 2
         self.is_running = False
         self.monitor_thread = None
         self.last_check_time = 0
         
-        # Sync trigger thresholds
         self.max_height = 0
         self.local_height = 0
         monitor_config = self.config.get_monitor_config()
@@ -100,7 +97,6 @@ class ChainMonitor:
             else:
                 db_height = -1
             
-            # Check if RAM chain is out-of-sync with DB (e.g. after restart)
             ram_height = len(self.blockchain.chain) - 1
             if db_height > ram_height:
                 print(f"[ChainMonitor] ⚠️  RAM chain ({ram_height}) lags behind DB ({db_height}), reloading from DB...")
@@ -116,7 +112,6 @@ class ChainMonitor:
         
         except Exception as e:
             print(f"✗ [ChainMonitor] Error getting local height from DB: {e}")
-            # Fallback to RAM
             try:
                 self.local_height = len(self.blockchain.chain) - 1
                 return self.local_height
@@ -136,7 +131,6 @@ class ChainMonitor:
         status = self.peer_block_status[peer.peer_id]
         
         try:
-            # Query peer height endpoint
             url = f"{peer.get_url()}/api/v1/network/blocks/height"
             import requests
             response = requests.get(url, timeout=5)
@@ -215,10 +209,9 @@ class ChainMonitor:
         Returns:
             List of missing block indices
         """
-        local_height = self.get_local_height()  # Uses DB-based height
+        local_height = self.get_local_height()
         missing_blocks = []
         
-        # Get blocks we know we're missing
         if self.max_height > local_height:
             for idx in range(local_height + 1, min(self.max_height + 1, local_height + 100)):
                 missing_blocks.append(idx)
@@ -231,13 +224,11 @@ class ChainMonitor:
         print(f"[ChainMonitor] 🔄 block_gap_threshold={self.block_gap_threshold}, auto_sync_enabled={self.sync_check_enabled}")
         print(f"[ChainMonitor] ⏳ Waiting {self.check_interval} seconds before first check...\n")
         
-        # Wait before first check to let peers initialize
         first_check_delay = min(self.check_interval, 10)
         check_count = 0
         
         while self.is_running:
             try:
-                # First check: use shorter delay to give peers time to initialize
                 if check_count == 0 and first_check_delay > 0:
                     time.sleep(first_check_delay)
                     print(f"[ChainMonitor] → Starting first check...")
@@ -245,7 +236,6 @@ class ChainMonitor:
                 check_count += 1
                 self._do_monitor_check()
                 
-                # Regular checks: use configured interval
                 if self.is_running:
                     time.sleep(self.check_interval)
             
@@ -263,17 +253,14 @@ class ChainMonitor:
         """Perform one monitoring check iteration"""
         check_time = datetime.now().strftime("%H:%M:%S")
         
-        # Update local height
         self.get_local_height()
         
-        # Get active peers
         active_peers = self.peer_manager.get_active_peers()
         
         if not active_peers:
             print(f"[ChainMonitor {check_time}] ⚠️  No active peers to monitor")
             return
         
-        # Query all active peers for height
         peer_heights = []
         
         for peer in active_peers:
@@ -285,13 +272,10 @@ class ChainMonitor:
             print(f"[ChainMonitor {check_time}] ⚠️  Could not query any peer heights (tried {len(active_peers)} peers)")
             return
         
-        # Find max height from all peers
         self.max_height = max(h for _, h in peer_heights)
         
-        # Analyze block gap
         block_gap = self.max_height - self.local_height
         
-        # Build status report
         status_lines = [
             f"[ChainMonitor {check_time}]",
             f"  📊 Local height: {self.local_height}",
@@ -299,7 +283,6 @@ class ChainMonitor:
             f"  📊 Queried {len(peer_heights)}/{len(active_peers)} peers"
         ]
         
-        # Print peer details
         for peer, height in peer_heights:
             status = self.peer_block_status.get(peer.peer_id)
             if status:
@@ -309,7 +292,6 @@ class ChainMonitor:
         
         print("\n".join(status_lines))
         
-        # ✅ AUTO-TRIGGER SYNC IF NEEDED
         if self.sync_check_enabled and block_gap > 0:
             print(f"\n🔴 [ChainMonitor] Block gap detected: local={self.local_height}, remote={self.max_height} (gap={block_gap})")
             print(f"   Threshold: {self.block_gap_threshold}, Auto-sync enabled: {self.sync_check_enabled}")
@@ -332,21 +314,18 @@ class ChainMonitor:
         current_time = time.time()
         gap_state = (self.local_height, self.max_height)
         
-        # Check if gap state changed (new block received) - reset failure count
         if gap_state != self.last_gap_state:
             print(f"[ChainMonitor] Gap state changed: {self.last_gap_state} → {gap_state}, resetting sync attempts")
             self.failed_sync_count = 0
             self.last_gap_state = gap_state
         
-        # Safety: Check if we're in too many failed syncs
         if self.failed_sync_count >= self.max_consecutive_failed_syncs:
             print(f"⚠️  [ChainMonitor] Too many consecutive failed syncs ({self.failed_sync_count})")
             print(f"   Giving up on auto-sync for now (will retry after new block arrives)")
             return 0
         
-        # Safety: Enforce minimum cooldown between sync attempts
         time_since_last_sync = current_time - self.last_sync_attempt_time
-        min_cooldown = 5 * (self.sync_cooldown_multiplier ** self.failed_sync_count)  # Exponential backoff
+        min_cooldown = 5 * (self.sync_cooldown_multiplier ** self.failed_sync_count)
         
         if self.last_sync_attempt_time > 0 and time_since_last_sync < min_cooldown:
             print(f"⚠️  [ChainMonitor] Sync cooldown active ({time_since_last_sync:.1f}s / {min_cooldown}s)")
@@ -361,8 +340,8 @@ class ChainMonitor:
             
             if blocks_synced > 0:
                 print(f"✅ [ChainMonitor] Auto-sync completed: {blocks_synced} blocks synced")
-                self.failed_sync_count = 0  # Reset on success
-                self.get_local_height()  # Update local height
+                self.failed_sync_count = 0
+                self.get_local_height()
                 return blocks_synced
             else:
                 print(f"⚠️  [ChainMonitor] Auto-sync found no blocks to sync")
@@ -442,7 +421,6 @@ class ChainMonitor:
             'peers_monitored': len(self.peer_block_status),
         }
         
-        # Calculate peer statistics
         if self.peer_block_status:
             heights = [s.chain_height for s in self.peer_block_status.values()]
             stats['avg_peer_height'] = sum(heights) / len(heights)
@@ -452,7 +430,6 @@ class ChainMonitor:
         return stats
 
 
-# Global monitor instance
 _global_monitor: Optional[ChainMonitor] = None
 
 
@@ -481,21 +458,17 @@ def stop_chain_monitoring():
 
 
 if __name__ == "__main__":
-    # Test chain monitor
     from network.peer_manager import PeerManager
     from app.blockchain_instance import get_blockchain_instance
     
     peer_manager = PeerManager()
     blockchain = get_blockchain_instance()
     
-    # Initialize monitor
     monitor = ChainMonitor(peer_manager, blockchain, check_interval=10)
     
-    # Start monitoring
     monitor.start()
     
     try:
-        # Let it run for a while
         print("\n=== Chain Monitor Test ===")
         print("Monitoring for 60 seconds...")
         time.sleep(60)

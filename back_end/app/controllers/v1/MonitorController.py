@@ -165,7 +165,6 @@ def get_sync_status():
         else:
             sync_percentage = (local_height / max_height) * 100
             blocks_remaining = max_height - local_height
-            # Estimate 5 seconds per block
             estimated_time = blocks_remaining * 5
         
         is_synced = local_height >= max_height or blocks_remaining <= monitor.block_gap_threshold

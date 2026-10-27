@@ -15,14 +15,12 @@ def create_admin():
     cursor = conn.cursor()
 
     try:
-        # Xóa admin cũ nếu có
         cursor.execute("SELECT address FROM account WHERE role = 'moet'")
         old = cursor.fetchone()
         if old:
             print(f"⚠️  Đang xóa admin cũ: {old[0]}")
             cursor.execute("DELETE FROM account WHERE role = 'moet'")
 
-        # Tạo admin mới
         cursor.execute('''
             INSERT INTO account (address, public_key, role, full_name, email, vault, is_active)
             VALUES (?, ?, ?, ?, ?, ?, ?)

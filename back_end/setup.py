@@ -18,12 +18,10 @@ import requests
 from typing import Optional, Tuple
 from dotenv import load_dotenv
 
-# Add app to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.utils.KeystoreManager import KeystoreManager, create_keystore
 
-# Load environment variables
 load_dotenv()
 
 
@@ -89,13 +87,11 @@ class NodeSetup:
         while True:
             passphrase = getpass.getpass("\nEnter passphrase: ")
             
-            # Validate passphrase
             is_valid, error_msg = KeystoreManager.validate_passphrase(passphrase)
             if not is_valid:
                 self.print_error(f"Invalid passphrase: {error_msg}")
                 continue
             
-            # Confirm passphrase
             passphrase_confirm = getpass.getpass("Confirm passphrase: ")
             if passphrase != passphrase_confirm:
                 self.print_error("Passphrases do not match!")
@@ -108,31 +104,26 @@ class NodeSetup:
         """Create keystore file"""
         self.print_section("Step 2: Generating Keystore")
         
-        # Warn if keystore exists
         if self.check_keystore_exists():
             return False
         
         try:
-            # Generate keypair and encrypt
             private_key_hex, public_key_hex, address = self._generate_and_encrypt_key(passphrase)
             
             self.public_key = public_key_hex
             self.address = address
             
-            # Create keystore data
             keystore_data = KeystoreManager.encrypt_private_key(private_key_hex, passphrase)
             keystore_data['public_key'] = public_key_hex
             keystore_data['address'] = address
             keystore_data['node_type'] = self.node_type
-            keystore_data['created_at'] = int(os.times()[4])  # Timestamp
+            keystore_data['created_at'] = int(os.times()[4])
             
-            # Save keystore file
             if KeystoreManager.save_keystore(self.keystore_path, keystore_data):
                 self.print_success(f"Keystore created: {self.keystore_path}")
                 self.print_info(f"Public Key:  {public_key_hex[:32]}...{public_key_hex[-8:]}")
                 self.print_info(f"Address:     {address}")
                 
-                # Secure delete
                 KeystoreManager.secure_delete(private_key_hex)
                 KeystoreManager.secure_delete(passphrase)
                 
@@ -180,7 +171,6 @@ class NodeSetup:
         self.print_section("Step 4: Registering Peer with Network")
         
         try:
-            # Prepare peer registration data
             peer_data = {
                 'ip_address': config['ip_address'],
                 'port': config['port'],
@@ -190,7 +180,6 @@ class NodeSetup:
             
             self.print_info(f"Connecting to bootstrap node: {self.bootstrap_url}")
             
-            # Register with bootstrap node
             register_url = f"{self.bootstrap_url}/api/v1/network/peers/register"
             response = requests.post(register_url, json=peer_data, timeout=10)
             
@@ -217,7 +206,7 @@ class NodeSetup:
         except requests.exceptions.ConnectionError:
             self.print_warning(f"Could not connect to bootstrap node at {self.bootstrap_url}")
             self.print_warning("Node will run in standalone mode. You can register manually later.")
-            return True  # Don't fail setup if bootstrap is down
+            return True
         
         except Exception as e:
             self.print_error(f"Error during peer registration: {e}")
@@ -245,31 +234,25 @@ class NodeSetup:
         """Execute full setup procedure"""
         self.print_header("EduChain Node Setup")
         
-        # Step 1: Check if keystore exists
         if self.check_keystore_exists():
             self.print_warning("Aborting setup - using existing keystore")
             return False
         
-        # Step 2: Get passphrase from user
         passphrase = self.get_passphrase()
         if not passphrase:
             self.print_error("Setup cancelled - no passphrase provided")
             return False
         
-        # Step 3: Create keystore
         if not self.create_node_keystore(passphrase):
             self.print_error("Setup failed - could not create keystore")
             return False
         
-        # Step 4: Get node configuration
         config = self.get_node_config()
         
-        # Step 5: Register peer with network
         if not self.register_peer_with_network(config):
             self.print_warning("Could not register with bootstrap node")
             self.print_info("You will need to register manually or try again later")
         
-        # Step 6: Save configuration
         if not self.save_node_config(config):
             self.print_warning("Failed to save configuration")
         

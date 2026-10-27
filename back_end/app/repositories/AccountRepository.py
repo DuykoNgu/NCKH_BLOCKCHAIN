@@ -22,7 +22,6 @@ class AccountRepository:
         for attempt in range(max_retries):
             lock_acquired = False
             try:
-                # Acquire global write lock
                 if not acquire_write_lock(timeout=30):
                     logger.warning(f"⚠ Could not acquire lock, retry #{attempt + 1}/{max_retries} for account {account.address}")
                     time.sleep(retry_delay)
@@ -34,7 +33,6 @@ class AccountRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Convert role enum to string value
                 role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
                 
                 cursor.execute('''
@@ -44,7 +42,6 @@ class AccountRepository:
                       account.full_name, account.avatar_url, account.tax_id, account.representative, account.email, account.phone, account.vault, account.agreement_file_url, account.is_active, account.created_at))
                 conn.commit()
                 
-                # Check if insert was successful (rowcount > 0) or skipped (duplicate)
                 inserted = cursor.rowcount > 0
                 conn.close()
                 
@@ -110,24 +107,19 @@ class AccountRepository:
             cursor = conn.cursor()
             identifier_lower = identifier.lower().strip()
 
-            # Try address first
             cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault FROM account WHERE address = ?', (identifier_lower,))
             row = cursor.fetchone()
 
-            # If not found, do Python-side case-insensitive full_name search
-            # (SQLite LOWER() doesn't handle Vietnamese Unicode correctly)
             if not row:
                 cursor.execute('SELECT public_key, address, role, org_name, is_active, created_at, full_name, avatar_url, tax_id, representative, email, phone, vault FROM account WHERE full_name IS NOT NULL')
                 all_rows = cursor.fetchall()
 
-                # 1st pass: exact match (lowercased)
                 for r in all_rows:
                     db_name = r[6] or ''
                     if db_name.lower().strip() == identifier_lower:
                         row = r
                         break
 
-                # 2nd pass: partial/contains match
                 if not row:
                     for r in all_rows:
                         db_name = r[6] or ''
@@ -194,7 +186,6 @@ class AccountRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Convert role enum to string value safely
             role_value = account.role.value if hasattr(account.role, 'value') else str(account.role)
             
             cursor.execute('''

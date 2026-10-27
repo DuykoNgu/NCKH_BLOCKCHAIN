@@ -28,7 +28,6 @@ def generate_keypair():
 def sign_data(data: str, private_key_hex: str) -> str:
     """Sign data with private key using DER encoding"""
     private_key = SigningKey.from_string(bytes.fromhex(private_key_hex), curve=SECP256k1)
-    # Sign with SHA256 hash and DER encoding to match CryptoUtils
     signature = private_key.sign(data.encode(), hashfunc=hashlib.sha256, sigencode=sigencode_der)
     return signature.hex()
 
@@ -36,7 +35,6 @@ def quick_test(num_nfts: int = 10):
     """Quick test with specified number of NFTs"""
     print(f"\n🧪 Quick Test: Minting {num_nfts} NFTs\n")
     
-    # Generate issuer
     print("Creating issuer account...")
     issuer_priv, issuer_pub, issuer_addr = generate_keypair()
     
@@ -52,7 +50,6 @@ def quick_test(num_nfts: int = 10):
     
     print(f"✅ Issuer: {issuer_addr[:20]}...")
     
-    # Generate recipient
     print("Creating recipient account...")
     _, recip_pub, recip_addr = generate_keypair()
     
@@ -68,12 +65,10 @@ def quick_test(num_nfts: int = 10):
     
     print(f"✅ Recipient: {recip_addr[:20]}...")
     
-    # Mint NFTs
     print(f"\nMinting {num_nfts} NFTs...")
     start_time = time.time()
     success_count = 0
     
-    # Import NFTmetadata for signing
     from app.models.NFTmetadata import NFTmetadata
     
     for i in range(num_nfts):
@@ -81,7 +76,6 @@ def quick_test(num_nfts: int = 10):
         pdf_hash = hashlib.sha256(f"cert_{i}".encode()).hexdigest()
         degree = "Bachelor of Science"
         
-        # Create metadata and use get_signing_data()
         metadata = NFTmetadata(
             degree_type=degree,
             pdf_url=pdf_url,

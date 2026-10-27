@@ -18,7 +18,7 @@ class GossipMessage:
     """Represents a gossip message"""
     
     def __init__(self, msg_type: str, data: Dict, msg_id: str = None):
-        self.msg_type = msg_type  # 'transaction', 'block', 'inv'
+        self.msg_type = msg_type
         self.data = data
         self.msg_id = msg_id or self.generate_msg_id()
         self.timestamp = time.time()
@@ -63,11 +63,9 @@ class GossipProtocol:
         self.config = get_config()
         self.gossip_config = self.config.get_gossip_config()
         
-        # Track seen messages to prevent infinite loops
         self.seen_messages: Set[str] = set()
         self.message_cache: Dict[str, GossipMessage] = {}
         
-        # Track inventory messages
         self.known_blocks: Set[str] = set()
         self.known_transactions: Set[str] = set()
     
@@ -83,12 +81,10 @@ class GossipProtocol:
         min_fan_out = self.gossip_config.get('min_fan_out', 3)
         max_fan_out = self.gossip_config.get('max_fan_out', 10)
         
-        # Calculate k = sqrt(N) * factor
         k = int(math.sqrt(total_peers) * fan_out_factor)
         
-        # Clamp to min/max
         k = max(min_fan_out, min(k, max_fan_out))
-        k = min(k, total_peers)  # Can't exceed total peers
+        k = min(k, total_peers)
         
         return k
     
@@ -118,7 +114,6 @@ class GossipProtocol:
         if message:
             self.message_cache[msg_id] = message
         
-        # Clean up old messages periodically
         if len(self.seen_messages) > 10000:
             self.cleanup_old_messages()
     
@@ -143,7 +138,6 @@ class GossipProtocol:
         try:
             url = f"{peer.get_url()}/api/v1/network{endpoint}"
             
-            # Include sender's peer_id in headers for message tracing
             headers = {
                 'X-Peer-ID': self.peer_manager.local_peer_id or 'UNKNOWN',
                 'Content-Type': 'application/json'
@@ -167,22 +161,18 @@ class GossipProtocol:
         First attempts to activate INACTIVE peers if needed
         Returns number of peers successfully notified
         """
-        # Create gossip message
         message = GossipMessage('transaction', tx_data)
         
-        # Check if we've already seen this transaction
         tx_hash = tx_data.get('tx_hash')
         if tx_hash and tx_hash in self.known_transactions:
             print(f"⚠ Transaction {tx_hash[:8]}... already known, skipping gossip")
             return 0
         
-        # Mark as known
         if tx_hash:
             self.known_transactions.add(tx_hash)
         
         self.mark_message_seen(message.msg_id, message)
         
-        # Try to activate INACTIVE peers if we have few active peers
         active_peers = self.peer_manager.get_active_peers()
         all_peers = self.peer_manager.get_known_peers(include_inactive=True)
         inactive_peers = [p for p in all_peers if p.status == "INACTIVE"]
@@ -190,18 +180,15 @@ class GossipProtocol:
         print(f"📊 [TX Propagation] Active: {len(active_peers)}, Inactive: {len(inactive_peers)}, Total: {len(all_peers)}")
         
         if len(active_peers) < 3:
-            # Not enough active peers, try to activate INACTIVE ones
             if inactive_peers:
                 print(f"→ Low peers ({len(active_peers)} active). Attempting to activate {len(inactive_peers)} INACTIVE peers for gossip...")
-                for peer in inactive_peers[:5]:  # Try up to 5 inactive peers
+                for peer in inactive_peers[:5]:
                     if self.peer_manager.ping_peer(peer):
                         print(f"  ✓ Reactivated peer {peer.ip_address}:{peer.port}")
             
-            # Refresh active peers list
             active_peers = self.peer_manager.get_active_peers()
             print(f"📊 [After Activation] Active peers: {len(active_peers)}")
         
-        # Calculate fan-out
         k = self.calculate_fan_out(len(active_peers))
         
         if k == 0:
@@ -211,14 +198,12 @@ class GossipProtocol:
                 print(f"   Known peers: {[(p.ip_address, p.port, p.status) for p in all_peers]}")
             return 0
         
-        # Select random peers
         selected_peers = self.select_random_peers(k, exclude_peers)
         
         print(f"→ Gossiping transaction {tx_hash[:8] if tx_hash else 'UNKNOWN'}... to {len(selected_peers)} peers (fan-out={k})")
         for peer in selected_peers:
             print(f"  • {peer.ip_address}:{peer.port} ({peer.status})")
         
-        # Send to selected peers
         success_count = 0
         for peer in selected_peers:
             if self.send_message_to_peer(peer, '/gossip/transaction', message.to_dict()):
@@ -240,15 +225,12 @@ class GossipProtocol:
             print("✗ Block hash missing, cannot propagate")
             return 0
         
-        # Check if we've already seen this block
         if block_hash in self.known_blocks:
             print(f"⚠ Block {block_hash[:8]}... already known, skipping gossip")
             return 0
         
-        # Mark as known
         self.known_blocks.add(block_hash)
         
-        # Get all active peers (high priority - send to all)
         active_peers = self.peer_manager.get_active_peers()
         all_peers = self.peer_manager.get_known_peers(include_inactive=True)
         
@@ -262,7 +244,6 @@ class GossipProtocol:
         success_count = 0
         
         if use_inv:
-            # Send INV message first (lightweight)
             inv_message = GossipMessage('inv', {
                 'block_hash': block_hash,
                 'block_index': block_index,
@@ -275,7 +256,6 @@ class GossipProtocol:
                 if self.send_message_to_peer(peer, '/gossip/inv', inv_message.to_dict()):
                     success_count += 1
         else:
-            # Send full block directly
             block_message = GossipMessage('block', block_data)
             
             print(f"→ Broadcasting full block {block_hash[:8]}... to {len(active_peers)} peers")
@@ -316,26 +296,21 @@ class GossipProtocol:
             print(f"✗ [INV] No block_hash in inventory message")
             return None
         
-        # Check if we already have this block
         if block_hash in self.known_blocks:
             print(f"⚠ Already have block {block_hash[:8]}...")
             return None
         
-        # Validate sender_peer_id
         if not sender_peer_id:
             print(f"⚠ [INV] Block {block_hash[:8]}... received but sender_peer_id is missing, cannot request full block")
             return None
         
-        # We don't have it, request from sender
         print(f"→ [INV] Requesting block {block_hash[:8]}... from peer {sender_peer_id[:8]}...")
         
-        # Find sender peer
         sender_peer = self.peer_manager.peers.get(sender_peer_id)
         if not sender_peer:
             print(f"✗ [INV] Sender peer {sender_peer_id[:8] if sender_peer_id else 'UNKNOWN'}... not found in peer list")
             return None
         
-        # Request block
         block_data = self.request_block(sender_peer, block_hash)
         
         if block_data:
@@ -353,7 +328,6 @@ class GossipProtocol:
         try:
             payload = tx.payload
             
-            # Extract activation info from payload
             public_key = payload.get("public_key")
             ip_address = payload.get("ip_address")
             port = payload.get("port")
@@ -362,13 +336,11 @@ class GossipProtocol:
                 print(f"⚠ Incomplete activation payload: pubkey={bool(public_key)}, ip={bool(ip_address)}, port={bool(port)}")
                 return
             
-            # Generate peer_id using same method as peer_manager
             import hashlib
             peer_id = hashlib.sha256(f"{ip_address}:{port}".encode()).hexdigest()[:16]
             
             print(f"→ Updating peer {peer_id}... with public_key={public_key[:16]}...")
             
-            # Update peer record in database with public_key and ACTIVE status
             from app.repositories.PeerRepository import PeerRepository
             
             success = PeerRepository.update_peer_public_key_and_activate(
@@ -381,7 +353,6 @@ class GossipProtocol:
             if success:
                 print(f"✓ Peer {peer_id}... activated and saved with public_key")
                 
-                # Also update in-memory peer manager if it exists
                 peer = self.peer_manager.peers.get(peer_id)
                 if peer:
                     peer.public_key = public_key
@@ -407,15 +378,12 @@ class GossipProtocol:
             print("✗ Transaction hash missing")
             return False
         
-        # Check if we've already seen this transaction
         if tx_hash in self.known_transactions:
             print(f"⚠ Transaction {tx_hash[:8]}... already in mempool")
             return False
         
-        # Mark as known
         self.known_transactions.add(tx_hash)
         
-        # ✅ VALIDATE AND ADD TO MEMPOOL + DATABASE
         from app.models.Transaction import Transaction
         from app.services.TransactionService import TransactionService
         from app.services.BlockChainService import BlockChainService
@@ -423,14 +391,11 @@ class GossipProtocol:
         from app.repositories.TransactionRepository import TransactionRepository
         
         try:
-            # Parse transaction
             tx = Transaction.from_dict(tx_data)
             
-            # Validate transaction signature
             if not TransactionService.is_valid(tx):
                 payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
                 
-                # Enhanced error logging
                 print(f"✗ Invalid transaction signature: {tx_hash[:8]}...")
                 print(f"  op={payload_op}, sender_address={tx.sender_address}, sender_pubkey={tx.sender_pubkey[:16] if tx.sender_pubkey else 'None'}..., signature={'empty' if not tx.signature else tx.signature[:16]}...")
                 
@@ -442,11 +407,9 @@ class GossipProtocol:
                 
                 return False
             
-            # ✨ Transaction validated successfully
             payload_op = tx.payload.get("op") if isinstance(tx.payload, dict) else None
             payload_type_check = isinstance(tx.payload, dict)
             
-            # Enhanced logging for account operations
             if payload_op in ["account_register", "account_update"]:
                 print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
                 print(f"  [account_op] payload_type={type(tx.payload).__name__}, is_dict={payload_type_check}")
@@ -455,18 +418,13 @@ class GossipProtocol:
             else:
                 print(f"✓ Transaction {tx_hash[:8]}... validated (op={payload_op})")
             
-            # Special handling for system transactions and account operations
             is_system_tx = tx.sender_address is None or tx.sender_address == "system"
             if is_system_tx and payload_op == "validator_activate":
                 print(f"→ Processing validator activation transaction: {tx_hash[:8]}...")
                 self._process_validator_activation(tx)
             
-            # Add to blockchain mempool
             blockchain = get_blockchain_instance()
             
-            # ── For account_register: execute the operation first so the account exists
-            # in this node's DB before we try to save the TX (which has a FK on sender_address).
-            # execute_transaction() is idempotent: safely skips if account already exists.
             if payload_op == "account_register":
                 from app.services.BlockChainService import BlockChainService as BCS
                 BCS.execute_transaction(blockchain, tx)
@@ -478,7 +436,6 @@ class GossipProtocol:
                 print(f"✗ Failed to add transaction {tx_hash[:8]}... to mempool")
                 return False
             
-            # Also save to database for persistence
             if TransactionRepository.create_transaction(tx):
                 print(f"✓ Transaction {tx_hash[:8]}... saved to database (op={payload_op})")
             else:
@@ -490,7 +447,6 @@ class GossipProtocol:
             traceback.print_exc()
             return False
         
-        # Continue gossip to other peers (exclude sender)
         exclude = [sender_peer_id] if sender_peer_id else []
         self.propagate_transaction(tx_data, exclude_peers=exclude)
         
@@ -510,8 +466,6 @@ class GossipProtocol:
             print("✗ Block ID missing")
             return False
         
-        # Check if we've already seen this block by BOTH hash and ID
-        # Use block_id as primary key since hash might vary during transmission
         if block_id in self.known_blocks:
             print(f"⚠ Block {block_id} already processed")
             return False
@@ -520,8 +474,6 @@ class GossipProtocol:
             print(f"⚠ Block hash {block_hash[:8]}... already known")
             return False
         
-        # 🔥 CRITICAL: Check for block fork BEFORE marking as known
-        # If a block at this index already exists with different block_id, it's a fork
         try:
             from app.database.connection import get_connection
             conn = get_connection()
@@ -536,7 +488,6 @@ class GossipProtocol:
                     print(f"⚠ Block {block_id} already in DB, skipping")
                     return False
                 else:
-                    # Fork detected: same index, different block_id
                     print(f"\n{'='*60}")
                     print(f"🔴 FORK DETECTED at block index {block_index}!")
                     print(f"{'='*60}")
@@ -548,12 +499,10 @@ class GossipProtocol:
         except Exception as e:
             print(f"⚠ Could not check DB for fork: {e}")
         
-        # Mark as known by both block_id and hash
         self.known_blocks.add(block_id)
         if block_hash:
             self.known_blocks.add(block_hash)
         
-        # ✅ VERIFY AND COMMIT BLOCK
         from app.models.Block import Block
         from app.services.BlockService import BlockService
         from app.services.BlockChainService import BlockChainService
@@ -562,12 +511,9 @@ class GossipProtocol:
         from app.blockchain_instance import get_blockchain_instance
         
         try:
-            # Parse block
             block = Block.from_dict(block_data)
             blockchain = get_blockchain_instance()
             
-            # ⚡ CHECK FOR BLOCK GAP AND TRIGGER SYNC
-            # Use DB height as reliable source of truth (RAM may be stale after restart)
             try:
                 from app.blockchain_instance import get_local_db_height
                 local_height = get_local_db_height()
@@ -579,7 +525,7 @@ class GossipProtocol:
            
             if block.index <= local_height:
                 print(f"⚠ Block #{block.index} already exists in chain (local height: {local_height})")
-                return True  # Not an error, just already have this block
+                return True
             
             block_gap = block.index - local_height
             
@@ -587,7 +533,6 @@ class GossipProtocol:
                 print(f"⚠️  [GOSSIP] Block gap detected: received block #{block.index} but local height is {local_height} (gap={block_gap})")
                 print(f"→ [GOSSIP] Triggering chain sync to fill {block_gap} missing block(s)...")
                 
-                # Try to trigger sync to fill missing blocks
                 try:
                     from network.chain_sync import ChainSync
                     chain_sync = ChainSync(
@@ -597,38 +542,26 @@ class GossipProtocol:
                     synced = chain_sync.sync()
                     if synced > 0:
                         print(f"✅ [GOSSIP] Filled {synced} missing blocks via sync")
-                    # Continue processing this block after sync
                 except Exception as sync_err:
                     print(f"⚠️  [GOSSIP] Sync error: {sync_err}, continuing with gossip block...")
             
-            # 1. Verify validator signature
             if not BlockService.verify_block(block, block.block_header.validator_pubkey):
                 print(f"✗ Block {block_hash[:8]}... has invalid signature")
                 return False
             
-            # 2. Verify validator authorization
-            # if block.block_header.validator_pubkey not in blockchain.authority_set:
-            #     print(f"✗ Validator {block.block_header.validator_pubkey[:16]}... not authorized")
-            #     return False
             
-            # 3. Verify merkle root
             calculated_merkle = BlockService.calculate_merkle_root(block.transactions)
             if calculated_merkle != block.block_header.merkle_root:
                 print(f"✗ Merkle root mismatch for block {block_hash[:8]}...")
                 return False
             
-            # 4. CRITICAL FIX: Ensure block_hash is calculated for received blocks
-            # When blocks come via gossip, block_hash might not be set yet
-            # We need to calculate it BEFORE validating chain continuity
             if not block.block_hash or block.block_hash == "":
                 block.block_hash = BlockService.calculate_hash(block)
                 print(f"→ [GOSSIP] Calculated block_hash for {block_hash[:8]}... (was empty)")
             
-            # 5. Verify block chain continuity
             if len(blockchain.chain) > 0:
                 last_block = blockchain.get_last_block()
                 
-                # Debug: Show what we're validating
                 print(f"[DEBUG] Validating block continuity:")
                 print(f"  New block index: {block.index}, prev_hash: {block.block_header.pre_hash[:16]}...")
                 print(f"  Last block index: {last_block.index}, hash: {last_block.block_hash[:16]}...")
@@ -639,9 +572,6 @@ class GossipProtocol:
                     print(f"  Hash mismatch: {block.block_header.pre_hash[:16]}... vs {last_block.block_hash[:16]}...")
                     return False
             
-            # 5. 🔥 CRITICAL FIX: EXECUTE transactions to update blockchain state
-            # This is ESSENTIAL for data sync! All nodes MUST execute transactions
-            # when receiving blocks to ensure consistent state across the network
             print(f"→ [SYNC] Executing {len(block.transactions)} transactions from block {block_hash[:8]}...")
             execution_errors = 0
             for tx in block.transactions:
@@ -661,37 +591,27 @@ class GossipProtocol:
             if execution_errors > 0:
                 print(f"⚠️  [SYNC] {execution_errors}/{len(block.transactions)} transaction executions failed")
             
-            # 6. CRITICAL: Save to database BEFORE adding to RAM chain
-            # This ensures DB is always source of truth for fork detection
             print(f"→ Persisting block {block_hash[:8]}... to database")
             BlockRepository.create_block(block)
             
-            # 7. Save transactions to database
             for tx in block.transactions:
-                # Update transaction with block_id if not already set
                 if not tx.block_id:
                     tx.block_id = block.block_id
                     tx.tx_status = "COMMITTED"
                 
-                # Check if transaction already exists in DB (idempotent)
                 existing_tx = TransactionRepository.get_transaction_by_hash(tx.tx_hash)
                 if existing_tx:
-                    # Transaction already saved, just ensure block_id is set
                     if not existing_tx.block_id:
                         TransactionRepository.update_transaction_block_id(tx.tx_hash, block.block_id)
                 else:
-                    # New transaction, save it
                     TransactionRepository.create_transaction(tx)
             
             print(f"✓ Block persisted to database")
             
-            # 8. NOW add block to RAM chain (after DB persistence confirmed)
             print(f"→ Adding block {block_hash[:8]}... to local chain")
             blockchain.chain.append(block)
             print(f"✓ Block added to local chain")
             
-            # 9. Remove committed transactions from mempool
-            # This ensures all nodes have consistent mempool state
             included_tx_hashes = {tx.tx_hash for tx in block.transactions}
             blockchain.mempool = [tx for tx in blockchain.mempool if tx.tx_hash not in included_tx_hashes]
             
@@ -703,7 +623,6 @@ class GossipProtocol:
             traceback.print_exc()
             return False
         
-        # Continue gossip to other peers (exclude sender)
         exclude = [sender_peer_id] if sender_peer_id else []
         active_peers = self.peer_manager.get_active_peers()
         selected_peers = [p for p in active_peers if p.peer_id not in exclude]
@@ -716,7 +635,6 @@ class GossipProtocol:
 
 
 if __name__ == "__main__":
-    # Test gossip protocol
     from network.peer_manager import PeerManager
     
     peer_manager = PeerManager()
@@ -724,12 +642,10 @@ if __name__ == "__main__":
     
     print("\n=== Testing Gossip Protocol ===")
     
-    # Test fan-out calculation
     for n in [5, 10, 20, 50, 100]:
         k = gossip.calculate_fan_out(n)
         print(f"N={n} peers → fan-out k={k}")
     
-    # Test transaction gossip
     print("\n=== Test Transaction Gossip ===")
     test_tx = {
         'tx_hash': 'abc123',

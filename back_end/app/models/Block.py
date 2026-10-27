@@ -12,7 +12,7 @@ class Block:
         self.index = index
         self.block_header = block_header
         self.transactions = transactions
-        self.block_size = len(transactions)  # Number of transactions in this block
+        self.block_size = len(transactions)
         self.block_hash: str = ""
         self.validator_signature: str = ""
     

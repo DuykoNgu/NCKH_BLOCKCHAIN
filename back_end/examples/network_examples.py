@@ -16,14 +16,11 @@ def example_1_initialize_network():
     print("EXAMPLE 1: Network Initialization")
     print("="*60)
     
-    # Create network service
     service = NetworkService()
     
-    # Initialize (connects to seed nodes, syncs time, etc.)
     if service.initialize():
         print("\n✅ Network initialized successfully!")
         
-        # Get network statistics
         stats = service.get_network_stats()
         print(f"\n📊 Network Statistics:")
         print(f"   Total peers: {stats['total_peers']}")
@@ -44,14 +41,12 @@ def example_2_peer_discovery():
     
     service = NetworkService()
     
-    # Get current peer list
     peers = service.get_peer_list()
     print(f"\n📋 Current peers: {len(peers)}")
     
-    for peer in peers[:5]:  # Show first 5
+    for peer in peers[:5]:
         print(f"   - {peer['ip_address']}:{peer['port']} ({peer['node_type']})")
     
-    # Register a new peer
     print("\n➕ Registering new peer...")
     new_peer = service.register_peer(
         ip_address="10.0.1.200",
@@ -74,7 +69,6 @@ def example_3_gossip_transaction():
     
     service = NetworkService()
     
-    # Create a sample transaction
     transaction = {
         'tx_hash': 'abc123def456',
         'sender_address': 'addr_university_A',
@@ -89,7 +83,6 @@ def example_3_gossip_transaction():
     
     print(f"\n📤 Broadcasting transaction: {transaction['tx_hash']}")
     
-    # Broadcast to network
     peers_notified = service.broadcast_transaction(transaction)
     
     print(f"✅ Transaction gossiped to {peers_notified} peers")
@@ -103,7 +96,6 @@ def example_4_gossip_block():
     
     service = NetworkService()
     
-    # Create a sample block
     block = {
         'block_hash': 'block_hash_xyz789',
         'index': 105,
@@ -116,7 +108,6 @@ def example_4_gossip_block():
     print(f"\n📤 Broadcasting block #{block['index']}")
     print(f"   Hash: {block['block_hash']}")
     
-    # Broadcast using INV messages (efficient)
     peers_notified = service.broadcast_block(block, use_inv=True)
     
     print(f"✅ Block INV sent to {peers_notified} peers")
@@ -130,11 +121,9 @@ def example_5_consensus_timing():
     
     service = NetworkService()
     
-    # Assume we have 3 validators
     total_validators = 3
-    my_validator_index = 1  # I am validator #1
+    my_validator_index = 1
     
-    # Get current slot info
     slot_info = service.get_current_slot_info(total_validators)
     
     print(f"\n⏰ Current Slot Information:")
@@ -143,7 +132,6 @@ def example_5_consensus_timing():
     print(f"   Slot duration: {slot_info['slot_duration']}s")
     print(f"   Time remaining: {slot_info['time_remaining_in_slot']:.2f}s")
     
-    # Check if it's my turn
     is_my_turn = service.is_my_turn(my_validator_index, total_validators)
     
     if is_my_turn:
@@ -167,14 +155,13 @@ def example_6_validator_rotation():
     print("   Press Ctrl+C to stop\n")
     
     try:
-        for i in range(6):  # Watch 6 slots (30 seconds)
+        for i in range(6):
             slot_info = service.get_current_slot_info(total_validators)
             
             print(f"Slot #{slot_info['current_slot']}: ", end="")
             print(f"Leader = Validator #{slot_info['leader_index']}, ", end="")
             print(f"Time left = {slot_info['time_remaining_in_slot']:.1f}s")
             
-            # Show which validator should act
             for v_idx in range(total_validators):
                 if v_idx == slot_info['leader_index']:
                     print(f"   Validator #{v_idx}: 🟢 CREATING BLOCK")
@@ -183,7 +170,6 @@ def example_6_validator_rotation():
             
             print()
             
-            # Wait for next slot
             if i < 5:
                 time.sleep(slot_info['time_remaining_in_slot'] + 0.5)
     
@@ -199,7 +185,6 @@ def example_7_health_monitoring():
     
     service = NetworkService()
     
-    # Perform health check
     health = service.health_check()
     
     print(f"\n🏥 Network Health Check:")

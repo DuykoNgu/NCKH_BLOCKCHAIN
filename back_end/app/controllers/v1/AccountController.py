@@ -12,11 +12,9 @@ from app.utils.CryptoUtils import CryptoUtils
 from app.utils.logger import get_logger
 user_bp = Blueprint('user_bp', __name__, url_prefix='/api/v1/users')
 logger = get_logger(__name__)
-# --- Redis & Fallback Storage Configuration ---
 nonce_fallback = {}
 _redis_available = False
 
-# Initialize Redis client with very short timeout for the initial check
 r = redis.StrictRedis(
     host=REDIS_HOST, 
     port=REDIS_PORT, 
@@ -28,8 +26,6 @@ r = redis.StrictRedis(
 )
 
 try:
-    # Force disable Redis for debugging performance issues
-    # r.ping()
     _redis_available = False
     logger.info("ℹ️ Redis is manually disabled. Using In-Memory fallback for nonces.")
 except Exception as e:
@@ -44,7 +40,6 @@ def set_nonce(address, nonce):
         except Exception as e:
             logger.warning(f"Redis set failed: {e}")
     
-    # Fallback to dictionary
     nonce_fallback[address] = (nonce, datetime.datetime.now() + datetime.timedelta(seconds=300))
 
 def get_nonce_from_storage(address):
@@ -55,7 +50,6 @@ def get_nonce_from_storage(address):
         except Exception as e:
             logger.warning(f"Redis get failed: {e}")
 
-    # Check fallback
     if address in nonce_fallback:
         nonce, expiry = nonce_fallback[address]
         if datetime.datetime.now() < expiry:
@@ -75,7 +69,6 @@ def delete_nonce(address):
     if address in nonce_fallback:
         del nonce_fallback[address]
 
-# --- Routes ---
 
 @user_bp.route('/auth/get_nonce', methods=['GET'])
 def get_nonce():
@@ -97,7 +90,6 @@ def register():
     public_key = data.get('public_key')
     role_str = data.get('role', 'client')
     signature = data.get('signature')
-    # Thông tin bổ sung (dành cho validator/trường học)
     full_name = data.get('full_name')
     tax_id = data.get('tax_id')
     representative = data.get('representative')
@@ -121,7 +113,6 @@ def register():
     if not is_valid_signature:
         return jsonify({"error": "Invalid digital signature."}), 401
     
-    # Convert string to Role enum
     role_map = {
         'client': Role.CLIENT,
         'validator': Role.VALIDATOR,
@@ -174,7 +165,6 @@ def verify():
         
         public_key = account.public_key
 
-        # Use centralized signature verification
         is_valid = CryptoUtils.verify_signature(msg_hash, signature, public_key)
         
         if is_valid:
@@ -285,18 +275,14 @@ def update_vault():
 
 @user_bp.route('/pending_validators', methods=['GET'])
 def get_pending_validators():
-    # Lấy query param 'all'
     get_all = request.args.get('all', 'false').lower() == 'true'
     
-    # Fetch all accounts
     all_accounts = AccountService.get_all_account()
     
     if get_all:
-        # Lấy tất cả validator
         validators = [acc for acc in all_accounts if 
                     (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator')]
     else:
-        # Chỉ lấy validator đang chờ phê duyệt (is_active == 0)
         validators = [acc for acc in all_accounts if 
                     (hasattr(acc.role, 'value') and acc.role.value == 'validator' or acc.role == 'validator') 
                     and acc.is_active == 0]
@@ -380,7 +366,7 @@ def get_profile(address):
             "role": account.role.value if hasattr(account.role, 'value') else str(account.role),
             "full_name": account.full_name,
             "avatar_url": account.avatar_url,
-            "is_active": int(account.is_active), # Cast to int for consistency
+            "is_active": int(account.is_active),
             "tax_id": account.tax_id,
             "representative": account.representative,
             "email": account.email,

@@ -1,7 +1,6 @@
 import sqlite3
 import os
 
-# Get database path
 DB_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(DB_DIR, 'node_a.db')
 schema_sql = """
@@ -126,13 +125,10 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Enable foreign keys
     cursor.execute("PRAGMA foreign_keys = ON")
     
-    # Execute full schema
     cursor.executescript(schema_sql)
     
-    # Individual Migrations/Check columns
     tables_to_check = {
         "account": ["full_name", "avatar_url"],
         "nft": ["owner_address", "issuer_pubkey", "issuer_address", "issuer_signature"]
@@ -143,7 +139,7 @@ def init_db():
             try:
                 cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} TEXT")
             except sqlite3.OperationalError:
-                pass # column already exists
+                pass
                 
     conn.commit()
     cursor.close()

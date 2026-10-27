@@ -12,7 +12,6 @@ import sys
 import os
 import argparse
 
-# Add back_end directory to Python path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
@@ -54,16 +53,12 @@ def initialize_p2p_network(host, port, public_key=""):
     from app.services.NetworkService import get_network_service, initialize_network
     from network.config_loader import get_config
     
-    # Update node config with actual port
     config = get_config()
     network_config = config.get_network_config()
     network_config['listen_port'] = port
     
-    # Determine actual IP for self-registration
-    # Use 127.0.0.1 if not explicitly set to avoid network issues in local testing
     node_ip = "127.0.0.1" if host == "0.0.0.0" else host
     
-    # Initialize network (NTP sync + bootstrap + health check)
     try:
         success = initialize_network(node_ip=node_ip, node_port=port, public_key=public_key)
         if success:
@@ -115,7 +110,6 @@ def start_network_background_tasks():
     )
     print("✅ Network daemon started (health check: 30s, peer sync: 60s)")
     
-    # Start chain monitor for periodic block sync
     try:
         config = get_config()
         monitor_config = config.get_monitor_config()
@@ -164,18 +158,15 @@ if __name__ == "__main__":
     print(f"   Host: {args.host}:{args.port}")
     print("=" * 60)
     
-    # Step 0: Custom DB if specified (for multi-node testing) - MUST be done before app imports
     if args.db:
         setup_custom_db(args.db)
     
-    # NOW import app modules after DB path is set
     from app.utils.KeystoreManager import KeystoreManager
     from app.main import app, init_db
     from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
     from consensus.validator_worker import start_validator_worker
     from network.config_loader import get_config
     
-    # Step 1: Initialize database
     total_steps = 5 if not args.no_network else 3
     step = 1
     
@@ -186,18 +177,15 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[WARN] Database initialization warning: {e}")
     
-    # Step 2: Initialize blockchain
     step += 1
     print(f"\n[{step}/{total_steps}] Initializing blockchain...")
     try:
-        # Use absolute path to keystore file (relative to this script)
         keystore_path = os.path.join(current_dir, 'node.keystore')
         print(f"  Loading keystore from: {keystore_path}")
         keystore_data = KeystoreManager.load_keystore(keystore_path)
         if keystore_data:
             public_key = keystore_data['public_key']
             
-            # Get seed nodes from config
             config = get_config()
             seed_nodes = config.get_seed_nodes()
             
@@ -214,21 +202,17 @@ if __name__ == "__main__":
         public_key = ""
     
     if not args.no_network:
-        # Step 3: Initialize P2P network
         step += 1
         print(f"\n[{step}/{total_steps}] Initializing P2P network...")
         initialize_p2p_network(args.host, args.port, public_key)
         
-        # Step 4: Sync chain from peers
         step += 1
         print(f"\n[{step}/{total_steps}] Syncing blockchain from peers...")
         sync_chain_from_peers()
     
-    # Step 5 (or 3): Start services and Flask server
     step += 1
     print(f"\n[{step}/{total_steps}] Starting services...")
     
-    # Initialize validator worker
     try:
         start_validator_worker(
             my_validator_index=args.validator_index,
@@ -239,7 +223,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️  Validator worker warning: {e}")
     
-    # Start network background daemon (includes chain monitor)
     if not args.no_network:
         try:
             start_network_background_tasks()
@@ -247,7 +230,6 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"⚠️  Network daemon warning: {e}")
     
-    # Start Flask server
     print("\n" + "=" * 60)
     print(f"🌐 Server running at: http://{args.host}:{args.port}")
     print(f"📡 P2P Network: {'ENABLED' if not args.no_network else 'DISABLED'}")
@@ -255,5 +237,4 @@ if __name__ == "__main__":
     print("Press CTRL+C to stop")
     print("=" * 60 + "\n")
     
-    # Use use_reloader=False to prevent duplicate startup with threads
     app.run(host=args.host, port=args.port, debug=True, use_reloader=False)

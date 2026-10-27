@@ -7,7 +7,6 @@ from app.models.Transaction import Transaction
 class BlockChain:
     def __init__(self):
         self.chain: List[Block] = []
-        #TODO: Thêm model Transaction
         self.mempool: List[Transaction] = []
         self.super_validator_pubkey: str = ""
         self.authority_set: set[str] = set()

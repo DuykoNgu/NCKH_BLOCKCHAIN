@@ -18,10 +18,8 @@ import time
 from typing import Optional
 from dotenv import load_dotenv
 
-# Add app to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Load environment variables
 load_dotenv()
 
 
@@ -99,7 +97,6 @@ class NodeDeactivator:
         self.print_section("Step 2: Checking Validator Status")
         
         try:
-            # Call status endpoint on running server
             status_url = f"http://{self.node_ip}:{self.node_port}/api/v1/auth/status"
             response = requests.get(status_url, timeout=5)
             
@@ -135,7 +132,6 @@ class NodeDeactivator:
         self.print_section("Step 3: Deactivating Validator")
         
         try:
-            # Call deactivate endpoint on running server
             deactivate_url = f"http://{self.node_ip}:{self.node_port}/api/v1/auth/deactivate"
             response = requests.post(deactivate_url, timeout=5)
             
@@ -175,11 +171,10 @@ class NodeDeactivator:
         self.print_section("Step 4: Broadcasting Deactivation Status")
         
         try:
-            # Load node config to get IP/port
             config_path = ".node_config.json"
             if not os.path.exists(config_path):
                 self.print_warning("Node config not found - skipping status broadcast")
-                return True  # Non-critical
+                return True
             
             with open(config_path, 'r') as f:
                 node_config = json.load(f)
@@ -187,12 +182,11 @@ class NodeDeactivator:
             node_ip = node_config.get('ip_address') or self.node_ip
             node_port = node_config.get('port') or self.node_port
             
-            # Prepare status update: ACTIVE -> INACTIVE (deactivated)
             status_update = {
                 'ip_address': node_ip,
                 'port': node_port,
                 'public_key': self.public_key,
-                'node_type': 'observer',  # Changed from validator after deactivation
+                'node_type': 'observer',
                 'timestamp': time.time()
             }
             
@@ -225,18 +219,17 @@ class NodeDeactivator:
                         f"Connection error (attempt {attempt + 1}/{self.max_retries}): {str(e)[:50]}"
                     )
                 
-                # Retry with delay
                 if attempt < self.max_retries - 1:
                     self.print_info(f"Retrying in {self.retry_delay} seconds...")
                     time.sleep(self.retry_delay)
             
             self.print_warning("Could not broadcast status update")
             self.print_info("Status will be updated upon next gossip check")
-            return True  # Non-critical
+            return True
         
         except Exception as e:
             self.print_warning(f"Error broadcasting status: {e}")
-            return True  # Non-critical
+            return True
     
     def display_summary(self) -> None:
         """Display deactivation summary"""
@@ -279,28 +272,22 @@ class NodeDeactivator:
         """Execute full deactivation procedure"""
         self.print_header("EduChain Node Deactivation")
         
-        # Step 1: Load node configuration
         if not self.load_node_config():
             return False
         
-        # Step 2: Check current validator status
         if not self.check_validator_status():
             return False
         
-        # Step 3: Confirm deactivation
         confirm = input("\n⚠️   Are you sure you want to deactivate the validator? (yes/no): ").strip().lower()
         if confirm != 'yes':
             self.print_info("Deactivation cancelled")
             return False
         
-        # Step 4: Deactivate validator
         if not self.deactivate_validator():
             return False
         
-        # Step 5: Broadcast status update
         self.broadcast_peer_status_update()
         
-        # Step 6: Display summary
         self.display_summary()
         
         return True

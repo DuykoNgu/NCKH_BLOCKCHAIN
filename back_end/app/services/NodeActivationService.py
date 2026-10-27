@@ -60,10 +60,8 @@ class NodeActivationService:
             str: Signature (hex format)
         """
         try:
-            # Convert payload to JSON string (sorted for consistency)
             payload_json = json.dumps(payload, sort_keys=True)
             
-            # Sign the payload
             signature = CryptoUtils.sign_data(payload_json, private_key)
             
             logger.info(f"Payload signed successfully. Signature: {signature[:32]}...")
@@ -216,7 +214,6 @@ class NodeActivationService:
             
             logger.info(f"Processing activation message from {ip}:{port}")
             
-            # Step 1: Verify authentication (signature verification)
             if not NodeActivationService.verify_activation_signature(payload, signature, node_id):
                 logger.warning(f"Signature verification failed for node {node_id}")
                 return {
@@ -227,7 +224,6 @@ class NodeActivationService:
             
             logger.info(f"✓ Authentication verified for {node_id}")
             
-            # Step 2: Check authorization (peer is authorized)
             is_authorized = PeerRepository.is_peer_authorized(node_id)
             if not is_authorized:
                 logger.warning(f"Node {node_id} is not authorized")
@@ -239,14 +235,11 @@ class NodeActivationService:
             
             logger.info(f"✓ Authorization verified for {node_id}")
             
-            # Step 3: Update peer status (add or update peer)
-            peer_id = node_id[:16]  # Use first 16 chars of public key as peer_id
+            peer_id = node_id[:16]
             
-            # Try to update existing peer first
             existing_peer = PeerRepository.get_peer_by_public_key(node_id)
             
             if existing_peer:
-                # Peer exists, update status from INACTIVE/PENDING to ACTIVE
                 success = PeerRepository.update_peer_status(existing_peer['peer_id'], 'ACTIVE')
                 if success:
                     logger.info(f"✓ Updated peer {existing_peer['peer_id']} to ACTIVE")
@@ -257,7 +250,6 @@ class NodeActivationService:
                         'action': 'updated'
                     }
             else:
-                # Peer doesn't exist, add new peer with ACTIVE status
                 success = PeerRepository.add_or_update_peer(
                     peer_id=peer_id,
                     ip_address=ip,
@@ -309,7 +301,6 @@ class NodeActivationService:
             Transaction: The transaction object ready for mempool
         """
         try:
-            # Create activation data as payload
             activation_data = {
                 "type": "PEER_ACTIVATION",
                 "node_id": node_id,
@@ -317,16 +308,14 @@ class NodeActivationService:
                 "port": port
             }
             
-            # Create transaction
             tx = Transaction(
                 sender_pubkey=node_id,
                 sender_address=sender_address,
-                recipient_address="SYSTEM",  # System transaction
+                recipient_address="SYSTEM",
                 payload=activation_data,
                 timestamp=time.time()
             )
             
-            # Sign the transaction
             from app.services.TransactionService import TransactionService
             TransactionService.sign(tx, private_key)
             
@@ -351,11 +340,9 @@ class NodeActivationService:
         """
         try:
             if mempool is None:
-                # If no mempool reference provided, store in TransactionRepository
                 from app.repositories.TransactionRepository import TransactionRepository
                 return TransactionRepository.add_transaction(transaction)
             else:
-                # Add to provided mempool list
                 mempool.append(transaction.to_dict())
                 logger.info(f"Added activation transaction to mempool: {transaction.tx_id}")
                 return True

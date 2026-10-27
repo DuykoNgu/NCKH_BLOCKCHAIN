@@ -10,7 +10,6 @@ from app.repositories.BlockRepository import BlockRepository
 from app.blockchain_instance import get_blockchain_instance
 
 
-# Create blueprint for network routes
 network_bp = Blueprint('network', __name__, url_prefix='/api/v1/network')
 
 
@@ -89,7 +88,6 @@ def register_peer():
     try:
         data = request.get_json()
         
-        # Validate required fields
         required_fields = ['ip_address', 'port']
         for field in required_fields:
             if field not in data:
@@ -98,9 +96,6 @@ def register_peer():
         service = get_network_service()
         public_key = data.get('public_key', '')
         
-        # Register peer
-        # If public_key is provided, trust it and set status to INACTIVE (for initial discovery)
-        # The /peers/status-update endpoint will set it to ACTIVE
         peer = service.register_peer(
             ip_address=data['ip_address'],
             port=data['port'],
@@ -109,8 +104,6 @@ def register_peer():
         )
         
         if peer:
-            # If public_key was provided during registration, update peer to INACTIVE 
-            # (pending activation confirmation)
             if public_key:
                 from app.repositories.PeerRepository import PeerRepository
                 import hashlib
@@ -161,7 +154,6 @@ def update_peer_status():
     try:
         data = request.get_json()
         
-        # Validate required fields
         required_fields = ['ip_address', 'port', 'public_key']
         for field in required_fields:
             if field not in data:
@@ -169,7 +161,6 @@ def update_peer_status():
         
         service = get_network_service()
         
-        # Try to update peer: find by IP:port, save public_key, set status to ACTIVE
         success = service.update_peer_activation(
             ip_address=data['ip_address'],
             port=data['port'],
@@ -183,8 +174,6 @@ def update_peer_status():
                 'message': 'Peer activated - public_key saved and status set to ACTIVE'
             }), 200
         else:
-            # If update failed, try to register the peer first
-            # This handles cases where registration message wasn't received
             from app.repositories.PeerRepository import PeerRepository
             import hashlib
             
@@ -193,10 +182,8 @@ def update_peer_status():
             public_key = data['public_key']
             node_type = data.get('node_type', 'validator')
             
-            # Generate consistent peer_id
             peer_id = hashlib.sha256(f"{ip}:{port}".encode()).hexdigest()[:16]
             
-            # Register peer as ACTIVE directly (since it's sending status update, it must be activated)
             peer = PeerRepository.update_peer_public_key_and_activate(
                 peer_id=peer_id,
                 ip_address=ip,
@@ -266,7 +253,6 @@ def receive_node_activation():
         if data.get('type') != 'NODE_ACTIVATION':
             return jsonify({'error': 'Invalid message type'}), 400
         
-        # Process activation message
         result = NodeActivationService.handle_activation_message(data)
         
         if result.get('success'):
@@ -492,7 +478,6 @@ def approve_peer(peer_id: str):
     }
     """
     try:
-        # TODO: Add MOET role check here
         service = get_network_service()
         success = service.approve_peer(peer_id)
         
@@ -531,7 +516,6 @@ def get_pending_peers():
     ]
     """
     try:
-        # TODO: Add MOET role check here
         service = get_network_service()
         pending_peers = service.get_pending_peers()
         return jsonify(pending_peers), 200
@@ -580,7 +564,7 @@ def get_chain_height():
     """
     try:
         blockchain = get_blockchain_instance()
-        height = len(blockchain.chain) - 1  # -1 because genesis is index 0
+        height = len(blockchain.chain) - 1
         
         latest_hash = ""
         if len(blockchain.chain) > 0:
@@ -617,13 +601,11 @@ def get_blocks_for_sync():
         start_index = request.args.get('start', 0, type=int)
         end_index = request.args.get('end', 100, type=int)
         
-        # Limit range to prevent abuse
         if end_index - start_index > 50:
             end_index = start_index + 50
         
         blocks = BlockRepository.get_blocks_by_range(start_index, end_index)
         
-        # Return full block data with transactions for sync
         block_list = []
         for b in blocks:
             block_list.append(b.to_dict())
@@ -636,5 +618,4 @@ def get_blocks_for_sync():
         return jsonify({'error': str(e)}), 500
 
 
-# Export blueprint
 __all__ = ['network_bp']

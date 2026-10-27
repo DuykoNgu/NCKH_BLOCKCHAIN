@@ -20,11 +20,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 class KeystoreManager:
     """Manages secure keystore operations for private key encryption"""
     
-    # Security parameters
-    KDF_ITERATIONS = 100000  # PBKDF2 iterations
-    SALT_LENGTH = 32  # bytes
-    KEY_LENGTH = 32  # 256 bits for AES-256
-    NONCE_LENGTH = 12  # GCM standard nonce length
+    KDF_ITERATIONS = 100000
+    SALT_LENGTH = 32
+    KEY_LENGTH = 32
+    NONCE_LENGTH = 12
     
     @staticmethod
     def derive_key(passphrase: str, salt: bytes) -> bytes:
@@ -59,22 +58,18 @@ class KeystoreManager:
         Returns:
             Dictionary containing encrypted keystore data
         """
-        # Generate random salt and nonce
         salt = os.urandom(KeystoreManager.SALT_LENGTH)
         nonce = os.urandom(KeystoreManager.NONCE_LENGTH)
         
-        # Derive encryption key from passphrase
         key = KeystoreManager.derive_key(passphrase, salt)
         
-        # Encrypt private key using AES-256-GCM
         aesgcm = AESGCM(key)
         ciphertext = aesgcm.encrypt(
             nonce,
             private_key_hex.encode('utf-8'),
-            None  # No additional authenticated data
+            None
         )
         
-        # Return keystore data (all binary data as base64)
         return {
             'version': '1.0',
             'algorithm': 'AES-256-GCM',
@@ -98,23 +93,18 @@ class KeystoreManager:
             Decrypted private key as hex string, or None if decryption fails
         """
         try:
-            # Extract keystore components
             salt = base64.b64decode(keystore_data['salt'])
             nonce = base64.b64decode(keystore_data['nonce'])
             ciphertext = base64.b64decode(keystore_data['ciphertext'])
             
-            # Derive decryption key from passphrase
             key = KeystoreManager.derive_key(passphrase, salt)
             
-            # Decrypt using AES-256-GCM
             aesgcm = AESGCM(key)
             plaintext = aesgcm.decrypt(nonce, ciphertext, None)
             
-            # Return decrypted private key
             return plaintext.decode('utf-8')
             
         except Exception as e:
-            # Decryption failed (wrong passphrase or corrupted data)
             print(f"✗ Decryption failed: {e}")
             return None
     
@@ -134,8 +124,7 @@ class KeystoreManager:
             with open(filepath, 'w') as f:
                 json.dump(keystore_data, f, indent=2)
             
-            # Set restrictive file permissions (owner read/write only)
-            if os.name != 'nt':  # Unix/Linux
+            if os.name != 'nt':
                 os.chmod(filepath, 0o600)
             
             return True
@@ -173,13 +162,10 @@ class KeystoreManager:
             data: Data to delete (string, bytes, etc.)
         """
         if isinstance(data, str):
-            # Overwrite string data
             data = '0' * len(data)
         elif isinstance(data, bytes):
-            # Overwrite bytes data
             data = b'0' * len(data)
         
-        # Delete reference
         del data
     
     @staticmethod
@@ -199,7 +185,6 @@ class KeystoreManager:
         if len(passphrase) > 128:
             return False, "Passphrase must be at most 128 characters long"
         
-        # Check for at least one letter and one number
         has_letter = any(c.isalpha() for c in passphrase)
         has_number = any(c.isdigit() for c in passphrase)
         
@@ -214,15 +199,12 @@ def generate_keypair():
     Returns:
         Tuple of (private_key_hex, public_key_hex, address)
     """
-    # Generate private key
     private_key = SigningKey.generate(curve=SECP256k1)
     public_key = private_key.get_verifying_key()
     
-    # Convert to hex strings
     private_key_hex = private_key.to_string().hex()
     public_key_hex = public_key.to_string().hex()
     
-    # Generate address from public key (SHA-256 hash)
     address = hashlib.sha256(public_key_hex.encode()).hexdigest()[:40]
     
     return private_key_hex, public_key_hex, address
@@ -234,7 +216,6 @@ def create_keystore(passphrase: str):
         print(f"⚠️  WARNING: Keystore file already exists: {keystore_path}")
 
     
-    # Step 1: Generate keypair
     print("[1/3] Generating keypair...")
     private_key_hex, public_key_hex, address = generate_keypair()
     print("✓ Keypair generated")
@@ -242,21 +223,17 @@ def create_keystore(passphrase: str):
     print(f"  Address: {address}")
      
     if passphrase is None:
-        # Clean up and exit
         KeystoreManager.secure_delete(private_key_hex)
         return
     
     print("✓ Passphrase accepted")
     
     try:
-        # Encrypt private key
         keystore_data = KeystoreManager.encrypt_private_key(private_key_hex, passphrase)
         
-        # Add metadata
         keystore_data['public_key'] = public_key_hex
         keystore_data['address'] = address
         
-        # Save to file
         if KeystoreManager.save_keystore(keystore_path, keystore_data):
             print(f"✓ Keystore saved to: {keystore_path}")
         else:
@@ -264,16 +241,13 @@ def create_keystore(passphrase: str):
             return
         
     finally:
-        # Securely delete sensitive data from memory
         KeystoreManager.secure_delete(private_key_hex)
         KeystoreManager.secure_delete(passphrase)
 
 if __name__ == "__main__":
-    # Test keystore manager
     print("=== Testing Keystore Manager ===\n")
     
-    # Test encryption/decryption
-    test_private_key = "a" * 64  # Mock private key
+    test_private_key = "a" * 64
     test_passphrase = "SecurePass123"
     
     print("1. Encrypting private key...")
@@ -301,8 +275,8 @@ if __name__ == "__main__":
         ("weak", False),
         ("Pass123", True),
         ("VerySecurePassphrase2024", True),
-        ("12345678", False),  # No letters
-        ("abcdefgh", False),  # No numbers
+        ("12345678", False),
+        ("abcdefgh", False),
     ]
     
     for passphrase, expected_valid in test_cases:

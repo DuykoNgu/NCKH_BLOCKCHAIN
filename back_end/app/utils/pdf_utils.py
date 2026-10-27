@@ -11,9 +11,8 @@ from app.utils.HashUtils import HashUtils
 class PDFUtils:
     """Utility class for PDF handling"""
     
-    # Cấu hình tải file
     ALLOWED_EXTENSIONS = {'.pdf'}
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_FILE_SIZE = 10 * 1024 * 1024
     UPLOAD_FOLDER = 'uploads/certificates'
     
     @staticmethod
@@ -36,7 +35,6 @@ class PDFUtils:
         if not filename:
             return False
         
-        # Kiểm tra extension
         file_ext = Path(filename).suffix.lower()
         if file_ext not in PDFUtils.ALLOWED_EXTENSIONS:
             return False
@@ -110,7 +108,6 @@ class PDFUtils:
             Tuple[bool, str, Optional[str]]: (success, file_path, error_message)
         """
         try:
-            # Validate
             if not PDFUtils.is_valid_pdf_file(filename):
                 return False, "", "File không phải PDF hợp lệ"
             
@@ -118,13 +115,10 @@ class PDFUtils:
             if not PDFUtils.is_valid_file_size(file_size):
                 return False, "", f"Kích thước file vượt quá giới hạn ({PDFUtils.MAX_FILE_SIZE / 1024 / 1024}MB)"
             
-            # Tạo folder
             PDFUtils.ensure_upload_folder()
             
-            # Tạo đường dẫn file
             file_path = os.path.join(PDFUtils.UPLOAD_FOLDER, filename)
             
-            # Lưu file
             with open(file_path, 'wb') as f:
                 f.write(file_content)
             

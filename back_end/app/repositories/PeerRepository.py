@@ -22,8 +22,6 @@ class PeerRepository:
         This prevents peer updates from blocking block saves
         """
         try:
-            # Try to acquire lock with SHORT timeout (non-blocking)
-            # If we can't get it, skip - peer update is not critical
             if not acquire_write_lock(timeout=0.5):
                 logger.warning(f"⚠️  Could not acquire lock for peer {peer_id[:8]}... (skipping, not critical)")
                 return False
@@ -32,7 +30,6 @@ class PeerRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Try to update first
                 cursor.execute('''
                     UPDATE peers 
                     SET ip_address = ?, port = ?, public_key = ?, 
@@ -41,7 +38,6 @@ class PeerRepository:
                 ''', (ip_address, port, public_key, node_type, status, time.time(), peer_id))
                 
                 if cursor.rowcount == 0:
-                    # If no rows updated, insert new peer
                     cursor.execute('''
                         INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -205,7 +201,6 @@ class PeerRepository:
                 
                 logger.info(f"→ [DB] Checking if peer {peer_id[:16]}... exists")
                 
-                # First check if peer exists
                 cursor.execute('SELECT peer_id, public_key, status FROM peers WHERE peer_id = ?', (peer_id,))
                 row = cursor.fetchone()
                 exists = row is not None
@@ -213,7 +208,6 @@ class PeerRepository:
                 logger.info(f"→ [DB] Peer exists: {exists}, current data: {row if row else 'None'}")
                 
                 if exists:
-                    # Peer exists - update it
                     logger.info(f"→ [DB] Updating peer: SET public_key={public_key[:16]}..., status=ACTIVE")
                     cursor.execute('''
                         UPDATE peers 
@@ -227,7 +221,6 @@ class PeerRepository:
                     if updated_rows != 1:
                         logger.warning(f"⚠ [DB] UPDATE didn't update exactly 1 row! rowcount={updated_rows}")
                         
-                    # Verify update worked
                     cursor.execute('SELECT public_key, status FROM peers WHERE peer_id = ?', (peer_id,))
                     verify_row = cursor.fetchone()
                     logger.info(f"→ [DB] Verify after UPDATE: public_key={verify_row[0][:16] if verify_row[0] else 'NONE'}..., status={verify_row[1]}")
@@ -239,7 +232,6 @@ class PeerRepository:
                     
                     logger.info(f"→ Updated existing peer {peer_id[:16]}...")
                 else:
-                    # Peer doesn't exist - create it
                     logger.info(f"→ [DB] Creating new peer: peer_id={peer_id[:16]}..., ip={ip_address}, port={port}, public_key={public_key[:16]}...")
                     cursor.execute('''
                         INSERT INTO peers (peer_id, ip_address, port, public_key, node_type, status, last_seen, created_at)
@@ -249,7 +241,6 @@ class PeerRepository:
                     inserted_rows = cursor.rowcount
                     logger.info(f"→ [DB] INSERT rowcount: {inserted_rows} (should be 1)")
                     
-                    # Verify insert worked
                     cursor.execute('SELECT public_key, status FROM peers WHERE peer_id = ?', (peer_id,))
                     verify_row = cursor.fetchone()
                     logger.info(f"→ [DB] Verify after INSERT: public_key={verify_row[0][:16] if verify_row and verify_row[0] else 'NONE'}..., status={verify_row[1] if verify_row else 'NONE'}")

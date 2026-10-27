@@ -27,13 +27,12 @@ class TransactionRepository:
             max_retries: Maximum number of retries on database lock
         """
         retry_delay = 0.1
-        should_close = conn is None  # Only close if we created the connection
-        use_lock = conn is None  # Only use lock if we're creating a new connection
+        should_close = conn is None
+        use_lock = conn is None
         
         for attempt in range(max_retries):
             lock_acquired = False
             try:
-                # Only acquire lock if creating new connection
                 if use_lock and not acquire_write_lock(timeout=30):
                     logger.warning(f"⚠ Could not acquire lock, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
                     time.sleep(retry_delay)
@@ -47,10 +46,8 @@ class TransactionRepository:
                     conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Handle NULL sender_address for system transactions (both lowercase and uppercase)
                 sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
                 
-                # Convert empty string to None for FK constraints
                 block_id = transaction.block_id if transaction.block_id else None
             
                 
@@ -80,11 +77,9 @@ class TransactionRepository:
                         
             except Exception as e:
                 if "locked" in str(e).lower() and attempt < max_retries - 1:
-                    # Retry on database lock
                     logger.warning(f"⚠ Database locked, retry #{attempt + 1}/{max_retries} for TX {transaction.tx_hash[:16]}...")
                     time.sleep(retry_delay)
                     retry_delay *= 2
-                    # Reset connection on retry
                     if should_close and conn:
                         try:
                             conn.close()
@@ -93,7 +88,6 @@ class TransactionRepository:
                         conn = None
                     continue
                 
-                # Detailed FK constraint error logging - TRY FALLBACK
                 if "FOREIGN KEY" in str(e):
                     sender_addr = None if transaction.sender_address and transaction.sender_address.lower() == "system" else transaction.sender_address
                     block_id = transaction.block_id if transaction.block_id else None
@@ -102,10 +96,6 @@ class TransactionRepository:
                     logger.error(f"  SQL Values: tx_id={transaction.tx_id[:16]}, sender_addr={sender_addr}, recipient_addr={transaction.recipient_address}, block_id={block_id}")
                     logger.error(f"  Check: Does account '{sender_addr}' exist? Does block '{block_id}' exist?")
                     
-                    # ── Safety fallback: retry with sender_address=NULL ─────────────
-                    # The schema allows NULL (ON DELETE SET NULL). This handles the race
-                    # condition where the TX arrives before the account is created on
-                    # this node (e.g. account_register gossip received out of order).
                     if sender_addr is not None and conn is not None:
                         try:
                             cursor = conn.cursor()
@@ -117,7 +107,7 @@ class TransactionRepository:
                                 transaction.tx_id,
                                 transaction.tx_hash,
                                 transaction.sender_pubkey,
-                                None,                      # ← NULL instead of unknown address
+                                None,
                                 transaction.recipient_address,
                                 dumps(transaction.payload),
                                 transaction.signature,
@@ -169,7 +159,6 @@ class TransactionRepository:
         for attempt in range(max_retries):
             lock_acquired = False
             try:
-                # Acquire lock ONCE for all transactions
                 if not acquire_write_lock(timeout=30):
                     logger.warning(f"⚠ Could not acquire lock, retry #{attempt + 1}/{max_retries} for batch ({len(transactions)} TXs)")
                     time.sleep(retry_delay)
@@ -180,11 +169,9 @@ class TransactionRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Insert all transactions in one connection
                 failed_txs = []
                 for tx in transactions:
                     try:
-                        # Handle NULL sender_address for system transactions
                         sender_addr = None if tx.sender_address and tx.sender_address.lower() == "system" else tx.sender_address
                         block_id = tx.block_id if tx.block_id else None
                         
@@ -241,7 +228,6 @@ class TransactionRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Sửa thành tx_hash = ?
             query = f"{BASE_TRANSACTION_SELECT} WHERE tx_hash = ?"
             cursor.execute(query, (tx_id,))
             row = cursor.fetchone()
@@ -331,15 +317,12 @@ class TransactionRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Sử dụng biến BASE_TRANSACTION_SELECT đã thống nhất ở các hàm trước
-            # Toán tử BETWEEN giúp truy vấn ngắn gọn và tối ưu hơn >= AND <=
             query = f"{BASE_TRANSACTION_SELECT} WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp DESC"
             
             cursor.execute(query, (start_timestamp, end_timestamp))
             rows = cursor.fetchall()
             conn.close()
             
-            # Sử dụng List Comprehension và hàm helper để parse dữ liệu sạch sẽ
             return [TransactionRepository._parse_transaction_row(row) for row in rows if row]
             
         except Exception as e:
@@ -410,7 +393,7 @@ class TransactionRepository:
                 return True
             else:
                 logger.debug(f"⚠ Transaction {tx_hash[:16]}... already has block_id")
-                return True  # Still OK, already updated
+                return True
         except Exception as e:
             logger.error(f"✗ Error updating transaction block_id: {e}")
             return False

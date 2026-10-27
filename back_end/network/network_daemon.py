@@ -31,7 +31,6 @@ class NetworkDaemon:
         self._health_thread: Optional[threading.Thread] = None
         self._sync_thread: Optional[threading.Thread] = None
         
-        # Statistics
         self.health_checks_count = 0
         self.peer_syncs_count = 0
     
@@ -43,7 +42,6 @@ class NetworkDaemon:
         
         self.is_running = True
         
-        # Start health check thread
         self._health_thread = threading.Thread(
             target=self._health_check_loop,
             name="NetworkDaemon-HealthCheck",
@@ -51,7 +49,6 @@ class NetworkDaemon:
         )
         self._health_thread.start()
         
-        # Start peer sync thread
         self._sync_thread = threading.Thread(
             target=self._peer_sync_loop,
             name="NetworkDaemon-PeerSync",
@@ -80,7 +77,6 @@ class NetworkDaemon:
     
     def _health_check_loop(self) -> None:
         """Background thread: periodic health check of all peers"""
-        # Wait a bit before first check to let the server start
         time.sleep(10)
         
         while self.is_running:
@@ -95,12 +91,10 @@ class NetworkDaemon:
             except Exception as e:
                 print(f"✗ Health check error: {e}")
             
-            # Sleep in small increments so we can stop quickly
             self._interruptible_sleep(self.health_interval)
     
     def _peer_sync_loop(self) -> None:
         """Background thread: periodic peer discovery via PEX"""
-        # Wait a bit before first sync
         time.sleep(15)
         
         while self.is_running:
@@ -136,7 +130,6 @@ class NetworkDaemon:
         }
 
 
-# Global daemon instance
 _daemon_instance: Optional[NetworkDaemon] = None
 
 

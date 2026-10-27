@@ -20,7 +20,6 @@ def create_app():
     app = Flask(__name__)
     CORS(app, supports_credentials=True)
     
-    # Register blueprints
     app.register_blueprint(block_bp)
     app.register_blueprint(network_bp)
     app.register_blueprint(nft_bp)
@@ -36,13 +35,10 @@ def create_app():
     return app
 
 
-# Create app instance
 app = create_app()
 
 
 if __name__ == "__main__":
-    # Initialize database
     init_db()
     
-    # Run the application
     app.run(host="127.0.0.1", port=5000, debug=True)

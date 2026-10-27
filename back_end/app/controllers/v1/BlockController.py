@@ -71,7 +71,6 @@ def get_all_blocks():
         
         all_blocks = BlockRepository.get_all_blocks()
         
-        # Pagination
         start = (page - 1) * page_size
         end = start + page_size
         blocks_page = all_blocks[start:end]
@@ -162,7 +161,6 @@ def verify_block(block_id):
         if not block:
             return jsonify({"error": "Block not found"}), 404
         
-        # Verify signature using BlockService
         is_valid = BlockService.verify_block(block, data['public_key'])
         
         return jsonify({
@@ -218,7 +216,6 @@ def get_genesis_block():
         if not genesis_block:
             return jsonify({"error": "Genesis block not found"}), 404
         
-        # Return full block with transactions data for other nodes to sync
         return jsonify(genesis_block.to_dict()), 200
         
     except Exception as e:

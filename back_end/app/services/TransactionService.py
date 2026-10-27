@@ -6,7 +6,6 @@ from models.Transaction import Transaction
 
 
 class TransactionService:
-    # Lấy dữ liệu cần ký cho transaction
     @staticmethod
     def get_signing_data(transaction: Transaction) -> bytes:
         """
@@ -21,7 +20,6 @@ class TransactionService:
         }
         return json.dumps(data, sort_keys=True).encode()
 
-    # Tính hash của transaction
     @staticmethod
     def calculate_hash(transaction: Transaction) -> str:
         """
@@ -31,7 +29,6 @@ class TransactionService:
         signing_data = TransactionService.get_signing_data(transaction)
         return hashlib.sha256(signing_data).hexdigest()
 
-    # Ký transaction bằng private key
     @staticmethod
     def sign(transaction: Transaction, private_key: str) -> str:
         """
@@ -49,17 +46,14 @@ class TransactionService:
         signature_bytes = sk.sign(message_hash, hashfunc=hashlib.sha256, sigencode=sigencode_der)
         transaction.signature = signature_bytes.hex()
 
-        # Tạo tx_id nếu chưa có (hash của signing_data + signature)
         if not transaction.tx_id:
             combined = signing_data + signature_bytes
             transaction.tx_id = hashlib.sha256(combined).hexdigest()
 
-        # Cập nhật tx_hash
         transaction.tx_hash = TransactionService.calculate_hash(transaction)
 
         return transaction.signature
 
-    # Kiểm tra tính hợp lệ của transaction
     @staticmethod
     def is_valid(transaction: Transaction) -> bool:
         """
@@ -79,7 +73,6 @@ class TransactionService:
         print(f"  - signature: {transaction.signature[:16] if transaction.signature else '(empty)'}...")
         print(f"  - payload type: {type(transaction.payload).__name__}")
         
-        # Ensure payload is a dict (handle case where it might be a string)
         payload = transaction.payload
         if isinstance(payload, str):
             print(f"[is_valid] Parsing payload from JSON string...")
@@ -94,10 +87,6 @@ class TransactionService:
         payload_op = payload.get("op") if isinstance(payload, dict) else None
         print(f"[is_valid] payload_op: {payload_op}")
         
-        # ── NFT mint transactions ────────────────────────────────────────────────
-        # NFT mint_nft signature is produced by the frontend over the
-        # NFTmetadata (degree_type, pdf_url, pdf_hash, institution_address, issued_at).
-        # It is NOT a tx-level signature, so we verify payload["issuer_signature"] instead.
         if payload_op == "mint_nft":
             print(f"[is_valid] Taking mint_nft path")
             nft_sig = payload.get("issuer_signature", "") if isinstance(payload, dict) else ""
@@ -112,8 +101,6 @@ class TransactionService:
                 print(f"✗ [is_valid] mint_nft: missing signature or pubkey for {tx_hash_short}")
                 return False
             
-            # Re-build the canonical NFT signing data that the frontend signed
-            # Must match NFTmetadata.get_signing_data()
             import json
             try:
                 nft_signing_obj = {
@@ -123,7 +110,6 @@ class TransactionService:
                     "institution_address": payload.get("institution_address"),
                     "issued_at": payload.get("issued_at"),
                 }
-                # Use SAME separators as NFTmetadata.get_signing_data()
                 nft_canonical_data = json.dumps(nft_signing_obj, sort_keys=True, separators=(',', ':'))
                 
                 from app.utils.CryptoUtils import CryptoUtils
@@ -137,10 +123,6 @@ class TransactionService:
                 print(f"✗ [is_valid] mint_nft verify error for {tx_hash_short}: {e}")
                 return False
         
-        # ── Account operation transactions ───────────────────────────────────────
-        # The account_register signature is produced by the frontend over the
-        # canonical account data (address + public_key + role + timestamp).
-        # It is NOT a tx-level signature, so we must verify it differently.
         if payload_op in ["account_register", "account_update"]:
             print(f"[is_valid] Taking account_op path for {payload_op}")
             account_sig  = payload.get("signature", "") if isinstance(payload, dict) else ""
@@ -151,7 +133,6 @@ class TransactionService:
             print(f"[is_valid] account_sig: {account_sig[:16] if account_sig else '(empty)'}...")
             print(f"[is_valid] account_pubkey: {account_pubkey[:16] if account_pubkey else '(empty)'}...")
             
-            # If no signature in payload → system-initiated tx (no user sig required)
             if not account_sig:
                 print(f"[is_valid] ✅ No signature required, treating as system tx")
                 return True
@@ -160,21 +141,16 @@ class TransactionService:
                 print(f"✗ [is_valid] account_op: missing pubkey for {tx_hash_short}")
                 return False
 
-            # Re-build the canonical signing data that the frontend signed.
-            # Must mirror TransactionAcount.get_signing_data() / TransactionUpdateAccount.get_signing_data()
             import json
             try:
                 if payload_op == "account_register":
-                    # mirrors TransactionAcount.get_signing_data():
-                    # { address, public_key, role, timestamp } — NO "op" field
                     signing_obj = {
                         "address":    payload.get("address"),
                         "public_key": payload.get("public_key"),
                         "role":       payload.get("role"),
                         "timestamp":  payload.get("timestamp"),
                     }
-                else:  # account_update
-                    # mirrors TransactionUpdateAccount.get_signing_data()
+                else:
                     signing_obj = {
                         "address":        payload.get("address"),
                         "avatar_url":     payload.get("avatar_url"),
@@ -186,9 +162,7 @@ class TransactionService:
                         "timestamp":      payload.get("timestamp"),
                     }
 
-                # Remove None values (frontend may omit missing keys)
                 signing_obj = {k: v for k, v in signing_obj.items() if v is not None}
-                # Use SAME separators as Account.get_signing_data()
                 canonical_data = json.dumps(signing_obj, sort_keys=True, separators=(',', ':'))
 
                 from app.utils.CryptoUtils import CryptoUtils
@@ -204,14 +178,11 @@ class TransactionService:
                 return False
 
         
-        # ── System transactions ──────────────────────────────────────────────────
-        # sender_address is None or "system" AND no tx signature → trusted internally
         is_system_tx = transaction.sender_address is None or transaction.sender_address == "system"
         if is_system_tx and not transaction.signature:
             print(f"[is_valid] ✅ System transaction (sender={transaction.sender_address})")
             return True
         
-        # ── Regular transactions ─────────────────────────────────────────────────
         print(f"[is_valid] Taking regular transaction path")
         if not transaction.sender_pubkey or not transaction.signature:
             print(f"✗ [is_valid] Missing sender_pubkey or signature for tx {tx_hash_short}")

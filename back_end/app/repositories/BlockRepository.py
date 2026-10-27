@@ -26,11 +26,8 @@ class BlockRepository:
         for attempt in range(max_retries):
             lock_acquired = False
             try:
-                # Acquire global write lock with long timeout
-                # Blocks are critical - wait longer than peers
                 if not acquire_write_lock(timeout=60):
                     print(f"✗ CRITICAL: Could not acquire lock for block {block.block_id} (waited 60s)")
-                    # Continue retry anyway
                     time.sleep(retry_delay)
                     retry_delay *= 1.5
                     continue
@@ -40,14 +37,12 @@ class BlockRepository:
                 conn = get_connection()
                 cursor = conn.cursor()
                 
-                # Check if block already exists (idempotency)
                 cursor.execute('SELECT block_id FROM block WHERE block_id = ?', (block.block_id,))
                 if cursor.fetchone():
                     logger.info(f"⚠ Block already exists: {block.block_id} (skipping)")
                     conn.close()
-                    return True  # Return True since block already saved
+                    return True
                 
-                # Insert block header
                 cursor.execute('''
                     INSERT INTO block_header (index_num, pre_hash, merkle_root, validator_pubkey, timestamp)
                     VALUES (?, ?, ?, ?, ?)
@@ -57,13 +52,11 @@ class BlockRepository:
                 
                 header_id = cursor.lastrowid
                 
-                # Insert block
                 cursor.execute('''
                     INSERT INTO block (block_id, index_num, header_id, block_hash, validator_signature)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (block.block_id, block.index, header_id, block.block_hash, block.validator_signature))
                 
-                # Update transactions to associate them with this block
                 updated_tx_count = 0
                 if(block.block_id == "GENESIS"):
                     conn.commit()
@@ -108,7 +101,6 @@ class BlockRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Get block
             cursor.execute('''
                 SELECT block_id, index_num, header_id, block_hash, validator_signature 
                 FROM block WHERE block_id = ?
@@ -119,14 +111,12 @@ class BlockRepository:
                 conn.close()
                 return None
             
-            # Get block header
             cursor.execute('''
                 SELECT index_num, pre_hash, merkle_root, validator_pubkey, timestamp 
                 FROM block_header WHERE header_id = ?
-            ''', (block_row[2],))  # header_id is at index 2
+            ''', (block_row[2],))
             header_row = cursor.fetchone()
             
-            # Get transactions from transactions table with this block_id
             cursor.execute('''
                 SELECT tx_id, tx_hash, sender_pubkey, sender_address, recipient_address, 
                        payload, signature, timestamp, block_id, tx_status, error_reason
@@ -136,7 +126,6 @@ class BlockRepository:
             
             conn.close()
             
-            # Build Block object
             block_header = BlockHeader(
                 index=header_row[0],
                 pre_hash=header_row[1],
@@ -145,7 +134,6 @@ class BlockRepository:
                 timestamp=header_row[4]
             )
             
-            # Build Transaction objects from rows
             transactions = []
             for row in tx_rows:
                 tx = Transaction(
@@ -287,13 +275,10 @@ class BlockRepository:
             conn = get_connection()
             cursor = conn.cursor()
             
-            # Delete transactions first
             cursor.execute('DELETE FROM block_transactions WHERE block_id = ?', (block_id,))
             
-            # Delete header
             cursor.execute('DELETE FROM block_header WHERE block_id = ?', (block_id,))
             
-            # Delete block
             cursor.execute('DELETE FROM block WHERE block_id = ?', (block_id,))
             
             conn.commit()

@@ -5,14 +5,12 @@ Run this script to verify the installation
 import sys
 import os
 
-# Add back_end to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 print("="*60)
 print("🚀 EduChain P2P Network - Quick Start")
 print("="*60)
 
-# Step 1: Check dependencies
 print("\n[1/4] Checking dependencies...")
 try:
     import ntplib
@@ -23,7 +21,6 @@ except ImportError as e:
     print("Run: pip install ntplib requests")
     sys.exit(1)
 
-# Step 2: Load configuration
 print("\n[2/4] Loading configuration...")
 try:
     from network.config_loader import NetworkConfig
@@ -36,7 +33,6 @@ except Exception as e:
     print(f"❌ Configuration error: {e}")
     sys.exit(1)
 
-# Step 3: Test NTP sync
 print("\n[3/4] Testing NTP synchronization...")
 try:
     from network.ntp_sync import NTPClient
@@ -47,7 +43,6 @@ except Exception as e:
     print(f"⚠️  NTP sync failed (no internet?): {e}")
     print("   This is OK for testing, but required for production")
 
-# Step 4: Test consensus timer
 print("\n[4/4] Testing consensus timer...")
 try:
     from network.ntp_sync import ConsensusTimer
@@ -61,7 +56,6 @@ except Exception as e:
     print(f"❌ Consensus timer error: {e}")
     sys.exit(1)
 
-# Summary
 print("\n" + "="*60)
 print("✅ Quick Start Complete!")
 print("="*60)

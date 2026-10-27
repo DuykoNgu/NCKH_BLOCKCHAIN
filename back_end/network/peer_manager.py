@@ -30,7 +30,6 @@ class Peer:
         self.port = port
         self.public_key = public_key
         self.node_type = node_type
-        # Handle both string and enum for status
         if isinstance(status, PeerStatus):
             self.status = status.value
         else:
@@ -74,7 +73,7 @@ class PeerManager:
     def __init__(self):
         self.config = get_config()
         self.peers: Dict[str, Peer] = {}
-        self.local_peer_id: Optional[str] = None  # Set during network initialization
+        self.local_peer_id: Optional[str] = None
         self.load_peers_from_db()
     
     def load_peers_from_db(self) -> None:
@@ -116,7 +115,6 @@ class PeerManager:
         
         lock_acquired = False
         try:
-            # Non-blocking: peer updates are not critical, skip if busy
             if not acquire_write_lock(timeout=0.5):
                 print(f"⚠ Database busy, skipping peer save for {peer.peer_id}")
                 return False
@@ -157,26 +155,21 @@ class PeerManager:
     def add_peer(self, ip_address: str, port: int, public_key: str = "", 
                  node_type: str = "observer") -> Optional[Peer]:
         """Add a new peer to the network"""
-        # Generate peer ID
         peer_id = self.generate_peer_id(ip_address, port)
         
-        # Check if peer already exists
         if peer_id in self.peers:
             print(f"⚠ Peer {ip_address}:{port} already exists")
             return self.peers[peer_id]
             
-        # Check max peers limit
         if len(self.peers) >= self.config.get_max_peers():
             print(f"⚠ Max peers limit reached ({self.config.get_max_peers()}). Cannot add {ip_address}:{port}")
             return None
         
-        # Validate against whitelist if enabled
         if self.config.is_whitelist_enabled() and public_key:
             if not self.is_peer_authorized(public_key):
                 print(f"✗ Peer {ip_address}:{port} not in whitelist")
                 return None
         
-        # Create and save peer
         peer = Peer(peer_id, ip_address, port, public_key, node_type)
         self.peers[peer_id] = peer
         self.save_peer_to_db(peer)
@@ -312,7 +305,6 @@ class PeerManager:
         for seed_node in seed_nodes:
             print(f"\n→ Connecting to seed node: {seed_node['name']}")
             
-            # Step 1: Add seed node itself as a peer
             seed_peer = self.add_peer(
                 ip_address=seed_node['ip'],
                 port=seed_node['port'],
@@ -321,17 +313,14 @@ class PeerManager:
             )
             
             if seed_peer:
-                # Step 2: Ping seed node to make it ACTIVE
                 if self.ping_peer(seed_peer):
                     print(f"✓ Seed node {seed_node['name']} is alive")
                 else:
                     print(f"✗ Seed node {seed_node['name']} is not responding")
                 
-                # Step 3: Discover peers from this seed node
                 discovered = self.discover_peers_from_seed(seed_node)
                 total_discovered += len(discovered)
                 
-                # Step 4: Announce this node to the seed node (reverse registration)
                 if node_ip and node_port and self.announce_self_to_seed_node(seed_node, node_ip, node_port, public_key):
                     announced_count += 1
         
@@ -375,7 +364,6 @@ class PeerManager:
             True if successful, False otherwise
         """
         if peer_id not in self.peers:
-            # Try to load from database
             conn = get_connection()
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -414,10 +402,8 @@ class PeerManager:
             print(f"⚠ Peer {peer_id} is not pending (current status: {peer.status})")
             return False
         
-        # Update status: PENDING -> INACTIVE (waiting for node activation)
         peer.status = "INACTIVE"
         
-        # Save to database
         if self.save_peer_to_db(peer):
             print(f"✓ Peer {peer_id} approved and set to INACTIVE (awaiting activation)")
             return True
@@ -442,10 +428,8 @@ class PeerManager:
         Returns:
             True if successful, False otherwise
         """
-        # Generate peer_id from IP:port using hash (same as generate_peer_id method)
         peer_id = self.generate_peer_id(ip_address, port)
         
-        # Try to find peer in memory or load from database
         if peer_id not in self.peers:
             conn = get_connection()
             conn.row_factory = sqlite3.Row
@@ -485,17 +469,14 @@ class PeerManager:
             print(f"✗ [ACTIVATION] Peer {peer_id} not found in memory")
             return False
         
-        # Enhanced: Log current status and allow update from any status
         old_status = peer.status
         print(f"→ [ACTIVATION] Updating peer {peer_id} from status: {old_status} to ACTIVE")
         
-        # Update peer with public_key and node_type from activation request
         peer.public_key = public_key
         peer.node_type = node_type
         peer.status = "ACTIVE"
         peer.last_seen = time.time()
         
-        # Save to database
         if self.save_peer_to_db(peer):
             print(f"✓ [ACTIVATION] Peer {peer_id} activated: {old_status} → ACTIVE, public_key saved")
             return True
@@ -515,7 +496,6 @@ class PeerManager:
         Returns:
             True if successful, False otherwise
         """
-        # Find peer by public key
         target_peer = None
         for peer in self.peers.values():
             if peer.public_key == public_key:
@@ -526,13 +506,11 @@ class PeerManager:
             print(f"⚠ Peer with public key {public_key[:16]}... not found")
             return False
         
-        # Update peer info
         old_status = target_peer.status
         target_peer.status = status
         target_peer.node_type = node_type
         target_peer.last_seen = time.time()
         
-        # Save to database
         if self.save_peer_to_db(target_peer):
             print(f"✓ Updated peer {target_peer.peer_id} status: {old_status} → {status} (type: {node_type})")
             return True
@@ -570,15 +548,12 @@ class PeerManager:
         if not include_inactive:
             return self.get_active_peers()
         
-        # Return ACTIVE + INACTIVE peers (recently seen)
         current_time = time.time()
         peers = []
         
         for peer in self.peers.values():
-            # Include ACTIVE peers
             if peer.status == "ACTIVE" and (current_time - peer.last_seen) < 120:
                 peers.append(peer)
-            # Also include INACTIVE peers that were recently seen
             elif peer.status == "INACTIVE" and (current_time - peer.last_seen) < 300:
                 peers.append(peer)
         
@@ -616,20 +591,16 @@ class PeerManager:
 
 
 if __name__ == "__main__":
-    # Test peer manager
     manager = PeerManager()
     
     print("\n=== Testing Peer Manager ===")
     print(f"Current peers: {len(manager.peers)}")
     
-    # Test bootstrap
     manager.bootstrap_network()
     
-    # Test health check
     print("\n=== Health Check ===")
     manager.health_check_all_peers()
     
-    # Show active peers
     print("\n=== Active Peers ===")
     for peer in manager.get_active_peers():
         print(f"  - {peer.ip_address}:{peer.port} ({peer.node_type})")

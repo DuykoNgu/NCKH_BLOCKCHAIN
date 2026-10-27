@@ -22,7 +22,6 @@ from app.services.NetworkService import get_network_service
 
 logger = get_logger(__name__)
 
-# Sentinel address used for system-originated account transactions (no real sender)
 SYSTEM_ADDRESS = "system"
 
 
@@ -48,7 +47,7 @@ def _build_account_tx(payload: dict, sender_address: str = SYSTEM_ADDRESS) -> Tr
         sender_address=sender_address,
         recipient_address=SYSTEM_ADDRESS,
         payload=payload,
-        signature="",          # ← always empty; proof is in payload["signature"]
+        signature="",
         timestamp=datetime.datetime.now().timestamp(),
     )
     return tx
@@ -62,7 +61,6 @@ def _submit_tx(tx: Transaction) -> None:
 
         blockchain = get_blockchain_instance()
         
-        # Debug logging
         tx_op = tx.payload.get('op') if isinstance(tx.payload, dict) else 'unknown'
         logger.info(f"[AccountService] Submitting TX: hash={tx.tx_hash[:16]}... op={tx_op}")
         logger.info(f"  - payload type: {type(tx.payload)}")
@@ -75,7 +73,6 @@ def _submit_tx(tx: Transaction) -> None:
         if tx.tx_hash in tx_hashes_in_mempool:
             logger.info(f"[AccountService] TX already in mempool: {tx.tx_hash[:16]}... op={tx_op}")
         else:
-            # add_transaction_to_mempool accepts txs with empty signature as system txs
             BlockChainService.add_transaction_to_mempool(blockchain, tx)
             logger.info(f"[AccountService] TX added to mempool: {tx.tx_hash[:16]}... op={tx_op}")
 
@@ -85,7 +82,6 @@ def _submit_tx(tx: Transaction) -> None:
         else:
             logger.warning(f"[AccountService] Failed to save TX to database: {tx.tx_hash[:16]}...")
 
-        # Gossip to peers so they add it to their mempool too (reduces latency)
         try:
             net = get_network_service()
             peers_notified = net.broadcast_transaction(tx.to_dict())
@@ -125,7 +121,6 @@ class AccountService:
             now = datetime.datetime.now()
             created_at = now.strftime("%d/%m/%Y %H:%M:%S")
 
-            # Default is_active=1 for CLIENT/MOET, is_active=0 for VALIDATOR (pending approval)
             is_active = 0 if role == Role.VALIDATOR else 1
 
             account = Account(
@@ -143,7 +138,6 @@ class AccountService:
                 agreement_file_url=agreement_file_url,
             )
 
-            # 1. Write to local DB immediately (fast UX)
             logger.info(f"→ Registering account: {address} (role={role.value if hasattr(role, 'value') else role})")
             success = AccountRepository.create_account(account)
             if not success:
@@ -152,7 +146,6 @@ class AccountService:
 
             logger.info(f"✓ Account registered successfully: {address}")
 
-            # 2. Submit blockchain transaction so other nodes can sync
             role_str = role.value if hasattr(role, "value") else str(role)
             payload = {
                 "op": "account_register",
@@ -266,7 +259,6 @@ class AccountService:
             if not success:
                 return False, None, "Failed to update profile in database"
 
-            # 2. Submit blockchain transaction so other nodes can sync
             payload = {"op": "account_update", "address": address}
             if full_name is not None:
                 payload["full_name"] = full_name

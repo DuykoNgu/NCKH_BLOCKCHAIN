@@ -19,8 +19,6 @@ cloudinary.config(
 def get_signature():
     folder = request.args.get('folder', 'default-storage')
     tags = request.args.get('tags')
-    # Thêm resource_type vào để ký nếu bạn biết chắc chắn loại file
-    # Hoặc để 'auto' nếu muốn Cloudinary tự nhận diện
     
     timestamp = int(time.time())
     
@@ -30,14 +28,10 @@ def get_signature():
     }
     
     if tags and tags.strip():
-        # Cloudinary yêu cầu tags phải khớp chính xác từng dấu phẩy
         param_to_sign["tags"] = tags.strip()
 
-    # Lấy secret key từ env
     api_secret = os.getenv('CLOUDINARY_API_SECRET')
     
-    # Tạo signature
-    # Hàm api_sign_request sẽ tự động sắp xếp key theo alphabet
     signature = cloudinary.utils.api_sign_request(param_to_sign, api_secret)
     
     return jsonify({

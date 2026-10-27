@@ -39,9 +39,6 @@ def verify_peer_signature(public_key: str, message: str, signature: str) -> bool
     Verify peer authentication signature
     TODO: Implement actual ECDSA signature verification
     """
-    # Placeholder - should use ECDSA verification
-    # from app.utils.CryptoUtils import verify_signature
-    # return verify_signature(public_key, message, signature)
     return True
 
 
@@ -82,10 +79,8 @@ def parse_peer_address(address: str) -> Optional[tuple]:
     Parse peer address string into (ip, port) tuple
     Supports formats: "ip:port" or "http://ip:port"
     """
-    # Remove http:// or https:// prefix
     address = re.sub(r'^https?://', '', address)
     
-    # Split by colon
     parts = address.split(':')
     
     if len(parts) != 2:
@@ -158,40 +153,33 @@ def sanitize_peer_data(data: dict) -> dict:
 
 
 if __name__ == "__main__":
-    # Test network utilities
     print("=== Testing Network Utilities ===\n")
     
-    # Test IP validation
     print("IP Validation:")
     test_ips = ['192.168.1.1', '10.0.0.1', '256.1.1.1', 'invalid']
     for ip in test_ips:
         print(f"  {ip}: {is_valid_ip(ip)}")
     
-    # Test port validation
     print("\nPort Validation:")
     test_ports = [80, 5000, 0, 65536, -1]
     for port in test_ports:
         print(f"  {port}: {is_valid_port(port)}")
     
-    # Test peer ID generation
     print("\nPeer ID Generation:")
     peer_id = create_peer_id('10.0.1.1', 5000)
     print(f"  10.0.1.1:5000 → {peer_id}")
     
-    # Test fan-out calculation
     print("\nFan-out Calculation:")
     for n in [5, 10, 20, 50]:
         k = calculate_fan_out(n)
         print(f"  N={n} → k={k}")
     
-    # Test address parsing
     print("\nAddress Parsing:")
     test_addresses = ['10.0.1.1:5000', 'http://192.168.1.1:8080', 'invalid']
     for addr in test_addresses:
         result = parse_peer_address(addr)
         print(f"  {addr} → {result}")
     
-    # Test URL construction
     print("\nURL Construction:")
     url = get_peer_url('10.0.1.1', 5000, '/api/v1/peers')
     print(f"  {url}")
