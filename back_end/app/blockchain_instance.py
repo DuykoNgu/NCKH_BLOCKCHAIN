@@ -15,77 +15,50 @@ def get_blockchain_instance() -> BlockChain:
     return _blockchain_instance
 
 
-def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int = 5000, seed_nodes: list = None) -> BlockChain:
+def _check_moet_pin(moet_pubkey: str) -> bool:
+    from network.config_loader import get_config
+    pinned = get_config().get_moet_public_key()
+    if pinned and pinned != moet_pubkey:
+        print(f"✗ Genesis của MOET ({moet_pubkey[:16]}...) không khớp moet_public_key trong config ({pinned[:16]}...)")
+        return False
+    return True
+
+
+def initialize_blockchain(own_pubkey: str, is_moet: bool, seed_nodes: list = None) -> BlockChain:
     from app.services.BlockChainService import BlockChainService
     from app.repositories.BlockRepository import BlockRepository
     from app.repositories.TransactionRepository import TransactionRepository
-    from app.models.Transaction import Transaction
-    import datetime
-    
-    print(f"\n=== GENESIS BLOCK INITIALIZATION DEBUG ===")
-    print(f"listen_port: {listen_port}")
-    print(f"seed_nodes: {seed_nodes}")
-    print(f"seed_nodes type: {type(seed_nodes)}")
-    if seed_nodes:
-        print(f"seed_nodes count: {len(seed_nodes)}")
-        for i, seed in enumerate(seed_nodes):
-            print(f"  seed[{i}]: port={seed.get('port')}, ip={seed.get('ip')}")
-    else:
-        print(f"seed_nodes is EMPTY or None!")
-    print(f"========================================\n")
+    import time
     
     blockchain = get_blockchain_instance()
     
     if len(blockchain.chain) == 0:
-        print("→ Checking if genesis block already exists in database...")
-        existing_genesis = BlockRepository.get_block_by_id("GENESIS")
-        
-        if existing_genesis:
-            print(f"✓ Genesis block already exists in database (index={existing_genesis.index})")
-            blockchain.super_validator_pubkey = super_validator_pubkey
-            blockchain.authority_set.add(super_validator_pubkey)
-            
-            print("→ Loading full chain from database into memory...")
+        if BlockRepository.get_block_by_id("GENESIS"):
+            print("→ Loading chain from database...")
             load_chain_from_db(blockchain)
-            print(f"✓ Chain restored: {len(blockchain.chain)} block(s) loaded from DB")
-            
+            BlockChainService.rebuild_authority_set(blockchain)
+            if not _check_moet_pin(blockchain.super_validator_pubkey):
+                raise RuntimeError("Chain trong DB không thuộc mạng đã cấu hình")
+            print(f"✓ Chain restored: {len(blockchain.chain)} block(s)")
             return blockchain
         
-        is_seed_node = False
-        print(f"→ [DEBUG] Determining if node is seed node...")
-        print(f"  listen_port={listen_port}, seed_nodes={seed_nodes}")
+        if not is_moet:
+            if not seed_nodes:
+                raise RuntimeError("Node không phải MOET cần seed node để lấy genesis (SEED_NODES / config.json)")
+            while not _fetch_genesis_from_seed_node(blockchain, seed_nodes):
+                print("⏳ Chưa lấy được genesis từ seed node, thử lại sau 5s...")
+                time.sleep(5)
+            BlockChainService.rebuild_authority_set(blockchain)
+            print(f"✓ Genesis fetched from seed node (MOET = {blockchain.super_validator_pubkey[:16]}...)")
+            return blockchain
         
-        if seed_nodes:
-            print(f"  Checking {len(seed_nodes)} seed nodes...")
-            for seed in seed_nodes:
-                seed_port = seed.get('port')
-                print(f"    Comparing: listen_port={listen_port} vs seed_port={seed_port}")
-                if seed_port == listen_port:
-                    is_seed_node = True
-                    print(f"    ✓ MATCH! This node is a SEED NODE (port {listen_port})")
-                    break
-        else:
-            print(f"  seed_nodes is empty/None - cannot determine seed node")
-        
-        print(f"  Final: is_seed_node={is_seed_node}")
-        
-        if is_seed_node:
-            print(f"✓ This node is a SEED NODE (port {listen_port})")
-        
-        if not is_seed_node and seed_nodes:
-            print(f"→ This is a non-seed node. Attempting to fetch genesis block from seed node...")
-            genesis_fetched = _fetch_genesis_from_seed_node(blockchain, super_validator_pubkey, seed_nodes)
-            if genesis_fetched:
-                print(f"✓ Genesis block fetched and initialized from seed node")
-                print(f"✓ Chain now has {len(blockchain.chain)} block(s)")
-                return blockchain
-            else:
-                print(f"⚠ ERROR: Could not fetch genesis from any seed node!")
-                print(f"⚠ This node cannot continue without genesis from seed node.")
-                print(f"⚠ Make sure seed node is running and accessible.")
+        if not own_pubkey:
+            raise RuntimeError("Node MOET cần keystore để tạo genesis")
+        if not _check_moet_pin(own_pubkey):
+            raise RuntimeError("Keystore của node MOET không khớp moet_public_key trong config")
         
         print("→ Creating genesis block...")
-        genesis_block = BlockChainService.create_genesis_block(blockchain, super_validator_pubkey)
+        genesis_block = BlockChainService.create_genesis_block(blockchain, own_pubkey)
         
         print("→ Saving genesis block to database...")
         try:
@@ -146,7 +119,7 @@ def initialize_blockchain(super_validator_pubkey: str = None, listen_port: int =
     return blockchain
 
 
-def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey: str, seed_nodes: list) -> bool:
+def _fetch_genesis_from_seed_node(blockchain: BlockChain, seed_nodes: list) -> bool:
     from app.services.BlockChainService import BlockChainService
     from app.repositories.BlockRepository import BlockRepository
     from app.repositories.TransactionRepository import TransactionRepository
@@ -169,10 +142,12 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                 genesis_data = response.json()
                 print(f"    → Genesis data received, block_id: {genesis_data.get('block_id')}")
                 
-                genesis_block = _create_genesis_from_dict(genesis_data, super_validator_pubkey)
+                genesis_block = _create_genesis_from_dict(genesis_data, "")
                 
                 if genesis_block is None:
                     print(f"    ✗ Failed to create genesis block object from seed data")
+                    continue
+                if not _check_moet_pin(genesis_block.block_header.validator_pubkey):
                     continue
                 
                 try:
@@ -209,8 +184,6 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                         conn.close()
                         
                         blockchain.chain.append(genesis_block)
-                        blockchain.super_validator_pubkey = super_validator_pubkey
-                        blockchain.authority_set.add(super_validator_pubkey)
                         
                         print(f"    ✓ Genesis block fetched and saved from {seed_name}")
                         return True
@@ -227,8 +200,6 @@ def _fetch_genesis_from_seed_node(blockchain: BlockChain, super_validator_pubkey
                 print(f"      Response text: {response.text[:200]}")
         except Exception as e:
             print(f"    ✗ Could not connect to seed node {seed_name}: {e}")
-            import traceback
-            traceback.print_exc()
             continue
     
     return False

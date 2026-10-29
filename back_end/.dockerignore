@@ -1,0 +1,10 @@
+venv/
+.venv/
+data/
+logs/
+**/__pycache__/
+*.db
+*.db-*
+*.keystore
+*.key
+.env

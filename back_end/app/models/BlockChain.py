@@ -10,6 +10,7 @@ class BlockChain:
         self.mempool: List[Transaction] = []
         self.super_validator_pubkey: str = ""
         self.authority_set: set[str] = set()
+        self.revoked_validators: set[str] = set()
         self.state_db: Dict[str, Any] = {}
 
     def get_last_block(self) -> Block:

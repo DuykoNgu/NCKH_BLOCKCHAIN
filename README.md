@@ -27,11 +27,9 @@ Sơ đồ kiến trúc chi tiết (Mermaid): [`SystemEduChain.md`](SystemEduChai
 ```
 NCKH_BLOCKCHAIN/
 ├── back_end/
-│   ├── run.py                 # Khởi động 1 node đầy đủ
-│   ├── setup.py               # Tạo keystore cho node + đăng ký peer
-│   ├── active_node.py         # Mở khóa keystore, kích hoạt validator
-│   ├── deactivate_node.py
-│   ├── create_admin.py        # Tạo tài khoản MOET (admin)
+│   ├── run.py                 # Điểm chạy duy nhất của mọi node (cấu hình qua .env)
+│   ├── Dockerfile
+│   ├── data/<NODE_NAME>/      # Dữ liệu từng node (tự sinh, gitignore): node.db, node.keystore, moet_admin.key
 │   ├── app/
 │   │   ├── main.py            # Flask app factory, đăng ký blueprint
 │   │   ├── blockchain_instance.py  # Singleton chuỗi trong RAM, khởi tạo genesis
@@ -39,13 +37,15 @@ NCKH_BLOCKCHAIN/
 │   │   ├── services/          # Nghiệp vụ (Block, Transaction, NFT, Network, ...)
 │   │   ├── repositories/      # Truy cập SQLite (sqlite3 thuần, không ORM)
 │   │   ├── models/            # Block, BlockHeader, Transaction, NFT, Account, ...
+│   │   ├── core/              # config.py (biến môi trường), node_bootstrap.py (tự khởi tạo node)
 │   │   ├── database/          # Schema + kết nối + write lock
 │   │   └── utils/             # Crypto, Hash, Keystore, logger
 │   ├── consensus/
 │   │   └── validator_worker.py  # Luồng nền tạo khối theo lượt
 │   ├── network/               # Gossip, peer manager, chain sync, chain monitor, NTP
-│   │   └── config.json        # Cấu hình mạng / seed node / đồng thuận
-│   └── tests/quick_test.py    # Script thử tải: mint N NFT vào node đang chạy
+│   │   └── config.json        # Cấu hình chung của mạng — GIỐNG NHAU trên mọi node
+│   └── tests/                 # quick_test.py (thử tải), check_authority.py (kiểm tra đồng thuận)
+├── docker-compose.yml         # Mạng mẫu 3 node: moet, truong-a, truong-b
 ├── front_end/
 │   ├── configs/               # axios instance, secp256k1, pdf worker
 │   └── src/
@@ -88,34 +88,46 @@ CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
 
-# Tùy chọn
-NODE_IP=127.0.0.1
+# Node
+NODE_NAME=moet            # tên node → dữ liệu ở back_end/data/<NODE_NAME>/
+NODE_ROLE=moet            # moet | validator | observer
+NODE_IP=127.0.0.1         # địa chỉ các node khác dùng để gọi tới node này
 NODE_PORT=5000
+# NODE_PASSPHRASE=...     # có thì tự mở khoá keystore, không cần nhập tay (deploy/chạy nền)
+# SEED_NODES=host:port    # ghi đè seed_nodes trong network/config.json
 LOG_LEVEL=INFO
 ```
 
-Khởi tạo node lần đầu:
+Chạy node — mọi node đều chạy **cùng một lệnh**, chỉ khác file `.env`:
 
 ```bash
-python setup.py          # Tạo node.keystore (private key mã hóa bằng passphrase) và đăng ký peer
-python create_admin.py   # Tạo tài khoản MOET, in ra private key để đăng nhập trang admin
+python run.py                          # dùng back_end/.env
+python run.py --env .env.truong-a      # dùng file env khác (chạy nhiều node trên một máy)
+python run.py --no-network             # bỏ qua P2P (thử nghiệm đơn lẻ)
 ```
 
-Chạy node:
+Khi khởi động, node tự làm theo `NODE_ROLE`:
 
-```bash
-python run.py                     # Mặc định cổng 5000
-python run.py --port 5001         # Đổi cổng
-python run.py --no-network        # Bỏ qua P2P (chạy đơn lẻ để thử nghiệm)
-```
+| | `moet` | `validator` | `observer` |
+|---|---|---|---|
+| Keystore | Tự tạo nếu chưa có, **bắt buộc** mở khoá | Tự tạo nếu chưa có, mở khoá → tự kích hoạt | Không dùng |
+| Genesis | Tự tạo | Tải từ seed node (chờ tới khi MOET chạy) | Tải từ seed node |
+| Admin MOET | Tự tạo và đăng ký **lên chain** → mọi node có cùng 1 admin. Private key ở `data/<NODE_NAME>/moet_admin.key` | — | — |
+| Tạo khối | Có | Sau khi MOET duyệt | Không |
 
-Sau khi node chạy, kích hoạt validator (nhập passphrase của keystore) để node bắt đầu tạo khối:
+Passphrase lấy từ `NODE_PASSPHRASE`, hoặc được hỏi khi chạy trong terminal; nhấn Enter để bỏ qua → chạy như observer.
 
-```bash
-python active_node.py
-```
+**Danh sách validator nằm trên chain:**
+- Validator mới kích hoạt sẽ gửi giao dịch `validator_activate`.
+- MOET duyệt bằng giao dịch `validator_add`, do chính MOET ký.
+- Lượt tạo khối được tính bằng `sorted(authority_set)[slot % n]`, nên mọi node tự tính ra cùng một kết quả mà không cần cấu hình tay.
+- Block do key nằm ngoài authority set tạo ra sẽ bị từ chối.
+- Chính sách duyệt nằm ở `whitelist` trong `network/config.json`:
+  - `enabled: false`: MOET tự duyệt mọi node (dùng khi dev).
+  - `enabled: true`: MOET chỉ duyệt các public key có trong `authorized_validators`.
+- Muốn cố định danh tính MOET thì đặt `moet_public_key` trong config. Khi đó node sẽ từ chối genesis của MOET khác.
 
-Hoặc kích hoạt qua API `POST /api/v1/auth/activate`.
+Bật/tắt validator khi node đang chạy: `POST /api/v1/auth/activate` (body `{"passphrase": "..."}`) / `POST /api/v1/auth/deactivate`.
 
 ### 2. Frontend
 
@@ -128,17 +140,19 @@ npm run dev       # http://localhost:5173
 
 Các lệnh khác: `npm run build`, `npm run lint`, `npm run preview`.
 
-### 3. Chạy nhiều node trên một máy
-
-Mỗi node dùng một cổng và một file DB riêng. Node có cổng trùng với `seed_nodes` trong `network/config.json` sẽ tạo khối genesis; các node còn lại tải genesis từ seed node.
+### 3. Chạy cả mạng bằng Docker
 
 ```bash
-# Terminal 1 — seed node
-python run.py --port 5001 --validator-index 0 --total-validators 2
-
-# Terminal 2
-python run.py --port 5002 --db node_b.db --validator-index 1 --total-validators 2
+docker compose up --build        # moet → :5001, truong-a → :5002, truong-b → :5003
 ```
+
+Mỗi node chạy trong một container riêng, có volume dữ liệu riêng và dùng chung `back_end/.env` cho các secret (JWT, Cloudinary). Passphrase mặc định trong `docker-compose.yml` chỉ dùng cho dev; khi chạy thật, hãy đặt `MOET_PASSPHRASE`, `TRUONG_A_PASSPHRASE`, `TRUONG_B_PASSPHRASE`. Frontend trỏ tới node nào cũng được, ví dụ `VITE_API_URL=http://localhost:5001/api/v1`.
+
+Thêm một trường: copy một service `truong-*` trong `docker-compose.yml` rồi đổi tên, `NODE_NAME`, `NODE_IP`, volume và port.
+
+Không dùng Docker: tạo `.env.truong-a` (`NODE_NAME=truong-a`, `NODE_ROLE=validator`, `NODE_PORT=5001`, `SEED_NODES=127.0.0.1:5000`) rồi chạy `python run.py --env .env.truong-a`.
+
+> macOS: cổng 5000 thường bị AirPlay Receiver chiếm. Tắt AirPlay Receiver trong System Settings, hoặc đặt `NODE_PORT` khác.
 
 ---
 

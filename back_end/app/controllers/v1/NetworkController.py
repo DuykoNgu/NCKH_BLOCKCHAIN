@@ -255,7 +255,8 @@ def get_block_by_hash(block_hash: str):
 @network_bp.route('/consensus/slot', methods=['GET'])
 def get_slot_info():
     try:
-        total_validators = int(request.args.get('total_validators', 3))
+        from app.blockchain_instance import get_blockchain_instance
+        total_validators = int(request.args.get('total_validators', len(get_blockchain_instance().authority_set) or 1))
         
         service = get_network_service()
         slot_info = service.get_current_slot_info(total_validators)

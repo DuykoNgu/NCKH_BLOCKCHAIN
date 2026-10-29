@@ -47,3 +47,9 @@ export const NETWORK_SERVER = {
   APPROVE_PEER: '/network/peers/:peerId/approve',
   REGISTER_PEER: '/network/peers/register',
 } as const;
+
+export const MONITOR_SERVER = {
+  NETWORK: '/monitor/network',
+  APPROVE_VALIDATOR: '/monitor/validators/approve',
+  REMOVE_VALIDATOR: '/monitor/validators/remove',
+} as const;

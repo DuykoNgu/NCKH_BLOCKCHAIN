@@ -1,8 +1,10 @@
 import sqlite3
 import os
 
-DB_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(DB_DIR, 'node_a.db')
+from app.core.config import DATA_DIR
+
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'node.db')
 schema_sql = """
 pragma foreign_keys = ON;
 -------------------------------------------------

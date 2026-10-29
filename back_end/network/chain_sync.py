@@ -52,16 +52,16 @@ class ChainSync:
             return None
     
     def find_best_peer(self) -> Optional[tuple]:
-        active_peers = self.peer_manager.get_active_peers()
+        known_peers = [p for p in self.peer_manager.peers.values() if p.peer_id != self.peer_manager.local_peer_id]
         
-        if not active_peers:
-            print("⚠ No active peers available for chain sync")
+        if not known_peers:
+            print("⚠ No known peers available for chain sync")
             return None
         
         best_peer = None
         best_height = self.get_local_height()
         
-        valid_peers = [(p, self.query_peer_height(p)) for p in active_peers]
+        valid_peers = [(p, self.query_peer_height(p)) for p in known_peers]
         better_peers = [(p,h) for p,h in valid_peers if h is not None and h > self.get_local_height()]
         if better_peers:
             best_peer, best_height = max(better_peers, key=lambda x: x[1])

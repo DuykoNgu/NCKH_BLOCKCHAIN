@@ -89,6 +89,76 @@ class BlockChainService:
         print(f"📋 [MEMPOOL REBUILD] After: {len(blockchain.mempool)} transactions\n")
     
     @staticmethod
+    def is_signed_by_moet(blockchain: BlockChain, tx: Transaction) -> bool:
+        return (
+            bool(blockchain.super_validator_pubkey)
+            and tx.sender_pubkey == blockchain.super_validator_pubkey
+            and TransactionService.verify_sender_signature(tx)
+        )
+
+    @staticmethod
+    def rebuild_authority_set(blockchain: BlockChain) -> None:
+        blockchain.super_validator_pubkey = blockchain.chain[0].block_header.validator_pubkey
+        blockchain.authority_set = {blockchain.super_validator_pubkey}
+        blockchain.revoked_validators = set()
+        for block in blockchain.chain[1:]:
+            for tx in block.transactions:
+                if isinstance(tx.payload, dict) and tx.payload.get("op") in ("validator_add", "validator_remove") \
+                        and BlockChainService.is_signed_by_moet(blockchain, tx):
+                    BlockChainService.apply_authority_change(blockchain, tx.payload)
+        print(f"✓ Authority set: {len(blockchain.authority_set)} validator(s)")
+
+    @staticmethod
+    def apply_authority_change(blockchain: BlockChain, payload: dict) -> None:
+        public_key = payload.get("public_key")
+        if payload.get("op") == "validator_add":
+            blockchain.authority_set.add(public_key)
+            blockchain.revoked_validators.discard(public_key)
+        elif public_key != blockchain.super_validator_pubkey:
+            blockchain.authority_set.discard(public_key)
+            blockchain.revoked_validators.add(public_key)
+
+    @staticmethod
+    def get_pending_validators(blockchain: BlockChain) -> list:
+        pending = {}
+        for block in blockchain.chain[1:]:
+            for tx in block.transactions:
+                payload = tx.payload if isinstance(tx.payload, dict) else {}
+                public_key = payload.get("public_key")
+                if payload.get("op") == "validator_activate" and public_key == tx.sender_pubkey:
+                    pending[public_key] = {
+                        "public_key": public_key,
+                        "ip_address": payload.get("ip_address"),
+                        "port": payload.get("port"),
+                        "requested_at": payload.get("timestamp") or tx.timestamp,
+                    }
+                elif payload.get("op") == "validator_remove" and BlockChainService.is_signed_by_moet(blockchain, tx):
+                    pending.pop(public_key, None)
+        return [p for k, p in pending.items() if k not in blockchain.authority_set]
+
+    @staticmethod
+    def maybe_auto_approve_validator(blockchain: BlockChain, public_key: str) -> None:
+        from consensus.validator_worker import get_validator_worker
+        from network.config_loader import get_config
+
+        worker = get_validator_worker()
+        if not worker or not worker.is_active or worker.public_key != blockchain.super_validator_pubkey:
+            return
+        if public_key in blockchain.authority_set or public_key in blockchain.revoked_validators:
+            return
+        if any(isinstance(t.payload, dict) and t.payload.get("op") == "validator_add"
+               and t.payload.get("public_key") == public_key for t in blockchain.mempool):
+            return
+
+        config = get_config()
+        if config.is_whitelist_enabled() and public_key not in config.get_authorized_validators():
+            print(f"⏸ [MOET] Validator {public_key[:16]}... chưa có trong whitelist → chưa duyệt")
+            return
+
+        print(f"✓ [MOET] Duyệt validator {public_key[:16]}...")
+        worker.submit_system_tx({"op": "validator_add", "public_key": public_key})
+
+    @staticmethod
     def create_genesis_block(blockchain: BlockChain, pubkey_hex: str) -> Block:
         blockchain.super_validator_pubkey = pubkey_hex
         blockchain.authority_set.add(pubkey_hex)
@@ -186,6 +256,12 @@ class BlockChainService:
                 }
                 role = role_map.get(role_str.lower(), Role.CLIENT)
 
+                if role == Role.MOET and not BlockChainService.is_signed_by_moet(blockchain, tx):
+                    tx.tx_status = "FAILED"
+                    tx.error_reason = "Only the MOET node can register a moet account"
+                    print(f"✗ [TX] account_register error: {tx.error_reason}")
+                    return False
+
                 account = Account(
                     address=address,
                     public_key=public_key,
@@ -277,6 +353,9 @@ class BlockChainService:
                     print(f"✗ [TX] validator_activate error: {tx.error_reason}")
                     return False
                 
+                if public_key == tx.sender_pubkey:
+                    BlockChainService.maybe_auto_approve_validator(blockchain, public_key)
+
                 from app.services.NetworkService import get_network_service
                 network_service = get_network_service()
                 
@@ -304,6 +383,17 @@ class BlockChainService:
                 import traceback
                 traceback.print_exc()
                 return False
+
+        if payload.get("op") in ("validator_add", "validator_remove"):
+            if not BlockChainService.is_signed_by_moet(blockchain, tx):
+                tx.tx_status = "FAILED"
+                tx.error_reason = f"{payload.get('op')} must be signed by MOET"
+                print(f"✗ [TX] {tx.error_reason}")
+                return False
+            BlockChainService.apply_authority_change(blockchain, payload)
+            tx.tx_status = "COMMITTED"
+            print(f"✓ [TX] {payload.get('op')} applied: {payload.get('public_key', '')[:16]}... (authority set = {len(blockchain.authority_set)})")
+            return True
 
         if payload.get("op") == "mint_nft":
             try:
@@ -401,11 +491,15 @@ class BlockChainService:
         return True
 
     @staticmethod
-    def is_valid_new_block(blockchain: BlockChain, new_block: Block, prev_block: Block) -> bool:
+    def is_valid_new_block(blockchain: BlockChain, new_block: Block, prev_block: Block, check_authority: bool = True) -> bool:
         if new_block.index != prev_block.index + 1:
             return False
 
         if new_block.block_header.pre_hash != prev_block.block_hash:
+            return False
+
+        if check_authority and new_block.block_header.validator_pubkey not in blockchain.authority_set:
+            print(f"✗ Block #{new_block.index} do validator ngoài authority set tạo")
             return False
 
 
@@ -427,7 +521,7 @@ class BlockChainService:
         
         last_block = blockchain.get_last_block()
 
-        if not blockchain.mempool:
+        if not blockchain.mempool or public_key_hex not in blockchain.authority_set:
             return (last_block, False)
 
         transactions_to_include = blockchain.mempool[:max_transactions]
@@ -528,7 +622,7 @@ class BlockChainService:
 
     @staticmethod
     def add_block(blockchain: BlockChain, block: Block) -> bool:
-        if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block()):
+        if not BlockChainService.is_valid_new_block(blockchain, block, blockchain.get_last_block(), check_authority=False):
             raise ValueError("invalid block")
 
         print(f"→ Adding {len(block.transactions)} transactions to blockchain (already executed by mine_block)")

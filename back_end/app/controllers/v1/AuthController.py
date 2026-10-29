@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from app.utils.KeystoreManager import KeystoreManager, create_keystore
 from consensus.validator_worker import get_validator_worker
 from app.utils.logger import get_logger
+from app.core.config import NODE_IP, NODE_PORT, KEYSTORE_PATH
 from app.repositories.PeerRepository import PeerRepository
 
 logger = get_logger(__name__)
@@ -20,7 +21,7 @@ def generate_peer_id(ip: str, port: int) -> str:
     return hashlib.sha256(data).hexdigest()[:16]
 
 
-def try_update_peer_after_activation(validator_worker, public_key: str,private_key_hex: str) -> None:
+def try_update_peer_after_activation(validator_worker, public_key: str, private_key_hex: str) -> None:
     try:
         logger.info(f"→ [DEBUG] try_update_peer_after_activation called with public_key={public_key[:20] if public_key else 'EMPTY'}...")
         
@@ -28,19 +29,7 @@ def try_update_peer_after_activation(validator_worker, public_key: str,private_k
             logger.error("✗ [DEBUG] public_key is empty! Cannot update peer record")
             return
         
-        config_path = ".node_config.json"
-        if os.path.exists(config_path):
-            logger.info(f"→ [DEBUG] Loading config from {config_path}")
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            node_ip = config.get('ip_address', '127.0.0.1')
-            node_port = config.get('port', 5000)
-            logger.info(f"→ [DEBUG] Config: ip={node_ip}, port={node_port}")
-        else:
-            logger.info(f"→ [DEBUG] Config file not found, using env vars")
-            node_ip = os.getenv('NODE_IP', '127.0.0.1')
-            node_port = int(os.getenv('NODE_PORT', '5000'))
-            logger.info(f"→ [DEBUG] ENV: ip={node_ip}, port={node_port}")
+        node_ip, node_port = NODE_IP, NODE_PORT
         
         peer_id = generate_peer_id(node_ip, node_port)
         logger.info(f"→ Updating peer record: {node_ip}:{node_port} (peer_id={peer_id[:16]}...)")
@@ -70,59 +59,17 @@ def try_update_peer_after_activation(validator_worker, public_key: str,private_k
 
 
 def create_and_broadcast_activation_transaction(ip_address: str, port: int, public_key: str, private_key_hex: str) -> None:
+    import datetime
+    from app.core.node_bootstrap import submit_system_tx
+
     try:
-        from app.models.Transaction import Transaction
-        from app.services.BlockChainService import BlockChainService
-        from app.blockchain_instance import get_blockchain_instance
-        from app.repositories.TransactionRepository import TransactionRepository
-        import datetime
-        import hashlib
-        
-        logger.info("→ Creating activation transaction for broadcast...")
-        
-        now_ts = datetime.datetime.now().timestamp()
-        
-        payload = {
+        submit_system_tx({
             "op": "validator_activate",
             "ip_address": ip_address,
             "port": port,
             "public_key": public_key,
-            "timestamp": now_ts
-        }
-        
-        tx = Transaction(
-            sender_pubkey=public_key,
-            sender_address="system",
-            recipient_address="system",
-            payload=payload,
-            timestamp=now_ts,
-            block_id=None
-        )
-        
-        from app.services.TransactionService import TransactionService
-        TransactionService.sign(tx, private_key_hex)
-        tx_hash = tx.tx_hash
-        
-        blockchain = get_blockchain_instance()
-        success = BlockChainService.add_transaction_to_mempool(blockchain, tx)
-        if success:
-            logger.info(f"✓ Activation transaction created and added to mempool: {tx_hash[:16]}...")
-        else:
-            logger.error(f"✗ Failed to add activation transaction to mempool: invalid transaction")
-            return
-        
-        if TransactionRepository.create_transaction(tx):
-            logger.info(f"✓ Activation transaction saved to database: {tx_hash[:16]}...")
-        else:
-            logger.warning(f"⚠ Warning: Failed to save activation transaction to database, but still in mempool")
-        
-        try:
-            network_service = get_network_service()
-            network_service.broadcast_transaction(tx.to_dict())
-            logger.info(f"✓ Activation transaction broadcasted to peers")
-        except Exception as broadcast_err:
-            logger.warning(f"⚠ Could not broadcast activation transaction: {broadcast_err}")
-    
+            "timestamp": datetime.datetime.now().timestamp()
+        }, public_key, private_key_hex)
     except Exception as e:
         logger.error(f"✗ Error creating activation transaction: {e}")
 
@@ -155,14 +102,14 @@ def activate_validator():
             }), 401
         
         logger.info("→ Loading keystore file...")
-        keystore_path = 'node.keystore'
+        keystore_path = KEYSTORE_PATH
         keystore_data = KeystoreManager.load_keystore(keystore_path)
         
         if keystore_data is None:
             logger.error("✗ Keystore not found")
             return jsonify({
                 'success': False,
-                'message': 'Keystore not found. Please run setup_identity.py first.'
+                'message': 'Keystore not found. Restart the node with `python run.py` to create one.'
             }), 404
         
         logger.info("→ Decrypting private key...")

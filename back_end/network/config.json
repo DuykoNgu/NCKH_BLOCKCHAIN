@@ -1,20 +1,18 @@
 {
+    "moet_public_key": "",
     "network": {
         "node_id": "",
-        "node_type": "validator",
-        "listen_host": "0.0.0.0",
-        "listen_port": 5001,
-        "max_peers": 2,
+        "max_peers": 20,
         "ping_interval": 30,
         "peer_timeout": 120
     },
     "seed_nodes": [
-              {
-            "name": "Node A (Local)",
+        {
+            "name": "MOET",
             "ip": "127.0.0.1",
-            "port": 5001,
+            "port": 5000,
             "public_key": "",
-            "role": "validator"
+            "role": "moet"
         }
     ],
     "whitelist": {
@@ -46,12 +44,6 @@
         "max_wait_seconds": 3,
         "min_transactions_to_mine": 1,
         "mining_timeout_seconds": 30
-    },
-    "keystore": {
-        "filepath": "node.keystore",
-        "algorithm": "AES-256-GCM",
-        "kdf": "PBKDF2-HMAC-SHA256",
-        "kdf_iterations": 100000
     },
     "monitor": {
         "enabled": true,

@@ -161,13 +161,18 @@ class TransactionService:
             print(f"✗ [is_valid] Missing sender_pubkey or signature for tx {tx_hash_short}")
             return False
 
+        return TransactionService.verify_sender_signature(transaction)
+
+    @staticmethod
+    def verify_sender_signature(transaction: Transaction) -> bool:
+        if not transaction.sender_pubkey or not transaction.signature:
+            return False
         try:
             vk = VerifyingKey.from_string(bytes.fromhex(transaction.sender_pubkey), curve=SECP256k1)
             signing_data = TransactionService.get_signing_data(transaction)
             message_hash = hashlib.sha256(signing_data).digest()
             signature_bytes = bytes.fromhex(transaction.signature)
-            result = vk.verify(signature_bytes, message_hash, hashfunc=hashlib.sha256, sigdecode=sigdecode_der)
-            return result
+            return vk.verify(signature_bytes, message_hash, hashfunc=hashlib.sha256, sigdecode=sigdecode_der)
         except Exception as e:
-            print(f"✗ [is_valid] Signature verification failed for tx {tx_hash_short}: {e}")
+            print(f"✗ Signature verification failed for tx {(transaction.tx_hash or '???')[:8]}: {e}")
             return False

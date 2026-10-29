@@ -1,0 +1,50 @@
+x-node: &node
+  build: ./back_end
+  env_file:
+    - path: ./back_end/.env
+      required: false
+  restart: unless-stopped
+
+x-node-env: &node-env
+  SEED_NODES: moet:5000
+
+services:
+  moet:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_NAME: moet
+      NODE_ROLE: moet
+      NODE_IP: moet
+      NODE_PASSPHRASE: ${MOET_PASSPHRASE:-moetdev12345}
+    volumes: [moet-data:/data]
+    ports: ["5001:5000"]
+
+  truong-a:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_NAME: truong-a
+      NODE_ROLE: validator
+      NODE_IP: truong-a
+      NODE_PASSPHRASE: ${TRUONG_A_PASSPHRASE:-truongadev12345}
+    volumes: [truong-a-data:/data]
+    ports: ["5002:5000"]
+    depends_on: [moet]
+
+  truong-b:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_NAME: truong-b
+      NODE_ROLE: validator
+      NODE_IP: truong-b
+      NODE_PASSPHRASE: ${TRUONG_B_PASSPHRASE:-truongbdev12345}
+    volumes: [truong-b-data:/data]
+    ports: ["5003:5000"]
+    depends_on: [moet]
+
+volumes:
+  moet-data:
+  truong-a-data:
+  truong-b-data:

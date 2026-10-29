@@ -11,11 +11,19 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 
-DATABASE_PATH = os.getenv("DATABASE_PATH", "NCKH_educhain.db")
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-SERVER_PORT = int(os.getenv("SERVER_PORT", "5000"))
-DEBUG_MODE = os.getenv("DEBUG_MODE", "True").lower() == "true"
+NODE_NAME = os.getenv("NODE_NAME", "node")
+NODE_ROLE = os.getenv("NODE_ROLE", "validator").lower()
+NODE_HOST = os.getenv("NODE_HOST", "0.0.0.0")
+NODE_PORT = int(os.getenv("NODE_PORT", "5000"))
+NODE_IP = os.getenv("NODE_IP", "127.0.0.1")
+DATA_DIR = os.getenv("DATA_DIR") or os.path.join(BACKEND_DIR, "data", NODE_NAME)
+KEYSTORE_PATH = os.path.join(DATA_DIR, "node.keystore")
+MOET_ADMIN_KEY_PATH = os.path.join(DATA_DIR, "moet_admin.key")
+
+if NODE_ROLE not in ("moet", "validator", "observer"):
+    raise ValueError(f"NODE_ROLE phải là moet | validator | observer (đang là '{NODE_ROLE}')")
 
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")

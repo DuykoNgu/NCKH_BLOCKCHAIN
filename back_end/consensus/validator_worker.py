@@ -15,13 +15,11 @@ class ValidatorWorker:
     
     def __init__(
         self, 
-        my_validator_index: int,
-        total_validators: int,
         public_key: str,
         slot_duration: int = 5
     ):
-        self.my_index = my_validator_index
-        self.total_validators = total_validators
+        self.my_index = -1
+        self.total_validators = 0
         self.__private_key: Optional[str] = None
         self.public_key = public_key
         self.slot_duration = slot_duration
@@ -68,6 +66,16 @@ class ValidatorWorker:
             self.is_active = False
             return False
     
+    def submit_system_tx(self, payload: dict):
+        from app.core.node_bootstrap import submit_system_tx
+        return submit_system_tx(payload, self.public_key, self.__private_key)
+
+    def _refresh_schedule(self) -> bool:
+        validators = sorted(list(self.blockchain.authority_set))
+        self.total_validators = len(validators)
+        self.my_index = validators.index(self.public_key) if self.public_key in validators else -1
+        return self.my_index >= 0
+
     def deactivate(self) -> None:
         if not self.is_active:
             print("⚠ Validator is not active")
@@ -189,6 +197,12 @@ class ValidatorWorker:
             try:
                 loop_count += 1
                 
+                if not self._refresh_schedule():
+                    if loop_count % 20 == 0:
+                        logger.info("⏸ Chưa có trong authority set, chờ MOET duyệt...")
+                    time.sleep(0.5)
+                    continue
+                
                 is_my_turn = self.consensus_timer.is_my_turn(self.my_index, self.total_validators)
                 
                 if is_my_turn:
@@ -240,31 +254,24 @@ class ValidatorWorker:
             from network.chain_sync import ChainSync
             local_height = len(self.blockchain.chain) - 1
             
-            active_peers = self.network_service.peer_manager.get_active_peers()
-            if active_peers:
-                import random
-                sample_peers = random.sample(active_peers, min(3, len(active_peers)))
-                max_peer_height = 0
-                
-                for peer in sample_peers:
-                    try:
-                        peer_height = self.network_service.peer_manager.query_peer_height(peer)
-                        if peer_height and peer_height > max_peer_height:
-                            max_peer_height = peer_height
-                    except:
-                        pass
-                
-                if max_peer_height > local_height:
-                    print(f"⚠️  Chain gap detected: me={local_height}, peers={max_peer_height}")
-                    print(f"→ Syncing chain before mining...")
-                    chain_sync = ChainSync(
-                        peer_manager=self.network_service.peer_manager,
-                        blockchain=self.blockchain
-                    )
-                    synced = chain_sync.sync()
-                    if synced > 0:
-                        print(f"✅ Synced {synced} blocks before mining")
-                        BlockChainService.rebuild_mempool(self.blockchain)
+            peer_manager = self.network_service.peer_manager
+            known_peers = [p for p in peer_manager.peers.values() if p.peer_id != peer_manager.local_peer_id]
+            max_peer_height = max(
+                (h for h in (peer_manager.query_peer_height(p, timeout=1) for p in known_peers) if h is not None),
+                default=-1
+            )
+            
+            if max_peer_height > local_height:
+                print(f"⚠️  Chain gap detected: me={local_height}, peers={max_peer_height}")
+                print(f"→ Syncing chain before mining...")
+                chain_sync = ChainSync(peer_manager=peer_manager, blockchain=self.blockchain)
+                synced = chain_sync.sync()
+                if synced > 0:
+                    print(f"✅ Synced {synced} blocks before mining")
+                    BlockChainService.rebuild_mempool(self.blockchain)
+                if len(self.blockchain.chain) - 1 < max_peer_height:
+                    print("⏭  Vẫn chưa bắt kịp chain của peer → bỏ lượt này để tránh fork")
+                    return
             
             mempool_size = len(self.blockchain.mempool)
             
@@ -366,6 +373,7 @@ class ValidatorWorker:
             traceback.print_exc()
     
     def get_stats(self) -> dict:
+        self._refresh_schedule()
         return {
             "is_active": self.is_active,
             "is_running": self.is_running,
@@ -385,22 +393,14 @@ def get_validator_worker() -> Optional[ValidatorWorker]:
     return _validator_worker
 
 
-def start_validator_worker(
-    my_validator_index: int,
-    total_validators: int,
-    public_key: str
-) -> ValidatorWorker:
+def start_validator_worker(public_key: str) -> ValidatorWorker:
     global _validator_worker
     
     if _validator_worker is not None:
         print("⚠ Validator worker already exists, stopping old one...")
         _validator_worker.stop()
     
-    _validator_worker = ValidatorWorker(
-        my_validator_index=my_validator_index,
-        total_validators=total_validators,
-        public_key=public_key
-    )
+    _validator_worker = ValidatorWorker(public_key=public_key)
     
     print("✓ Validator worker initialized (not yet activated)")
     print("  Use POST /api/v1/auth/activate to activate with passphrase")

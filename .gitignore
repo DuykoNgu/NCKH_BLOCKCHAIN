@@ -78,6 +78,11 @@ temp/
 # Misc
 .DS_Store
 Thumbs.db
+# Node data & secrets
+back_end/data/
+*.keystore
+moet_admin.key
+
 # Generated output files
 moet_account.txt
 db_output.txt

@@ -9,7 +9,6 @@ import { useAllNFTs } from "./useNFTs";
 import { useAllTransactions } from "./useTransactions";
 import type { AccountInfo } from "@/services/accountService";
 import { toast } from "sonner";
-import { Activity, Server, HardDrive } from "lucide-react";
 import { truncateHash, truncateAddress, formatTimeAgo, getNftStatus } from "@/utils/formatUtils";
 import { STORAGE_KEYS } from "@/constants/storage";
 import { adminService } from "@/services/adminService";
@@ -197,46 +196,58 @@ export const useAdminDegrees = () => {
 };
 
 
+const knownNodeNames = new Map<string, string>();
+
 export const useAdminNetwork = () => {
-  const { blockCount, networkStats, loading: statsLoading } = useAdminStats();
+  const queryClient = useQueryClient();
 
-  const peersQuery = useQuery({
-    queryKey: ["admin", "peers"],
-    queryFn: () => NetworkService.getPeers(),
-    refetchInterval: 10000,
+  const overviewQuery = useQuery({
+    queryKey: ["admin", "network-overview"],
+    queryFn: () => NetworkService.getNetworkOverview(),
+    refetchInterval: 5000,
   });
 
-  const slotInfoQuery = useQuery({
-    queryKey: ["admin", "slot-info"],
-    queryFn: () => NetworkService.getSlotInfo(),
-    refetchInterval: 10000,
+  const overview = useMemo(() => {
+    const data = overviewQuery.data;
+    if (!data) return data;
+    const names = knownNodeNames;
+    data.nodes.forEach((n) => n.name && n.public_key && names.set(n.public_key, n.name));
+    const nameOf = (pk: string, name: string | null) => name || names.get(pk) || null;
+    return {
+      ...data,
+      nodes: data.nodes.map((n) => ({ ...n, name: nameOf(n.public_key, n.name) })),
+      authority_set: data.authority_set.map((a) => ({ ...a, name: nameOf(a.public_key, a.name) })),
+      recent_blocks: data.recent_blocks.map((b) => ({ ...b, validator_name: nameOf(b.validator_pubkey, b.validator_name) })),
+    };
+  }, [overviewQuery.data]);
+
+  const onError = (fallback: string) => (err: Error & { response?: { data?: { error?: string } } }) =>
+    toast.error(err?.response?.data?.error || err.message || fallback);
+  const onSuccess = (message: string) => () => {
+    toast.success(message);
+    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["admin", "network-overview"] }), 6000);
+  };
+
+  const approveMutation = useMutation({
+    mutationFn: (publicKey: string) => NetworkService.approveValidator(publicKey),
+    onSuccess: onSuccess("Đã gửi giao dịch duyệt validator, chờ vào block..."),
+    onError: onError("Duyệt validator thất bại"),
   });
 
-  const recentBlocksQuery = useQuery({
-    queryKey: ["admin", "recent-blocks"],
-    queryFn: () => BlockService.getAllBlocks(1, 5),
-    refetchInterval: 10000,
+  const removeMutation = useMutation({
+    mutationFn: (publicKey: string) => NetworkService.removeValidator(publicKey),
+    onSuccess: onSuccess("Đã gửi giao dịch gỡ validator, chờ vào block..."),
+    onError: onError("Gỡ validator thất bại"),
   });
-
-  const peers = Array.isArray(peersQuery.data) ? peersQuery.data : [];
-  const activePeersCount = peers.filter(p => p.status === "ACTIVE").length;
-
-  const networkStatsDisplay = [
-    { label: "Tổng Peers", value: networkStats?.total_peers?.toString() || peers.length.toString(), icon: Server, color: "text-primary" },
-    { label: "Peers hoạt động", value: networkStats?.active_peers?.toString() || activePeersCount.toString(), icon: Activity, color: "text-green-400" },
-    { label: "Validators", value: networkStats?.validator_peers?.toString() || "0", icon: Server, color: "text-blue-400" },
-    { label: "Tổng Blocks", value: blockCount.toString(), icon: HardDrive, color: "text-accent" },
-  ];
 
   return {
-    loading: statsLoading || peersQuery.isLoading || slotInfoQuery.isLoading || recentBlocksQuery.isLoading,
-    peers,
-    stats: networkStats,
-    slotInfo: slotInfoQuery.data || null,
-    recentBlocks: recentBlocksQuery.data?.blocks || [],
-    blockCount,
-    activePeersCount,
-    networkStatsDisplay
+    loading: overviewQuery.isLoading,
+    error: overviewQuery.error,
+    overview,
+    updatedAt: overviewQuery.dataUpdatedAt,
+    approveValidator: approveMutation.mutate,
+    removeValidator: removeMutation.mutate,
+    mutating: approveMutation.isPending || removeMutation.isPending,
   };
 };
 

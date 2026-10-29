@@ -28,7 +28,17 @@ class NetworkConfig:
         return self.config.get('network', {})
     
     def get_seed_nodes(self) -> List[Dict[str, Any]]:
+        env_seeds = os.getenv('SEED_NODES')
+        if env_seeds:
+            seeds = []
+            for entry in env_seeds.split(','):
+                host, _, port = entry.strip().rpartition(':')
+                seeds.append({'name': entry.strip(), 'ip': host, 'port': int(port), 'public_key': '', 'role': 'moet'})
+            return seeds
         return self.config.get('seed_nodes', [])
+
+    def get_moet_public_key(self) -> str:
+        return os.getenv('MOET_PUBLIC_KEY') or self.config.get('moet_public_key', '')
     
     def get_whitelist(self) -> Dict[str, Any]:
         return self.config.get('whitelist', {})

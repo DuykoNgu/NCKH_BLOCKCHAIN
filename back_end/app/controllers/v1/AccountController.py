@@ -98,7 +98,9 @@ def register():
     vault = data.get('vault')
     timestamp = data.get('timestamp')
     agreement_file_url = data.get('agreement_file_url')
-    
+
+    if str(role_str).lower() == 'moet':
+        return jsonify({"error": "MOET account is created by the MOET node only"}), 403
 
     transactionAccount = TransactionAcount(
         address=address,

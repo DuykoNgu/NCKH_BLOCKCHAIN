@@ -6,38 +6,16 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='EduChain Backend Server')
-    parser.add_argument('--port', type=int, default=5000,
-                        help='Port to run the server on (default: 5000)')
-    parser.add_argument('--host', type=str, default='0.0.0.0',
-                        help='Host to bind to (default: 0.0.0.0)')
-    parser.add_argument('--db', type=str, default=None,
-                        help='Custom database filename (for multi-node testing)')
+    parser = argparse.ArgumentParser(description='EduChain node — cấu hình qua biến môi trường / file .env')
+    parser.add_argument('--env', type=str, default=None,
+                        help='File .env của node (mặc định: back_end/.env)')
     parser.add_argument('--no-network', action='store_true',
                         help='Skip P2P network initialization (for testing)')
-    parser.add_argument('--validator-index', type=int, default=0,
-                        help='Validator index for this node (default: 0)')
-    parser.add_argument('--total-validators', type=int, default=1,
-                        help='Total number of validators (default: 1)')
     return parser.parse_args()
 
 
-def setup_custom_db(db_filename):
-    import app.database.database as db_module
-    custom_db_path = os.path.join(current_dir, db_filename)
-    db_module.DB_PATH = custom_db_path
-    print(f"  Using custom DB: {custom_db_path}")
-
-
-def initialize_p2p_network(host, port, public_key=""):
-    from app.services.NetworkService import get_network_service, initialize_network
-    from network.config_loader import get_config
-    
-    config = get_config()
-    network_config = config.get_network_config()
-    network_config['listen_port'] = port
-    
-    node_ip = "127.0.0.1" if host == "0.0.0.0" else host
+def initialize_p2p_network(node_ip, port, public_key=""):
+    from app.services.NetworkService import initialize_network
     
     try:
         success = initialize_network(node_ip=node_ip, node_port=port, public_key=public_key)
@@ -130,18 +108,21 @@ def start_network_background_tasks():
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.env:
+        from dotenv import load_dotenv
+        load_dotenv(args.env, override=True)
+    
+    from app.core.config import NODE_NAME, NODE_ROLE, NODE_HOST, NODE_PORT, NODE_IP, DATA_DIR, KEYSTORE_PATH
     
     print("=" * 60)
-    print("🚀 Starting EduChain Backend Server")
-    print(f"   Host: {args.host}:{args.port}")
+    print(f"🚀 Starting EduChain node '{NODE_NAME}' ({NODE_ROLE})")
+    print(f"   Listen: {NODE_HOST}:{NODE_PORT}  |  Public: {NODE_IP}:{NODE_PORT}")
+    print(f"   Data:   {DATA_DIR}")
     print("=" * 60)
     
-    if args.db:
-        setup_custom_db(args.db)
-    
-    from app.utils.KeystoreManager import KeystoreManager
     from app.main import app, init_db
-    from app.blockchain_instance import get_blockchain_instance, initialize_blockchain
+    from app.blockchain_instance import initialize_blockchain
+    from app.core.node_bootstrap import load_node_identity, activate_validator, ensure_moet_admin
     from consensus.validator_worker import start_validator_worker
     from network.config_loader import get_config
     
@@ -149,40 +130,26 @@ if __name__ == "__main__":
     step = 1
     
     print(f"\n[{step}/{total_steps}] Initializing database...")
-    try:
-        init_db()
-        print("[OK] Database initialized successfully")
-    except Exception as e:
-        print(f"[WARN] Database initialization warning: {e}")
+    init_db()
     
     step += 1
     print(f"\n[{step}/{total_steps}] Initializing blockchain...")
+    public_key, private_key = "", None
+    if NODE_ROLE != "observer":
+        print(f"  Keystore: {KEYSTORE_PATH}")
+        public_key, private_key = load_node_identity(KEYSTORE_PATH)
+    if NODE_ROLE == "moet" and not private_key:
+        sys.exit("✗ Node MOET phải mở khoá được keystore (đặt NODE_PASSPHRASE hoặc nhập khi khởi động)")
+    
     try:
-        keystore_path = os.path.join(current_dir, 'node.keystore')
-        print(f"  Loading keystore from: {keystore_path}")
-        keystore_data = KeystoreManager.load_keystore(keystore_path)
-        if keystore_data:
-            public_key = keystore_data['public_key']
-            
-            config = get_config()
-            seed_nodes = config.get_seed_nodes()
-            
-            initialize_blockchain(public_key, listen_port=args.port, seed_nodes=seed_nodes)
-            print(f"✅ Blockchain initialized (pubkey: {public_key[:32]}...)")
-        else:
-            print(f"⚠️  Keystore not found or invalid at {keystore_path}. Starting in observer mode.")
-            public_key = ""
-            initialize_blockchain("", listen_port=args.port)
-    except Exception as e:
-        print(f"⚠️  Blockchain initialization warning: {e}")
-        import traceback
-        traceback.print_exc()
-        public_key = ""
+        initialize_blockchain(public_key, is_moet=(NODE_ROLE == "moet"), seed_nodes=get_config().get_seed_nodes())
+    except RuntimeError as e:
+        sys.exit(f"✗ {e}")
     
     if not args.no_network:
         step += 1
         print(f"\n[{step}/{total_steps}] Initializing P2P network...")
-        initialize_p2p_network(args.host, args.port, public_key)
+        initialize_p2p_network(NODE_IP, NODE_PORT, public_key)
         
         step += 1
         print(f"\n[{step}/{total_steps}] Syncing blockchain from peers...")
@@ -191,15 +158,14 @@ if __name__ == "__main__":
     step += 1
     print(f"\n[{step}/{total_steps}] Starting services...")
     
-    try:
-        start_validator_worker(
-            my_validator_index=args.validator_index,
-            total_validators=args.total_validators,
-            public_key=public_key,
-        )
-        print("✅ Validator worker initialized")
-    except Exception as e:
-        print(f"⚠️  Validator worker warning: {e}")
+    start_validator_worker(public_key=public_key)
+    if private_key:
+        if activate_validator(public_key, private_key):
+            print("✅ Validator activated")
+        else:
+            print("⚠️  Không kích hoạt được validator")
+    if NODE_ROLE == "moet":
+        ensure_moet_admin(public_key, private_key)
     
     if not args.no_network:
         try:
@@ -209,10 +175,10 @@ if __name__ == "__main__":
             print(f"⚠️  Network daemon warning: {e}")
     
     print("\n" + "=" * 60)
-    print(f"🌐 Server running at: http://{args.host}:{args.port}")
+    print(f"🌐 Server running at: http://{NODE_HOST}:{NODE_PORT}")
     print(f"📡 P2P Network: {'ENABLED' if not args.no_network else 'DISABLED'}")
-    print(f"🔑 Validator: #{args.validator_index}/{args.total_validators}")
+    print(f"🔑 Role: {NODE_ROLE} ({'ACTIVE' if private_key else 'observer'})")
     print("Press CTRL+C to stop")
     print("=" * 60 + "\n")
     
-    app.run(host=args.host, port=args.port, debug=True, use_reloader=False)
+    app.run(host=NODE_HOST, port=NODE_PORT, debug=True, use_reloader=False)
